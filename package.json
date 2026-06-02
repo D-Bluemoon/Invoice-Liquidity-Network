@@ -6,7 +6,8 @@
     "test:coverage": "turbo run test:coverage",
     "build": "turbo run build",
     "generate:types": "ts-node --esm scripts/generate-types.ts",
-    "dead-code:check": "knip"
+    "dead-code:check": "knip",
+    "prepare": "husky install",
     "syncpack:check": "syncpack list-mismatches"
   },
   "devDependencies": {
@@ -24,7 +25,6 @@
     "pnpm": ">=9"
   },
   "packageManager": "pnpm@9.0.0",
-  "prepare": "husky install",
   "bin": {
     "iln": "packages/scripts/bin/iln.js"
   },

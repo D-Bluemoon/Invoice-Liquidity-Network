@@ -1,6 +1,7 @@
 {
   "index": "Home",
   "analytics": "Analytics",
+  "defi-integrations": "DeFi Integrations",
   "local-development": "Local Development",
   "notifications": "Notifications",
   "ci-cd": "CI/CD",
