@@ -15,8 +15,12 @@ on:
       - main
 
 jobs:
+  pnpm-cache:
+    uses: ./.github/workflows/reusable-cache-pnpm.yml
+
   knip:
     name: knip
+    needs: pnpm-cache
     runs-on: ubuntu-latest
     # Advisory only — do not fail the workflow on violations.
     continue-on-error: true
@@ -24,19 +28,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - name: Setup pnpm with store cache
+        uses: ./.github/actions/setup-pnpm
         with:
-          version: 9
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile --ignore-scripts
+          install-args: --frozen-lockfile --ignore-scripts
 
       - name: Run knip
         # Even if knip exits non-zero, do not fail the job. The PR will

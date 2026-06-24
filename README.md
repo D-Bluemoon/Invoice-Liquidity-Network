@@ -26,9 +26,10 @@ i just need to create a draft prrr
 
 | Repository | Description | Language |
 |------------|-------------|----------|
-| [Invoice-Liquidity-Network](https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network) | 🏠 **This repo** — org overview, shared docs, SDK, CLI, indexer, notifications | TypeScript |
-| [ILN-Frontend](https://github.com/Invoice-Liquidity-Network/ILN-Frontend) | 🖥️ Next.js dApp — freelancer dashboard, LP analytics, governance UI | TypeScript |
-| [ILN-Smart-Contract](https://github.com/Invoice-Liquidity-Network/ILN-Smart-Contract) | ⚙️ Soroban smart contracts — invoice lifecycle, multi-token, reputation | Rust |
+| [Invoice-Liquidity-Network](https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network) | **This repo** — org overview, shared docs, SDK, CLI, indexer, notifications | TypeScript |
+| [ILN-Frontend](https://github.com/Invoice-Liquidity-Network/ILN-Frontend) | Next.js dApp — freelancer dashboard, LP analytics, governance UI | TypeScript |
+| [ILN-Smart-Contract](https://github.com/Invoice-Liquidity-Network/ILN-Smart-Contract) | 
+Soroban smart contracts — invoice lifecycle, multi-token, reputation | Rust |
 
 ---
 
@@ -209,7 +210,7 @@ npm run test:e2e              # Run E2E integration tests
 
 We welcome contributions of all kinds — smart contract improvements, documentation, frontend, tests, and research.
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full process.
+Start here: [CONTRIBUTING.md](./CONTRIBUTING.md) for the project-level contribution model, repo decision tree, and Drips Wave guide.
 
 ---
 
@@ -228,3 +229,14 @@ Built on [Stellar](https://stellar.org) and [Soroban](https://soroban.stellar.or
 ## Security
 
 Please refer to our [Security Policy](./SECURITY.md) for information on supported versions and how to report vulnerabilities privately.
+
+## Documentation Site
+
+The ILN documentation is built with [Nextra](https://nextra.site) and deployed to [docs.iln.finance](https://docs.iln.finance).
+
+### Local Development
+
+```bash
+cd packages/docs
+npm install
+npm run dev

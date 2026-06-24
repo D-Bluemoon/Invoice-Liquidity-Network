@@ -1,7 +1,5 @@
 # Local Development Environment
-
-This guide explains how to quickly set up a complete local Stellar development environment using a single Docker Compose command.
-
+This guide explains how to quickly set up a local [Soroban](glossary.md#soroban) testing environment for the Invoice Liquidity Network project. The Hardhat-style test environment allows you to develop, build, and test locally in under 5 minutes.
 ## Prerequisites
 
 - **Docker** and **Docker Compose**: Required to run the local Stellar node and initialization services.

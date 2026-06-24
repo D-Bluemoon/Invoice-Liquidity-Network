@@ -33,6 +33,13 @@ fix.md
 dist/
 build/
 
+# Turbo cache
+.turbo/
+
+# Yarn
+.yarn/
+yarn.lock
+
 # Load test results
 tests/load/results/
 

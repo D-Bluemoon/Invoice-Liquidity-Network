@@ -1,0 +1,17 @@
+{
+  "name": "@invoice-liquidity/sdk",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@iln/sdk": "workspace:*"
+  },
+  "scripts": {
+    "build": "node ./build.js"
+  }
+}

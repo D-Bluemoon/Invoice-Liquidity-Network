@@ -9,12 +9,12 @@
     "test": "vitest run"
   },
   "peerDependencies": {
-    "@opentelemetry/api": "^1.4.0",
-    "@invoice-liquidity/sdk": "workspace:*"
+    "@invoice-liquidity/sdk": "workspace:*",
+    "@opentelemetry/api": "^1.4.0"
   },
   "devDependencies": {
-    "@opentelemetry/api": "^1.4.0",
     "@invoice-liquidity/sdk": "workspace:*",
+    "@opentelemetry/api": "^1.4.0",
     "typescript": "^5.0.0",
     "vitest": "^4.1.5"
   }
