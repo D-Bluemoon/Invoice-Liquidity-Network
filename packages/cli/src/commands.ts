@@ -5,6 +5,7 @@ import { ILNSdk, AnalyticsSDK, createKeypairSigner } from "@iln/sdk";
 import { loadConfig, saveConfig, ILNConfig } from "./config";
 import { Keypair } from "@stellar/stellar-sdk";
 import fs from "fs";
+import YAML from "yaml";
 
 // Constants
 const STROOPS_PER_UNIT = 10_000_000n;
@@ -84,11 +85,22 @@ function createSdkInstance(config: ILNConfig, requireSigner = false): ILNSdk {
   });
 }
 
-function handleOutput(data: any, renderHuman: () => void, isJson: boolean) {
-  if (isJson) {
-    console.log(JSON.stringify(data, null, 2));
-  } else {
-    renderHuman();
+export function handleOutput(
+  data: unknown,
+  renderHuman: () => void,
+  format: string
+): void {
+  switch (format) {
+    case "json":
+      console.log(JSON.stringify(data, null, 2));
+      break;
+
+    case "yaml":
+      console.log(YAML.stringify(data));
+      break;
+
+    default:
+      renderHuman();
   }
 }
 
@@ -134,7 +146,7 @@ export function registerCommands(program: Command) {
           () => {
             console.log(pc.green(`✓ Invoice submitted successfully. ID: ${invoiceId}`));
           },
-          program.opts().json
+          program.opts().format
         );
       } catch (err: any) {
         console.error(pc.red(`Error: ${err.message}`));
@@ -165,7 +177,7 @@ export function registerCommands(program: Command) {
           () => {
             console.log(pc.green(`✓ Invoice ${invoiceId} funded successfully.`));
           },
-          program.opts().json
+          program.opts().format
         );
       } catch (err: any) {
         console.error(pc.red(`Error: ${err.message}`));
@@ -193,7 +205,7 @@ export function registerCommands(program: Command) {
           () => {
             console.log(pc.green(`✓ Invoice ${invoiceId} marked as paid.`));
           },
-          program.opts().json
+          program.opts().format
         );
       } catch (err: any) {
         console.error(pc.red(`Error: ${err.message}`));
@@ -251,7 +263,7 @@ export function registerCommands(program: Command) {
 
             console.log(table.toString());
           },
-          program.opts().json
+          program.opts().format
         );
       } catch (err: any) {
         console.error(pc.red(`Error: ${err.message}`));
@@ -335,7 +347,7 @@ export function registerCommands(program: Command) {
 
             console.log(table.toString());
           },
-          program.opts().json
+          program.opts().format
         );
       } catch (err: any) {
         console.error(pc.red(`Error: ${err.message}`));
@@ -360,7 +372,7 @@ export function registerCommands(program: Command) {
 
       const print = (inv: any) => {
         const ts = new Date().toISOString();
-        if (program.opts().json) {
+        if (program.opts().format) {
           console.log(JSON.stringify({ ts, id: inv.id.toString(), status: inv.status }));
         } else {
           console.log(`[${ts}] Invoice ${inv.id} — ${pc.cyan(inv.status)}`);
@@ -490,7 +502,7 @@ export function registerCommands(program: Command) {
 
             console.log(table.toString());
           },
-          program.opts().json
+          program.opts().format
         );
       } catch (err: any) {
         console.error(pc.red(`Error: ${err.message}`));
@@ -523,7 +535,7 @@ export function registerCommands(program: Command) {
           () => {
             console.log(`${pc.bold(targetAddress)} Reputation Score: ${pc.cyan(score)}`);
           },
-          program.opts().json
+          program.opts().format
         );
       } catch (err: any) {
         console.error(pc.red(`Error: ${err.message}`));
@@ -552,7 +564,7 @@ export function registerCommands(program: Command) {
           () => {
             console.log(pc.green(`✓ Active network successfully switched to ${target}.`));
           },
-          program.opts().json
+          program.opts().format
         );
       } catch (err: any) {
         console.error(pc.red(`Error: ${err.message}`));
