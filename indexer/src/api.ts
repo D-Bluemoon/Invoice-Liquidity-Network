@@ -1,4 +1,5 @@
 import express, { Request, Response } from "express";
+import { registry, httpRequestsTotal, httpRequestDuration, httpErrorsTotal } from "./metrics";
 import {
   getDb,
   getFreelancerStats,
@@ -26,6 +27,20 @@ export function createApp(): express.Application {
   app.set("trust proxy", 1);
   app.use(createApiRateLimiter());
   app.use(express.json());
+
+  // Metrics middleware: count requests, measure duration, and capture errors.
+  app.use((req: Request, res: Response, next) => {
+    const end = httpRequestDuration.startTimer({ method: req.method, route: req.path });
+    res.on("finish", () => {
+      const status = String(res.statusCode);
+      httpRequestsTotal.inc({ method: req.method, route: req.path, status }, 1);
+      end({ status });
+      if (res.statusCode >= 500) {
+        httpErrorsTotal.inc({ method: req.method, route: req.path, status });
+      }
+    });
+    next();
+  });
 
   const startTime = Date.now();
 
@@ -160,6 +175,17 @@ export function createApp(): express.Application {
     const result = { invoice };
     await cacheSet(cacheKey, JSON.stringify(result));
     res.json(result);
+  });
+
+  // ── GET /metrics ─────────────────────────────────────────────────────────
+  app.get("/metrics", async (_req: Request, res: Response) => {
+    try {
+      res.setHeader("Content-Type", registry.contentType);
+      const body = await registry.metrics();
+      res.send(body);
+    } catch (err) {
+      res.status(500).send("Error collecting metrics");
+    }
   });
 
   return app;

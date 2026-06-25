@@ -1,5 +1,6 @@
 import { type rpc, scValToNative } from "@stellar/stellar-sdk";
 import { hasEvent, insertEvent, upsertInvoice } from "./db";
+import { eventsProcessedTotal, invoicesUpsertedTotal } from "./metrics";
 import { invalidateInvoiceCache } from "./cache";
 import { fetchInvoice } from "./rpc";
 import type { ILNEventType } from "./types";
@@ -51,6 +52,11 @@ export async function processEvent(
     created_at: Date.now(),
   });
 
+  // Track processed events
+  try {
+    eventsProcessedTotal.inc();
+  } catch {}
+
   // ── Fetch latest invoice state and upsert ─────────────────────────────────
   // We always fetch the current state from the RPC regardless of event type.
   // This handles:
@@ -62,5 +68,8 @@ export async function processEvent(
   if (invoice) {
     upsertInvoice(invoice);
     await invalidateInvoiceCache(invoiceId);
+    try {
+      invoicesUpsertedTotal.inc();
+    } catch {}
   }
 }

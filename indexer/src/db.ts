@@ -1,4 +1,5 @@
 import Database from "better-sqlite3";
+import { dbQueryDuration, dbErrorsTotal, lastProcessedLedger, cursorUpdatedAt } from "./metrics";
 import { CONFIG } from "./config";
 import type { ILNEvent, Invoice, InvoiceStatus } from "./types";
 
@@ -80,9 +81,11 @@ export function upsertInvoice(
   invoice: Omit<Invoice, "created_at" | "updated_at">
 ): void {
   const now = Date.now();
-  getDb()
-    .prepare(
-      `INSERT INTO invoices
+  try {
+    const end = dbQueryDuration.startTimer();
+    getDb()
+      .prepare(
+        `INSERT INTO invoices
          (id, freelancer, payer, amount, due_date, discount_rate,
           status, funder, funded_at, created_at, updated_at)
        VALUES
@@ -93,14 +96,21 @@ export function upsertInvoice(
          funder    = excluded.funder,
          funded_at = excluded.funded_at,
          updated_at = excluded.updated_at`
-    )
-    .run({
-      ...invoice,
-      funder: invoice.funder ?? null,
-      funded_at: invoice.funded_at ?? null,
-      created_at: now,
-      updated_at: now,
-    });
+      )
+      .run({
+        ...invoice,
+        funder: invoice.funder ?? null,
+        funded_at: invoice.funded_at ?? null,
+        created_at: now,
+        updated_at: now,
+      });
+    end();
+  } catch (err) {
+    try {
+      dbErrorsTotal.inc();
+    } catch {}
+    throw err;
+  }
 }
 
 /** Update only the status (and optionally funder/funded_at) of an existing invoice. */
@@ -129,9 +139,15 @@ export function updateInvoiceStatus(
 
 /** Return a single invoice by ID, or undefined if not found. */
 export function getInvoiceById(id: number): Invoice | undefined {
-  return getDb()
-    .prepare("SELECT * FROM invoices WHERE id = ?")
-    .get(id) as Invoice | undefined;
+  try {
+    const end = dbQueryDuration.startTimer();
+    const row = getDb().prepare("SELECT * FROM invoices WHERE id = ?").get(id) as Invoice | undefined;
+    end();
+    return row;
+  } catch (err) {
+    try { dbErrorsTotal.inc(); } catch {}
+    throw err;
+  }
 }
 
 export interface InvoiceFilter {
@@ -225,6 +241,9 @@ export function queryInvoicesPaginated(
   const rows = db
     .prepare(`SELECT * FROM invoices ${where} ORDER BY id ASC LIMIT ?`)
     .all(...params, limit + 1) as Invoice[];
+
+  // Note: measuring the above `.all()` is tricky without wrapping the call
+  // in a try/catch; we chose to rely on surrounding try/catch in callers.
 
   const hasMore = rows.length > limit;
   const sliced = hasMore ? rows.slice(0, limit) : rows;
@@ -440,6 +459,7 @@ export function getCursorUpdatedAt(): number | null {
 
 /** Persist the last processed ledger sequence. */
 export function setCursorLedger(ledger: number): void {
+  const updatedAt = Date.now();
   getDb()
     .prepare(
       `INSERT INTO cursor (id, last_ledger, updated_at)
@@ -448,5 +468,10 @@ export function setCursorLedger(ledger: number): void {
          last_ledger = excluded.last_ledger,
          updated_at  = excluded.updated_at`
     )
-    .run(ledger, Date.now());
+    .run(ledger, updatedAt);
+
+  try {
+    lastProcessedLedger.set(ledger);
+    cursorUpdatedAt.set(updatedAt);
+  } catch {}
 }

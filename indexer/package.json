@@ -18,7 +18,8 @@
     "better-sqlite3": "^11.0.0",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "ioredis": "^5.3.2"
+    "ioredis": "^5.3.2",
+    "prom-client": "^14.2.0"
   },
   "devDependencies": {
     "@iln/eslint-config": "workspace:*",
