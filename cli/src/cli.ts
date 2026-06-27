@@ -4,7 +4,7 @@ import { Command } from "commander";
 
 import { parseDisplayAmount } from "./amounts";
 import { ILNClient } from "./client";
-import { loadConfig, initConfig } from "./config";
+import { loadConfig, initConfig, readRawConfig, writeRawConfig } from "./config";
 import { parseDueDate } from "./dates";
 import { LocalDevEnvironment } from "./dev-environment";
 import { formatUnknownError } from "./errors";
@@ -24,7 +24,6 @@ import {
 } from "./format";
 import { generateManPage } from "./man";
 import { registerInspectCommand } from "./inspect";
-<<<<<<< HEAD
 import { registerCompletionCommand } from "./completion";
 import { registerEnvCommands } from "./env";
 import {
@@ -77,6 +76,24 @@ export async function runCli(
   const createDevEnvironment =
     dependencies.createDevEnvironment ??
     ((devUi: Ui) => new LocalDevEnvironment({ ui: devUi }));
+
+  // Step 1: Load custom aliases from config
+  let customAliases: Record<string, string> = {};
+  try {
+    const { rawConfig } = readRawConfig(process.cwd());
+    customAliases = rawConfig.aliases || {};
+  } catch {
+    // Ignore if config doesn't exist or is invalid
+  }
+
+  // Step 2: Resolve aliases in argv
+  const resolvedArgv = [...argv];
+  if (resolvedArgv.length > 0) {
+    const firstArg = resolvedArgv[0];
+    if (customAliases[firstArg]) {
+      resolvedArgv[0] = customAliases[firstArg];
+    }
+  }
 
   const program = new Command();
 
@@ -160,6 +177,7 @@ export async function runCli(
 
   program
     .command("submit")
+    .alias("s")
     .description("Submit a new invoice from the configured signer account.")
     .option("--payer <address>", "payer Stellar address")
     .option("--amount <amount>", "invoice amount in display units, for example 100 or 12.5")
@@ -254,6 +272,7 @@ export async function runCli(
 
   program
     .command("fund")
+    .alias("f")
     .description("Fund an invoice using the configured signer account.")
     .option("--id <invoiceId>", "invoice ID")
     .option("--amount <amount>", "amount to fund in display units; defaults to the remaining balance")
@@ -302,6 +321,7 @@ export async function runCli(
 
   program
     .command("pay")
+    .alias("p")
     .description("Mark an invoice as paid using the configured signer account.")
     .option("--id <invoiceId>", "invoice ID")
     .option("--yes", "skip interactive prompts and use defaults")
@@ -1047,8 +1067,67 @@ export async function runCli(
       stdout.write(generateManPage(program, commandName));
     });
 
+  // Alias management commands
+  const aliasCommand = program
+    .command("alias")
+    .description("Manage CLI command aliases");
+
+  aliasCommand
+    .command("list")
+    .description("List all configured aliases")
+    .action(() => {
+      ui.info("Built-in aliases:");
+      ui.info("  s → submit");
+      ui.info("  f → fund");
+      ui.info("  p → pay");
+      ui.info("");
+      ui.info("Custom aliases:");
+      if (Object.keys(customAliases).length === 0) {
+        ui.info("  (none)");
+      } else {
+        for (const [alias, command] of Object.entries(customAliases)) {
+          ui.info(`  ${alias} → ${command}`);
+        }
+      }
+    });
+
+  aliasCommand
+    .command("add")
+    .description("Add a new custom alias")
+    .argument("<alias>", "Alias name")
+    .argument("<command>", "Command to alias")
+    .action((alias: string, command: string) => {
+      const cwd = process.cwd();
+      const { rawConfig } = readRawConfig(cwd);
+      if (!rawConfig.aliases) {
+        rawConfig.aliases = {};
+      }
+      rawConfig.aliases[alias] = command;
+      const filePath = writeRawConfig(cwd, rawConfig);
+      ui.success(`Added alias: ${alias} → ${command}`);
+      ui.info(`Saved to ${filePath}`);
+    });
+
+  aliasCommand
+    .command("remove")
+    .alias("rm")
+    .description("Remove a custom alias")
+    .argument("<alias>", "Alias name to remove")
+    .action((alias: string) => {
+      const cwd = process.cwd();
+      const { rawConfig } = readRawConfig(cwd);
+      if (rawConfig.aliases && rawConfig.aliases[alias]) {
+        delete rawConfig.aliases[alias];
+        const filePath = writeRawConfig(cwd, rawConfig);
+        ui.success(`Removed alias: ${alias}`);
+        ui.info(`Saved to ${filePath}`);
+      } else {
+        ui.error(`Alias not found: ${alias}`);
+      }
+    });
+
   try {
-    await program.parseAsync(argv, { from: "user" });
+    await program.parseAsync(resolvedArgv, { from: "user" });
     return 0;
   } catch (error) {
     ui.error(formatUnknownError(error));
