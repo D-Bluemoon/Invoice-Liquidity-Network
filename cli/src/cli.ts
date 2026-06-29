@@ -50,6 +50,7 @@ import { checkCompatibility } from "@invoice-liquidity/sdk";
 import { runInteractive } from "./interactive";
 import { VersionManager } from "./version";
 import { runTutorial } from "./tutorial";
+import { withSpinner, type ProgressOptions } from "./progress";
 
 export interface CliDependencies {
   createClient(config: ResolvedConfig): ILNClient;
@@ -261,13 +262,19 @@ export async function runCli(
       assertStellarAddress(payer, "payer");
       assertContractId(tokenId, "token");
 
-      const { invoiceId, txHash } = await client.submitInvoice({
-        amount: parseDisplayAmount(amount),
-        discountRate: parseBasisPoints(rate),
-        dueDate: parseDueDate(due),
-        payer,
-        tokenId,
-      });
+      const progress = cliProgressOptions(program, stdout);
+      const { invoiceId, txHash } = await withSpinner(
+        "Submitting invoice…",
+        () =>
+          client.submitInvoice({
+            amount: parseDisplayAmount(amount),
+            discountRate: parseBasisPoints(rate),
+            dueDate: parseDueDate(due),
+            payer,
+            tokenId,
+          }),
+        progress,
+      );
 
       const globalOpts = program.opts() as { json?: boolean };
       if (globalOpts.json) {
@@ -318,9 +325,15 @@ export async function runCli(
         throw new Error("Missing required argument: --id. Provide it via option or pipe to stdin.");
       }
       const client = createClient(load());
-      const result = await client.fundInvoice(
-        parseInvoiceId(invoiceId),
-        options.amount ? parseDisplayAmount(options.amount) : undefined,
+      const progress = cliProgressOptions(program, stdout);
+      const result = await withSpinner(
+        "Funding invoice…",
+        () =>
+          client.fundInvoice(
+            parseInvoiceId(invoiceId),
+            options.amount ? parseDisplayAmount(options.amount) : undefined,
+          ),
+        progress,
       );
 
       const globalOpts = program.opts() as { json?: boolean };
@@ -374,7 +387,12 @@ export async function runCli(
         throw new Error("Missing required argument: --id. Provide it via option or pipe to stdin.");
       }
       const client = createClient(load());
-      const result = await client.markPaid(parseInvoiceId(invoiceId));
+      const progress = cliProgressOptions(program, stdout);
+      const result = await withSpinner(
+        "Marking invoice as paid…",
+        () => client.markPaid(parseInvoiceId(invoiceId)),
+        progress,
+      );
 
       const globalOpts = program.opts() as { json?: boolean };
       if (globalOpts.json) {
@@ -425,7 +443,12 @@ export async function runCli(
       }
 
       const client = createClient(load());
-      const invoice = await client.getInvoice(parseInvoiceId(invoiceId));
+      const progress = cliProgressOptions(program, stdout);
+      const invoice = await withSpinner(
+        "Fetching invoice…",
+        () => client.getInvoice(parseInvoiceId(invoiceId)),
+        progress,
+      );
       const opts = program.opts() as { json?: boolean };
       ui.info(opts.json ? formatInvoiceDetailsJson(invoice) : formatInvoiceDetails(invoice));
     });
@@ -472,7 +495,12 @@ export async function runCli(
 
       assertStellarAddress(address, "address");
       const client = createClient(load());
-      const invoices = await client.listInvoicesByAddress(address);
+      const progress = cliProgressOptions(program, stdout);
+      const invoices = await withSpinner(
+        "Fetching invoices…",
+        () => client.listInvoicesByAddress(address),
+        progress,
+      );
       const opts = program.opts() as { json?: boolean };
       ui.info(opts.json ? formatInvoiceListJson(invoices) : formatInvoiceList(invoices));
     });
@@ -551,7 +579,12 @@ export async function runCli(
         }
 
         const client = createClient(load());
-        let invoices = await client.listInvoicesByAddress(address);
+        const progress = cliProgressOptions(program, stdout);
+        let invoices = await withSpinner(
+          "Fetching invoice history…",
+          () => client.listInvoicesByAddress(address),
+          progress,
+        );
 
         if (options.id !== undefined) {
           const targetId = parseInvoiceId(options.id);
@@ -607,14 +640,19 @@ export async function runCli(
       const client = createClient(config);
 
       const globalOpts = program.opts() as { json?: boolean };
-      
-      let checkError: Error | null = null;
-      const result = await checkCompatibility(async (method: string) => {
-        if (method === "get_version") {
-          return client.getVersion();
-        }
-        throw new Error(`Unsupported compatibility check invoke method: ${method}`);
-      });
+
+      const progress = cliProgressOptions(program, stdout);
+      const result = await withSpinner(
+        "Checking contract compatibility…",
+        () =>
+          checkCompatibility(async (method: string) => {
+            if (method === "get_version") {
+              return client.getVersion();
+            }
+            throw new Error(`Unsupported compatibility check invoke method: ${method}`);
+          }),
+        progress,
+      );
 
       if (globalOpts.json) {
         stdout.write(JSON.stringify(result, null, 2) + "\n");
@@ -624,7 +662,6 @@ export async function runCli(
         return;
       }
 
-      ui.info("Checking contract compatibility...");
       ui.info(`SDK Version:      ${result.sdkVersion}`);
       ui.info(`Contract Version: ${result.contractVersion}`);
 
@@ -656,7 +693,12 @@ export async function runCli(
     )
     .action(async () => {
       const client = createClient(load());
-      const config = await client.getProtocolConfig();
+      const progress = cliProgressOptions(program, stdout);
+      const config = await withSpinner(
+        "Fetching protocol configuration…",
+        () => client.getProtocolConfig(),
+        progress,
+      );
       const globalOpts = program.opts() as { json?: boolean };
       ui.info(globalOpts.json ? formatProtocolConfigJson(config) : formatProtocolConfig(config));
     });
@@ -1027,8 +1069,12 @@ export async function runCli(
         throw new Error(`Wallet '${options.name}' not found.`);
       }
 
-      ui.info(`Funding wallet '${options.name}' (${wallet.publicKey})...`);
-      await fundWalletFromFriendbot(wallet.publicKey, options.friendbot);
+      const progress = cliProgressOptions(program, stdout);
+      await withSpinner(
+        `Funding wallet '${options.name}'…`,
+        () => fundWalletFromFriendbot(wallet.publicKey, options.friendbot),
+        progress,
+      );
       ui.success(`Successfully funded wallet '${options.name}'`);
     });
 
@@ -1177,6 +1223,17 @@ async function resolveIdFromStdin(optionId?: string): Promise<string | undefined
     // Treat as raw text ID
   }
   return stdinVal;
+}
+
+function cliProgressOptions(
+  program: Command,
+  stdout: NodeJS.WritableStream,
+): ProgressOptions {
+  const opts = program.opts() as { quiet?: boolean; json?: boolean };
+  if (opts.quiet || opts.json) {
+    return { output: stdout, enabled: false };
+  }
+  return { output: stdout };
 }
 
 function parseInvoiceId(value: string): bigint {
