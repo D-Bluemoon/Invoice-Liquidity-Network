@@ -9,9 +9,13 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "react-native": "./dist/react-native/index.js",
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
     }
+  },
+  "react-native": {
+    ".": "./dist/react-native/index.js"
   },
   "files": [
     "dist",
@@ -19,7 +23,15 @@
   ],
   "sideEffects": false,
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
+  },
+  "peerDependencies": {
+    "react": ">=17",
+    "react-native": ">=0.72"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true },
+    "react-native": { "optional": true }
   },
   "scripts": {
     "build": "tsup",
@@ -38,12 +50,6 @@
     "@stellar/freighter-api": "^6.0.1",
     "@stellar/stellar-sdk": "^15.0.1",
     "debug": "^5.1.0"
-  },
-  "peerDependencies": {
-    "react": ">=17"
-  },
-  "peerDependenciesMeta": {
-    "react": { "optional": true }
   },
   "devDependencies": {
     "@iln/eslint-config": "workspace:*",

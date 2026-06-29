@@ -17,6 +17,9 @@
     "iln"
   ],
   "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "@stellar/stellar-sdk": "^15.0.1"
   },

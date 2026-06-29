@@ -12,6 +12,10 @@
     "@stellar/stellar-sdk": "^15.0.1",
     "dotenv": "^16.4.5"
   },
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "ts-node": "^10.9.1",

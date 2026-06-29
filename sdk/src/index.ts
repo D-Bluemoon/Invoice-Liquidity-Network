@@ -1,6 +1,7 @@
 export * from "./amounts";
 export * from "./client";
 export * from "./state";
+export * from "./payment";
 export * from "./invoice-status";
 export * from "./signers";
 export * from "./types";
@@ -29,6 +30,7 @@ export type {
 } from "./InvoiceDashboard";
 export * from "./cache";
 export * from "./validators";
+export * from "./react-native";
 
 export const SDK_VERSION = "0.1.0";
 

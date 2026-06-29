@@ -23,6 +23,15 @@ describe('package exports', () => {
     expect(exports.ILNProviderNotFoundError).toBeDefined();
   });
 
+  it('exports all components', () => {
+    expect(exports.NotificationCenter).toBeDefined();
+    expect(exports.StatsCard).toBeDefined();
+    expect(exports.ResponsiveGrid).toBeDefined();
+    expect(exports.InvoiceList).toBeDefined();
+    expect(exports.YieldDisplay).toBeDefined();
+    expect(exports.PortfolioChart).toBeDefined();
+  });
+
   it('exports all types', () => {
     // Type-only exports are erased at runtime, but we can verify the module loads
     expect(exports).toBeDefined();

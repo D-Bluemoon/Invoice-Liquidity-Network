@@ -421,6 +421,190 @@ describe("runCli", () => {
     expect(exitCode2).toBe(1);
     expect(stderr2.toString()).toContain("Invalid token");
   });
+
+  it("supports submit --json formatting", async () => {
+    const stdout = createMemoryStream();
+    const stderr = createMemoryStream();
+    const client = {
+      submitInvoice: vi.fn().mockResolvedValue({ invoiceId: 123n, txHash: "abc123" }),
+    };
+
+    const exitCode = await runCli(
+      ["--json", "submit", "--payer", validAddress(), "--amount", "100", "--due", "2025-12-31", "--rate", "300"],
+      {
+        createClient: () => client as any,
+        loadConfig: () => TEST_CONFIG,
+        stderr,
+        stdout,
+      },
+    );
+
+    expect(exitCode).toBe(0);
+    const parsed = JSON.parse(stdout.toString());
+    expect(parsed).toEqual({
+      success: true,
+      invoiceId: "123",
+      txHash: "abc123",
+    });
+    expect(stderr.toString()).toContain("Using testnet");
+  });
+
+  it("supports fund --json formatting", async () => {
+    const stdout = createMemoryStream();
+    const client = {
+      fundInvoice: vi.fn().mockResolvedValue({ hash: "tx-hash" }),
+    };
+
+    const exitCode = await runCli(["--json", "fund", "--id", "123"], {
+      createClient: () => client as any,
+      loadConfig: () => TEST_CONFIG,
+      stderr: createMemoryStream(),
+      stdout,
+    });
+
+    expect(exitCode).toBe(0);
+    const parsed = JSON.parse(stdout.toString());
+    expect(parsed).toEqual({
+      success: true,
+      invoiceId: "123",
+      txHash: "tx-hash",
+    });
+  });
+
+  it("supports pay --json formatting", async () => {
+    const stdout = createMemoryStream();
+    const client = {
+      markPaid: vi.fn().mockResolvedValue({ hash: "tx-hash" }),
+    };
+
+    const exitCode = await runCli(["--json", "pay", "--id", "123"], {
+      createClient: () => client as any,
+      loadConfig: () => TEST_CONFIG,
+      stderr: createMemoryStream(),
+      stdout,
+    });
+
+    expect(exitCode).toBe(0);
+    const parsed = JSON.parse(stdout.toString());
+    expect(parsed).toEqual({
+      success: true,
+      invoiceId: "123",
+      txHash: "tx-hash",
+    });
+  });
+
+  it("outputs protocol config in json when requested", async () => {
+    const stdout = createMemoryStream();
+    const client = {
+      getProtocolConfig: vi.fn().mockResolvedValue({
+        minInvoiceAmount: 10_000_000n,
+        maxDiscountRate: 2_000,
+        protocolFeeBps: 250,
+        minPayerReputation: 70,
+        decayRateBps: 25,
+        minInvoiceDuration: 3600,
+        maxInvoiceDuration: null,
+        gracePeriodSeconds: null,
+      }),
+    };
+
+    const exitCode = await runCli(["--json", "protocol-config"], {
+      createClient: () => client as any,
+      loadConfig: () => TEST_CONFIG,
+      stderr: createMemoryStream(),
+      stdout,
+    });
+
+    expect(exitCode).toBe(0);
+    const parsed = JSON.parse(stdout.toString());
+    expect(parsed).toEqual({
+      minInvoiceAmount: "10000000",
+      maxDiscountRate: 2000,
+      protocolFeeBps: 250,
+      minPayerReputation: 70,
+      decayRateBps: 25,
+      minInvoiceDuration: 3600,
+      maxInvoiceDuration: null,
+      gracePeriodSeconds: null,
+    });
+  });
+
+  it("formats error messages as JSON when --json option is passed", async () => {
+    const stdout = createMemoryStream();
+    const stderr = createMemoryStream();
+
+    const exitCode = await runCli(["--json", "submit", "--payer", "invalid-address"], {
+      createClient: () => ({}) as any,
+      loadConfig: () => TEST_CONFIG,
+      stderr,
+      stdout,
+    });
+
+    expect(exitCode).toBe(1);
+    const parsed = JSON.parse(stdout.toString());
+    expect(parsed.success).toBe(false);
+    expect(parsed.error).toContain("Invalid payer address");
+  });
+
+  it("pipes stdin to commands expecting invoice id", async () => {
+    const stdout = createMemoryStream();
+    const client = {
+      fundInvoice: vi.fn().mockResolvedValue({ hash: "tx-hash" }),
+    };
+
+    const Readable = require("node:stream").Readable;
+    const mockStdin = new Readable();
+    mockStdin.push("123\n");
+    mockStdin.push(null);
+    mockStdin.isTTY = false;
+
+    const oldStdin = process.stdin;
+    Object.defineProperty(process, "stdin", { value: mockStdin, configurable: true });
+
+    try {
+      const exitCode = await runCli(["fund"], {
+        createClient: () => client as any,
+        loadConfig: () => TEST_CONFIG,
+        stderr: createMemoryStream(),
+        stdout,
+      });
+
+      expect(exitCode).toBe(0);
+      expect(client.fundInvoice).toHaveBeenCalledWith(123n, undefined);
+    } finally {
+      Object.defineProperty(process, "stdin", { value: oldStdin, configurable: true });
+    }
+  });
+
+  it("pipes JSON from stdin to commands expecting invoice id", async () => {
+    const stdout = createMemoryStream();
+    const client = {
+      markPaid: vi.fn().mockResolvedValue({ hash: "tx-hash" }),
+    };
+
+    const Readable = require("node:stream").Readable;
+    const mockStdin = new Readable();
+    mockStdin.push(JSON.stringify({ success: true, invoiceId: "456", txHash: "abc" }));
+    mockStdin.push(null);
+    mockStdin.isTTY = false;
+
+    const oldStdin = process.stdin;
+    Object.defineProperty(process, "stdin", { value: mockStdin, configurable: true });
+
+    try {
+      const exitCode = await runCli(["pay"], {
+        createClient: () => client as any,
+        loadConfig: () => TEST_CONFIG,
+        stderr: createMemoryStream(),
+        stdout,
+      });
+
+      expect(exitCode).toBe(0);
+      expect(client.markPaid).toHaveBeenCalledWith(456n);
+    } finally {
+      Object.defineProperty(process, "stdin", { value: oldStdin, configurable: true });
+    }
+  });
 });
 
 describe("help output", () => {

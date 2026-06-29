@@ -1,13 +1,17 @@
 {
-  "name": "@invoice-liquidity/sdk",
+  "name": "@iln/invoice-sdk",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "files": [
     "dist"
   ],
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "@iln/sdk": "workspace:*"
   },

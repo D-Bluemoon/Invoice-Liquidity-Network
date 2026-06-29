@@ -10,6 +10,10 @@
   "dependencies": {
     "@iln/sdk": "file:../../sdk"
   },
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "ts-node": "^10.9.1",

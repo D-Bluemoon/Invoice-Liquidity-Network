@@ -11,11 +11,14 @@
 ## Development & Operations
 
 - [Local Development](local-development.md)
+- [Mainnet Launch Checklist](mainnet-launch-checklist.md)
 - [Multi-Token Support](tokens/multi-token-support.md)
 - [Mutation Testing](mutation-testing.md)
 - [Notifications](notifications.md)
 - [CI/CD](ci-cd.md)
 - [PR Submission Form](pr-16-submission-form.md)
+- [Security](security.md)
+- [Glossary](glossary.md)
 
 ## Support
 

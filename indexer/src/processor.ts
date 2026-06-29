@@ -5,7 +5,6 @@ import { fetchInvoice } from "./rpc";
 import type { ILNEvent, ILNEventType } from "./types";
 import { pubsub, INVOICE_UPDATED, EVENT_STREAM } from "./graphql/pubsub";
 import { pubSub } from "./pubsub";
-import type { ILNEventType } from "./types";
 
 const KNOWN_EVENT_TYPES = new Set<ILNEventType>([
   "submitted",

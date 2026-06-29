@@ -72,8 +72,10 @@ export const ConfigSchema = z.object({
       keypairPath: z.string().optional(),
     })
     .optional(),
-  /** Custom CLI aliases, e.g. { "sub": "submit" } */
-  aliases: z.record(z.string()).optional().default({}),
+  /** Pin the CLI to a specific version. Throws if current version doesn't match. */
+  requiredVersion: z.string().optional(),
+  /** Whether to automatically check for updates on startup. Defaults to true. */
+  autoUpdate: z.boolean().optional().default(true),
 });
 
 export type ILNConfigFile = z.infer<typeof ConfigSchema>;

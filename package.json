@@ -26,7 +26,14 @@
     "dead-code:check": "knip",
     "gitleaks:scan": "pnpm exec gitleaks detect --no-git -s . --config gitleaks.toml --baseline-path .secrets.baseline",
     "gitleaks:baseline": "pnpm exec gitleaks detect --no-git -s . --config gitleaks.toml --report-format json --report-path .secrets.baseline",
-    "syncpack:check": "syncpack list-mismatches"
+    "security:audit": "node scripts/dependency-audit.js audit",
+    "security:audit:fix": "node scripts/dependency-audit.js audit --fix",
+    "security:snyk": "node scripts/dependency-audit.js snyk",
+    "security:licenses": "node scripts/dependency-audit.js licenses",
+    "security:scan": "node scripts/dependency-audit.js scan",
+    "security:report": "node scripts/dependency-audit.js report",
+    "syncpack:check": "syncpack list-mismatches",
+    "validate:packages": "node scripts/validate-packages.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "2.31.0",

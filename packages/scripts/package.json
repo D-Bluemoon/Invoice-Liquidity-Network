@@ -6,6 +6,10 @@
   "bin": {
     "iln": "bin/iln.js"
   },
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node bin/iln.js"
   },

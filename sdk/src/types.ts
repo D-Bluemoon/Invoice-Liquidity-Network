@@ -184,6 +184,14 @@ export interface ILNSdkConfig {
     simulationMs?: number;
   };
   cache?: CacheConfig;
+  /**
+   * Enable the offline transaction queue.
+   * When provided, write methods (`submitInvoice`, `fundInvoice`, `markPaid`,
+   * `claimDefault`) will automatically queue operations while the client is
+   * offline and submit them when connectivity is restored.
+   * Set to `{}` to use all defaults.
+   */
+  offline?: import("./offline").OfflineConfig;
 }
 
 /**

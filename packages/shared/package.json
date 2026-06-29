@@ -21,6 +21,9 @@
     "check": "tsc -p tsconfig.json --noEmit",
     "test": "tsc -p tsconfig.json && tsd"
   },
+  "engines": {
+    "node": ">=20"
+  },
   "devDependencies": {
     "tsd": "^0.31.2",
     "typescript": "^5.9.3"

@@ -198,6 +198,8 @@ npm run test:e2e              # Run E2E integration tests
 | [`docs/notifications.md`](./docs/notifications.md) | Notification system |
 | [`docs/api-collection.md`](./docs/api-collection.md) | Horizon and Soroban RPC API collection examples |
 | [`docs/local-development.md`](./docs/local-development.md) | Local dev setup |
+| [`docs/mainnet-launch-checklist.md`](./docs/mainnet-launch-checklist.md) | Mainnet readiness checklist with owners, statuses, and sign-off |
+| [`docs/glossary.md`](./docs/glossary.md) | Protocol terminology for Stellar, invoice factoring, DeFi, and security terms |
 | [`docs/tutorials/first-invoice.md`](./docs/tutorials/first-invoice.md) | Hands-on invoice submission tutorial |
 | [`docs/ci-cd.md`](./docs/ci-cd.md) | CI/CD and deployment environments |
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md) | How to contribute |

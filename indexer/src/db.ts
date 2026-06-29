@@ -2,6 +2,35 @@ import Database from "better-sqlite3";
 import { CONFIG } from "./config";
 import type { ILNEvent, Invoice, InvoiceStatus } from "./types";
 
+// ─── Query logging ────────────────────────────────────────────────────────────
+
+const SLOW_QUERY_THRESHOLD_MS = 100;
+let _queryCount = 0;
+let _totalQueryTime = 0;
+
+export function getQueryStats() {
+  return {
+    queryCount: _queryCount,
+    totalQueryTime: _totalQueryTime,
+    avgQueryTime: _queryCount > 0 ? _totalQueryTime / _queryCount : 0,
+  };
+}
+
+/** Wrap a synchronous DB operation with timing and slow-query logging. */
+function measure<T>(label: string, fn: () => T): T {
+  const start = Date.now();
+  try {
+    return fn();
+  } finally {
+    const elapsed = Date.now() - start;
+    _queryCount++;
+    _totalQueryTime += elapsed;
+    if (elapsed > SLOW_QUERY_THRESHOLD_MS) {
+      console.warn(`[DB] Slow query (${elapsed}ms): ${label}`);
+    }
+  }
+}
+
 // ─── Singleton connection ─────────────────────────────────────────────────────
 
 let _db: Database.Database | null = null;
@@ -65,7 +94,12 @@ function runMigrations(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_invoices_freelancer ON invoices(freelancer);
     CREATE INDEX IF NOT EXISTS idx_invoices_payer      ON invoices(payer);
     CREATE INDEX IF NOT EXISTS idx_invoices_funder     ON invoices(funder);
+    CREATE INDEX IF NOT EXISTS idx_invoices_created_at ON invoices(created_at);
+    CREATE INDEX IF NOT EXISTS idx_invoices_due_date   ON invoices(due_date);
+    CREATE INDEX IF NOT EXISTS idx_invoices_status_funder ON invoices(status, funder);
     CREATE INDEX IF NOT EXISTS idx_events_invoice_id   ON events(invoice_id);
+    CREATE INDEX IF NOT EXISTS idx_events_ledger       ON events(ledger);
+    CREATE INDEX IF NOT EXISTS idx_events_created_at   ON events(created_at);
   `);
 }
 
@@ -260,81 +294,84 @@ export interface LPStat {
   invoiceCount: number;
 }
 
-function discountFor(invoice: Invoice): bigint {
-  return (BigInt(invoice.amount) * BigInt(invoice.discount_rate)) / 10_000n;
-}
-
-function terminalDefaultRate(invoices: Invoice[]): number {
-  const terminal = invoices.filter(
-    (invoice) => invoice.status === "Paid" || invoice.status === "Defaulted"
-  );
-  if (terminal.length === 0) {
-    return 0;
-  }
-
-  const defaults = terminal.filter((invoice) => invoice.status === "Defaulted").length;
-  return defaults / terminal.length;
-}
-
 export function getProtocolStats(): ProtocolStats {
-  const invoices = queryInvoices({});
-  const totalVolume = invoices.reduce(
-    (sum, invoice) => sum + BigInt(invoice.amount),
-    0n
-  );
-  const totalYield = invoices
-    .filter((invoice) => invoice.status === "Paid")
-    .reduce((sum, invoice) => sum + discountFor(invoice), 0n);
+  const db = getDb();
+  const row = measure("getProtocolStats", () =>
+    db
+      .prepare(
+        `SELECT
+           COUNT(*)                                                       AS totalInvoices,
+           COALESCE(SUM(CAST(amount AS INTEGER)), 0)                      AS totalVolume,
+           COALESCE(SUM(CASE WHEN status = 'Paid' THEN CAST(amount AS INTEGER) * discount_rate / 10000 ELSE 0 END), 0) AS totalYield,
+           CASE
+             WHEN SUM(CASE WHEN status IN ('Paid','Defaulted') THEN 1 ELSE 0 END) > 0
+             THEN CAST(SUM(CASE WHEN status = 'Defaulted' THEN 1 ELSE 0 END) AS REAL)
+                  / SUM(CASE WHEN status IN ('Paid','Defaulted') THEN 1 ELSE 0 END)
+             ELSE 0
+           END                                                            AS defaultRate
+         FROM invoices`
+      )
+      .get()
+  ) as ProtocolStats;
 
   return {
-    totalInvoices: invoices.length,
-    totalVolume: totalVolume.toString(),
-    totalYield: totalYield.toString(),
-    defaultRate: terminalDefaultRate(invoices),
+    totalInvoices: row.totalInvoices,
+    totalVolume: row.totalVolume.toString(),
+    totalYield: row.totalYield.toString(),
+    defaultRate: row.defaultRate,
   };
 }
 
 export function getLPStats(address: string): LPStats {
-  const invoices = queryInvoices({ funder: address });
-  const deployed = invoices.reduce(
-    (sum, invoice) => sum + BigInt(invoice.amount),
-    0n
-  );
-  const earnedYield = invoices
-    .filter((invoice) => invoice.status === "Paid")
-    .reduce((sum, invoice) => sum + discountFor(invoice), 0n);
+  const db = getDb();
+  const row = measure(`getLPStats(${address})`, () =>
+    db
+      .prepare(
+        `SELECT
+           COUNT(*)                                                       AS invoiceCount,
+           COALESCE(SUM(CAST(amount AS INTEGER)), 0)                      AS deployed,
+           COALESCE(SUM(CASE WHEN status = 'Paid' THEN CAST(amount AS INTEGER) * discount_rate / 10000 ELSE 0 END), 0) AS yield,
+           CASE
+             WHEN SUM(CASE WHEN status IN ('Paid','Defaulted') THEN 1 ELSE 0 END) > 0
+             THEN CAST(SUM(CASE WHEN status = 'Defaulted' THEN 1 ELSE 0 END) AS REAL)
+                  / SUM(CASE WHEN status IN ('Paid','Defaulted') THEN 1 ELSE 0 END)
+             ELSE 0
+           END                                                            AS defaultRate
+         FROM invoices
+         WHERE funder = ?`
+      )
+      .get(address)
+  ) as LPStats;
 
   return {
-    deployed: deployed.toString(),
-    yield: earnedYield.toString(),
-    invoiceCount: invoices.length,
-    defaultRate: terminalDefaultRate(invoices),
+    deployed: row.deployed.toString(),
+    yield: row.yield.toString(),
+    invoiceCount: row.invoiceCount,
+    defaultRate: row.defaultRate,
   };
 }
 
 export function getFreelancerStats(address: string): FreelancerStats {
-  const invoices = queryInvoices({ freelancer: address });
-  const fundedInvoices = invoices.filter(
-    (invoice) =>
-      invoice.status === "Funded" ||
-      invoice.status === "Paid" ||
-      invoice.status === "Defaulted"
-  );
-  const totalReceived = fundedInvoices.reduce(
-    (sum, invoice) => sum + BigInt(invoice.amount) - discountFor(invoice),
-    0n
-  );
-  const avgDiscount =
-    invoices.length === 0
-      ? 0
-      : invoices.reduce((sum, invoice) => sum + invoice.discount_rate, 0) /
-        invoices.length;
+  const db = getDb();
+  const row = measure(`getFreelancerStats(${address})`, () =>
+    db
+      .prepare(
+        `SELECT
+           COUNT(*)                                                                           AS submitted,
+           COALESCE(SUM(CASE WHEN status IN ('Funded','Paid','Defaulted') THEN 1 ELSE 0 END), 0) AS funded,
+           COALESCE(SUM(CASE WHEN status IN ('Funded','Paid','Defaulted') THEN CAST(amount AS INTEGER) - (CAST(amount AS INTEGER) * discount_rate / 10000) ELSE 0 END), 0) AS totalReceived,
+           CASE WHEN COUNT(*) > 0 THEN CAST(SUM(discount_rate) AS REAL) / COUNT(*) ELSE 0 END   AS avgDiscount
+         FROM invoices
+         WHERE freelancer = ?`
+      )
+      .get(address)
+  ) as FreelancerStats;
 
   return {
-    submitted: invoices.length,
-    funded: fundedInvoices.length,
-    totalReceived: totalReceived.toString(),
-    avgDiscount,
+    submitted: row.submitted,
+    funded: row.funded,
+    totalReceived: row.totalReceived.toString(),
+    avgDiscount: Math.round(row.avgDiscount * 100) / 100,
   };
 }
 
@@ -346,6 +383,7 @@ export function getInvoiceHistory(
 }
 
 export function getTopLPs(limit: number, period: string): LPStat[] {
+  const db = getDb();
   const now = Date.now();
   const since =
     period === "week"
@@ -353,45 +391,35 @@ export function getTopLPs(limit: number, period: string): LPStat[] {
       : period === "month"
         ? now - 30 * 24 * 60 * 60 * 1000
         : 0;
-  const invoices = queryInvoices({}).filter((invoice) => {
-    if (!invoice.funder) {
-      return false;
-    }
-    if (since === 0) {
-      return true;
-    }
-    const timestampMs = invoice.funded_at ? invoice.funded_at * 1000 : invoice.created_at;
-    return timestampMs >= since;
-  });
-  const byAddress = new Map<string, { yield: bigint; invoiceCount: number }>();
 
-  for (const invoice of invoices) {
-    const funder = invoice.funder;
-    if (!funder) {
-      continue;
-    }
+  const whereSince =
+    since > 0
+      ? "WHERE funder IS NOT NULL AND (CASE WHEN funded_at IS NOT NULL THEN funded_at * 1000 ELSE created_at END) >= ?"
+      : "WHERE funder IS NOT NULL";
 
-    const current = byAddress.get(funder) ?? { yield: 0n, invoiceCount: 0 };
-    current.invoiceCount += 1;
-    if (invoice.status === "Paid") {
-      current.yield += discountFor(invoice);
-    }
-    byAddress.set(funder, current);
-  }
+  const params: (number | string)[] = since > 0 ? [since, limit] : [limit];
 
-  return Array.from(byAddress.entries())
-    .map(([address, stats]) => ({
-      address,
-      yield: stats.yield.toString(),
-      invoiceCount: stats.invoiceCount,
-    }))
-    .sort((a, b) => {
-      const yieldDelta = BigInt(b.yield) - BigInt(a.yield);
-      if (yieldDelta > 0n) return 1;
-      if (yieldDelta < 0n) return -1;
-      return b.invoiceCount - a.invoiceCount;
-    })
-    .slice(0, limit);
+  const rows = measure(`getTopLPs(${limit}, ${period})`, () =>
+    db
+      .prepare(
+        `SELECT
+           funder                                                        AS address,
+           COALESCE(SUM(CASE WHEN status = 'Paid' THEN CAST(amount AS INTEGER) * discount_rate / 10000 ELSE 0 END), 0) AS yield,
+           COUNT(*)                                                      AS invoiceCount
+         FROM invoices
+         ${whereSince}
+         GROUP BY funder
+         ORDER BY yield DESC, invoiceCount DESC
+         LIMIT ?`
+      )
+      .all(...params)
+  ) as LPStat[];
+
+  return rows.map((r) => ({
+    address: r.address,
+    yield: r.yield.toString(),
+    invoiceCount: r.invoiceCount,
+  }));
 }
 
 // ─── Event queries ────────────────────────────────────────────────────────────

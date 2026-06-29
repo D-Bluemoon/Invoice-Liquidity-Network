@@ -152,6 +152,23 @@ export function formatProtocolConfig(config: ProtocolConfig): string {
   return lines.filter((line): line is string => line !== null).join("\n");
 }
 
+export function formatProtocolConfigJson(config: ProtocolConfig): string {
+  return JSON.stringify(
+    {
+      minInvoiceAmount: config.minInvoiceAmount.toString(),
+      maxDiscountRate: config.maxDiscountRate,
+      protocolFeeBps: config.protocolFeeBps,
+      minPayerReputation: config.minPayerReputation,
+      decayRateBps: config.decayRateBps,
+      minInvoiceDuration: config.minInvoiceDuration ?? null,
+      maxInvoiceDuration: config.maxInvoiceDuration ?? null,
+      gracePeriodSeconds: config.gracePeriodSeconds ?? null,
+    },
+    null,
+    2,
+  );
+}
+
 const ACTION_LABEL: Record<string, string> = {
   freelancer: "submit",
   payer: "pay",

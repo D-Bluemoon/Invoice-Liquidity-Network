@@ -1,5 +1,5 @@
-import { getDb } from "./db";
-import type { Invoice, ILNEvent, InvoiceFilter } from "./types";
+import { getDb, type InvoiceFilter } from "./db";
+import type { Invoice, ILNEvent } from "./types";
 
 let archiveAttached = false;
 
@@ -39,6 +39,11 @@ export function getArchiveDbConnection() {
         ledger_closed_at TEXT    NOT NULL,
         created_at       INTEGER NOT NULL
       );
+
+      CREATE INDEX IF NOT EXISTS idx_archive_invoices_created_at ON archive.invoices(created_at);
+      CREATE INDEX IF NOT EXISTS idx_archive_invoices_status ON archive.invoices(status);
+      CREATE INDEX IF NOT EXISTS idx_archive_events_invoice_id ON archive.events(invoice_id);
+      CREATE INDEX IF NOT EXISTS idx_archive_events_created_at ON archive.events(created_at);
 
       CREATE TABLE IF NOT EXISTS archive.archive_runs (
         id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -200,14 +205,13 @@ export function getArchiveStats(): ArchiveStats {
   
   const lastRun = db.prepare("SELECT run_time FROM archive.archive_runs ORDER BY id DESC LIMIT 1").get() as { run_time: number } | undefined;
   
-  const rows = db.prepare("SELECT amount FROM archive.invoices").all() as { amount: string }[];
-  const totalVolume = rows.reduce((sum, row) => sum + BigInt(row.amount), 0n);
+  const volumeRow = db.prepare("SELECT COALESCE(SUM(CAST(amount AS INTEGER)), 0) as total FROM archive.invoices").get() as { total: number };
 
   return {
     totalArchivedInvoices: invoicesCount.count,
     totalArchivedEvents: eventsCount.count,
     lastArchivedAt: lastRun?.run_time ?? null,
-    archivedVolume: totalVolume.toString(),
+    archivedVolume: volumeRow.total.toString(),
   };
 }
 

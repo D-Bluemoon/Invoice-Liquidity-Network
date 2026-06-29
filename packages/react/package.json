@@ -23,8 +23,11 @@
     "lint": "eslint src --ext .ts,.tsx",
     "typecheck": "tsc --noEmit"
   },
+  "engines": {
+    "node": ">=20"
+  },
   "peerDependencies": {
-    "@invoice-liquidity/sdk": "workspace:*",
+    "@iln/sdk": "workspace:*",
     "@tanstack/react-query": "^5.0.0",
     "react": "^18.0.0 || ^19.0.0"
   },
