@@ -3,7 +3,9 @@ import { hasEvent, insertEvent, upsertInvoice } from "./db";
 import { eventsProcessedTotal, invoicesUpsertedTotal } from "./metrics";
 import { invalidateInvoiceCache } from "./cache";
 import { fetchInvoice } from "./rpc";
-import type { ILNEventType } from "./types";
+import type { ILNEvent, ILNEventType } from "./types";
+import { pubsub, INVOICE_UPDATED, EVENT_STREAM } from "./graphql/pubsub";
+import { pubSub } from "./pubsub";
 
 const KNOWN_EVENT_TYPES = new Set<ILNEventType>([
   "submitted",
@@ -43,14 +45,15 @@ export async function processEvent(
   const invoiceId = Number(scValToNative(event.value) as bigint);
 
   // ── Persist event record (INSERT OR IGNORE handles any race condition) ────
-  insertEvent({
+  const ilnEvent: ILNEvent = {
     event_id: event.id,
     event_type: eventType as ILNEventType,
     invoice_id: invoiceId,
     ledger: event.ledger,
     ledger_closed_at: event.ledgerClosedAt,
     created_at: Date.now(),
-  });
+  };
+  insertEvent(ilnEvent);
 
   // Track processed events
   try {
@@ -68,8 +71,15 @@ export async function processEvent(
   if (invoice) {
     upsertInvoice(invoice);
     await invalidateInvoiceCache(invoiceId);
-    try {
+try {
       invoicesUpsertedTotal.inc();
     } catch {}
+    pubsub.publish(INVOICE_UPDATED, { invoiceUpdated: invoice, triggeringEvent: ilnEvent });
+    pubsub.publish(EVENT_STREAM, { eventStream: ilnEvent });
+    if (eventType === "submitted") {
+      pubSub.publish("INVOICE_CREATED", invoice);
+    } else {
+      pubSub.publish("INVOICE_UPDATED", invoice);
+    }
   }
 }

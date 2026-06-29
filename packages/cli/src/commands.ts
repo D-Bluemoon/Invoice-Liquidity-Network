@@ -5,6 +5,7 @@ import { ILNSdk, AnalyticsSDK, createKeypairSigner } from "@iln/sdk";
 import { loadConfig, saveConfig, ILNConfig } from "./config";
 import { Keypair } from "@stellar/stellar-sdk";
 import fs from "fs";
+import { handleOutput, OutputFormat } from "./output";
 
 // Constants
 const STROOPS_PER_UNIT = 10_000_000n;
@@ -84,12 +85,8 @@ function createSdkInstance(config: ILNConfig, requireSigner = false): ILNSdk {
   });
 }
 
-function handleOutput(data: any, renderHuman: () => void, isJson: boolean) {
-  if (isJson) {
-    console.log(JSON.stringify(data, null, 2));
-  } else {
-    renderHuman();
-  }
+function handleOutputLocal(data: any, renderHuman: () => string, format: OutputFormat) {
+  handleOutput(data, renderHuman, format);
 }
 
 export function registerCommands(program: Command) {
@@ -129,12 +126,10 @@ export function registerCommands(program: Command) {
           discountRate: discountRateInt,
         });
 
-        handleOutput(
+        handleOutputLocal(
           { success: true, invoiceId: invoiceId.toString() },
-          () => {
-            console.log(pc.green(`✓ Invoice submitted successfully. ID: ${invoiceId}`));
-          },
-          program.opts().json
+          () => pc.green(`✓ Invoice submitted successfully. ID: ${invoiceId}`),
+          program.opts().format as OutputFormat
         );
       } catch (err: any) {
         console.error(pc.red(`Error: ${err.message}`));
@@ -160,12 +155,10 @@ export function registerCommands(program: Command) {
           invoiceId,
         });
 
-        handleOutput(
+        handleOutputLocal(
           { success: true, invoiceId: invoiceId.toString() },
-          () => {
-            console.log(pc.green(`✓ Invoice ${invoiceId} funded successfully.`));
-          },
-          program.opts().json
+          () => pc.green(`✓ Invoice ${invoiceId} funded successfully.`),
+          program.opts().format as OutputFormat
         );
       } catch (err: any) {
         console.error(pc.red(`Error: ${err.message}`));
@@ -188,12 +181,10 @@ export function registerCommands(program: Command) {
           invoiceId,
         });
 
-        handleOutput(
+        handleOutputLocal(
           { success: true, invoiceId: invoiceId.toString() },
-          () => {
-            console.log(pc.green(`✓ Invoice ${invoiceId} marked as paid.`));
-          },
-          program.opts().json
+          () => pc.green(`✓ Invoice ${invoiceId} marked as paid.`),
+          program.opts().format as OutputFormat
         );
       } catch (err: any) {
         console.error(pc.red(`Error: ${err.message}`));
@@ -229,7 +220,7 @@ export function registerCommands(program: Command) {
           fundedAt: data.fundedAt,
         };
 
-        handleOutput(
+        handleOutputLocal(
           serialized,
           () => {
             const table = new Table({
@@ -249,9 +240,9 @@ export function registerCommands(program: Command) {
               ["Funded At", serialized.fundedAt ? formatTimestamp(serialized.fundedAt) : "-"]
             );
 
-            console.log(table.toString());
+            return table.toString();
           },
-          program.opts().json
+          program.opts().format as OutputFormat
         );
       } catch (err: any) {
         console.error(pc.red(`Error: ${err.message}`));
@@ -302,12 +293,11 @@ export function registerCommands(program: Command) {
           fundedAt: inv.fundedAt,
         }));
 
-        handleOutput(
+        handleOutputLocal(
           serialized,
           () => {
             if (serialized.length === 0) {
-              console.log("No invoices found.");
-              return;
+              return "No invoices found.";
             }
             const table = new Table({
               head: [
@@ -333,9 +323,9 @@ export function registerCommands(program: Command) {
               ]);
             });
 
-            console.log(table.toString());
+            return table.toString();
           },
-          program.opts().json
+          program.opts().format as OutputFormat
         );
       } catch (err: any) {
         console.error(pc.red(`Error: ${err.message}`));
@@ -360,8 +350,10 @@ export function registerCommands(program: Command) {
 
       const print = (inv: any) => {
         const ts = new Date().toISOString();
-        if (program.opts().json) {
+        if (program.opts().format === "json") {
           console.log(JSON.stringify({ ts, id: inv.id.toString(), status: inv.status }));
+        } else if (program.opts().format === "yaml") {
+          console.log(`ts: ${ts}\nid: ${inv.id.toString()}\nstatus: ${inv.status}`);
         } else {
           console.log(`[${ts}] Invoice ${inv.id} — ${pc.cyan(inv.status)}`);
         }
@@ -474,7 +466,7 @@ export function registerCommands(program: Command) {
           defaultRate: stats.defaultRate,
         };
 
-        handleOutput(
+        handleOutputLocal(
           serialized,
           () => {
             const table = new Table({
@@ -488,9 +480,9 @@ export function registerCommands(program: Command) {
               ["Default Rate", `${(serialized.defaultRate * 100).toFixed(2)}%`]
             );
 
-            console.log(table.toString());
+            return table.toString();
           },
-          program.opts().json
+          program.opts().format as OutputFormat
         );
       } catch (err: any) {
         console.error(pc.red(`Error: ${err.message}`));
@@ -518,12 +510,10 @@ export function registerCommands(program: Command) {
         const sdk = createSdkInstance(config);
         const score = await sdk.getReputation(targetAddress);
 
-        handleOutput(
+        handleOutputLocal(
           { address: targetAddress, score },
-          () => {
-            console.log(`${pc.bold(targetAddress)} Reputation Score: ${pc.cyan(score)}`);
-          },
-          program.opts().json
+          () => `${pc.bold(targetAddress)} Reputation Score: ${pc.cyan(score)}`,
+          program.opts().format as OutputFormat
         );
       } catch (err: any) {
         console.error(pc.red(`Error: ${err.message}`));
@@ -547,12 +537,10 @@ export function registerCommands(program: Command) {
 
         saveConfig({ network: target });
 
-        handleOutput(
+        handleOutputLocal(
           { success: true, network: target },
-          () => {
-            console.log(pc.green(`✓ Active network successfully switched to ${target}.`));
-          },
-          program.opts().json
+          () => pc.green(`✓ Active network successfully switched to ${target}.`),
+          program.opts().format as OutputFormat
         );
       } catch (err: any) {
         console.error(pc.red(`Error: ${err.message}`));

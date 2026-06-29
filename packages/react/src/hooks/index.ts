@@ -30,3 +30,6 @@ export type { UseGovernanceProposalResult } from './useGovernanceProposal';
 
 export { useTokenBalances } from './useTokenBalances';
 export type { UseTokenBalancesResult } from './useTokenBalances';
+
+export { useMarkPaid } from './useMarkPaid';
+export type { UseMarkPaidResult, MarkPaidParams } from './useMarkPaid';

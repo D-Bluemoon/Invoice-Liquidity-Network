@@ -134,7 +134,7 @@ describe("runCli", () => {
       }),
     };
 
-    const exitCode = await runCli(["config"], {
+    const exitCode = await runCli(["protocol-config"], {
       createClient: () => client as any,
       loadConfig: () => TEST_CONFIG,
       stderr: createMemoryStream(),
@@ -203,7 +203,10 @@ describe("runCli", () => {
 
     expect(exitCode).toBe(0);
     expect(client.listInvoicesByAddress).toHaveBeenCalledWith(expect.any(String));
-    const output = JSON.parse(stdout.toString());
+    // The preAction hook writes a "Using ..." banner to stdout before the JSON.
+    // Slice from the first '[' to parse only the JSON array.
+    const raw = stdout.toString();
+    const output = JSON.parse(raw.slice(raw.indexOf("[")));
     expect(output).toHaveLength(1);
     expect(output[0].id).toBe("3");
     expect(output[0].action).toBe("pay");
@@ -213,7 +216,7 @@ describe("runCli", () => {
     const stderr = createMemoryStream();
 
     const invalidLimit = await runCli(["history", "--address", validAddress(), "--limit", "0"], {
-      createClient: () => ({}) as any,
+      createClient: () => ({ listInvoicesByAddress: vi.fn().mockResolvedValue([]) } as any),
       loadConfig: () => TEST_CONFIG,
       stderr,
       stdout: createMemoryStream(),
@@ -222,15 +225,16 @@ describe("runCli", () => {
     expect(invalidLimit).toBe(1);
     expect(stderr.toString()).toContain("--limit must be a positive integer");
 
+    const stderr2 = createMemoryStream();
     const invalidAction = await runCli(["history", "--address", validAddress(), "--action", "unknown"], {
       createClient: () => ({ listInvoicesByAddress: vi.fn().mockResolvedValue([]) } as any),
       loadConfig: () => TEST_CONFIG,
-      stderr: createMemoryStream(),
+      stderr: stderr2,
       stdout: createMemoryStream(),
     });
 
     expect(invalidAction).toBe(1);
-    expect(stderr.toString()).toContain("--action must be one of");
+    expect(stderr2.toString()).toContain("--action must be one of");
   });
 
   it("fails submit when no token ID is configured and no token flag is provided", async () => {
@@ -366,7 +370,7 @@ describe("runCli", () => {
   });
 
   it("fails compatibility check and prints issues", async () => {
-    const stdout = createMemoryStream();
+    const stderr = createMemoryStream();
     const client = {
       getVersion: vi.fn().mockResolvedValue("2.0.0"),
     };
@@ -382,14 +386,15 @@ describe("runCli", () => {
     const exitCode = await runCli(["compat", "check"], {
       createClient: () => client as any,
       loadConfig: () => TEST_CONFIG,
-      stderr: createMemoryStream(),
-      stdout,
+      stderr,
+      stdout: createMemoryStream(),
     });
 
     expect(exitCode).toBe(1);
-    expect(stdout.toString()).toContain("Compatibility check failed!");
-    expect(stdout.toString()).toContain(" - Method mismatch");
-    expect(stdout.toString()).toContain(" - Type mismatch");
+    // Issues and failure message go to stderr via ui.error
+    expect(stderr.toString()).toContain("Compatibility check failed!");
+    expect(stderr.toString()).toContain("Method mismatch");
+    expect(stderr.toString()).toContain("Type mismatch");
   });
 
   it("rejects invalid dev seed count and token values", async () => {
@@ -415,6 +420,358 @@ describe("runCli", () => {
 
     expect(exitCode2).toBe(1);
     expect(stderr2.toString()).toContain("Invalid token");
+  });
+
+  it("supports submit --json formatting", async () => {
+    const stdout = createMemoryStream();
+    const stderr = createMemoryStream();
+    const client = {
+      submitInvoice: vi.fn().mockResolvedValue({ invoiceId: 123n, txHash: "abc123" }),
+    };
+
+    const exitCode = await runCli(
+      ["--json", "submit", "--payer", validAddress(), "--amount", "100", "--due", "2025-12-31", "--rate", "300"],
+      {
+        createClient: () => client as any,
+        loadConfig: () => TEST_CONFIG,
+        stderr,
+        stdout,
+      },
+    );
+
+    expect(exitCode).toBe(0);
+    const parsed = JSON.parse(stdout.toString());
+    expect(parsed).toEqual({
+      success: true,
+      invoiceId: "123",
+      txHash: "abc123",
+    });
+    expect(stderr.toString()).toContain("Using testnet");
+  });
+
+  it("supports fund --json formatting", async () => {
+    const stdout = createMemoryStream();
+    const client = {
+      fundInvoice: vi.fn().mockResolvedValue({ hash: "tx-hash" }),
+    };
+
+    const exitCode = await runCli(["--json", "fund", "--id", "123"], {
+      createClient: () => client as any,
+      loadConfig: () => TEST_CONFIG,
+      stderr: createMemoryStream(),
+      stdout,
+    });
+
+    expect(exitCode).toBe(0);
+    const parsed = JSON.parse(stdout.toString());
+    expect(parsed).toEqual({
+      success: true,
+      invoiceId: "123",
+      txHash: "tx-hash",
+    });
+  });
+
+  it("supports pay --json formatting", async () => {
+    const stdout = createMemoryStream();
+    const client = {
+      markPaid: vi.fn().mockResolvedValue({ hash: "tx-hash" }),
+    };
+
+    const exitCode = await runCli(["--json", "pay", "--id", "123"], {
+      createClient: () => client as any,
+      loadConfig: () => TEST_CONFIG,
+      stderr: createMemoryStream(),
+      stdout,
+    });
+
+    expect(exitCode).toBe(0);
+    const parsed = JSON.parse(stdout.toString());
+    expect(parsed).toEqual({
+      success: true,
+      invoiceId: "123",
+      txHash: "tx-hash",
+    });
+  });
+
+  it("outputs protocol config in json when requested", async () => {
+    const stdout = createMemoryStream();
+    const client = {
+      getProtocolConfig: vi.fn().mockResolvedValue({
+        minInvoiceAmount: 10_000_000n,
+        maxDiscountRate: 2_000,
+        protocolFeeBps: 250,
+        minPayerReputation: 70,
+        decayRateBps: 25,
+        minInvoiceDuration: 3600,
+        maxInvoiceDuration: null,
+        gracePeriodSeconds: null,
+      }),
+    };
+
+    const exitCode = await runCli(["--json", "protocol-config"], {
+      createClient: () => client as any,
+      loadConfig: () => TEST_CONFIG,
+      stderr: createMemoryStream(),
+      stdout,
+    });
+
+    expect(exitCode).toBe(0);
+    const parsed = JSON.parse(stdout.toString());
+    expect(parsed).toEqual({
+      minInvoiceAmount: "10000000",
+      maxDiscountRate: 2000,
+      protocolFeeBps: 250,
+      minPayerReputation: 70,
+      decayRateBps: 25,
+      minInvoiceDuration: 3600,
+      maxInvoiceDuration: null,
+      gracePeriodSeconds: null,
+    });
+  });
+
+  it("formats error messages as JSON when --json option is passed", async () => {
+    const stdout = createMemoryStream();
+    const stderr = createMemoryStream();
+
+    const exitCode = await runCli(["--json", "submit", "--payer", "invalid-address"], {
+      createClient: () => ({}) as any,
+      loadConfig: () => TEST_CONFIG,
+      stderr,
+      stdout,
+    });
+
+    expect(exitCode).toBe(1);
+    const parsed = JSON.parse(stdout.toString());
+    expect(parsed.success).toBe(false);
+    expect(parsed.error).toContain("Invalid payer address");
+  });
+
+  it("pipes stdin to commands expecting invoice id", async () => {
+    const stdout = createMemoryStream();
+    const client = {
+      fundInvoice: vi.fn().mockResolvedValue({ hash: "tx-hash" }),
+    };
+
+    const Readable = require("node:stream").Readable;
+    const mockStdin = new Readable();
+    mockStdin.push("123\n");
+    mockStdin.push(null);
+    mockStdin.isTTY = false;
+
+    const oldStdin = process.stdin;
+    Object.defineProperty(process, "stdin", { value: mockStdin, configurable: true });
+
+    try {
+      const exitCode = await runCli(["fund"], {
+        createClient: () => client as any,
+        loadConfig: () => TEST_CONFIG,
+        stderr: createMemoryStream(),
+        stdout,
+      });
+
+      expect(exitCode).toBe(0);
+      expect(client.fundInvoice).toHaveBeenCalledWith(123n, undefined);
+    } finally {
+      Object.defineProperty(process, "stdin", { value: oldStdin, configurable: true });
+    }
+  });
+
+  it("pipes JSON from stdin to commands expecting invoice id", async () => {
+    const stdout = createMemoryStream();
+    const client = {
+      markPaid: vi.fn().mockResolvedValue({ hash: "tx-hash" }),
+    };
+
+    const Readable = require("node:stream").Readable;
+    const mockStdin = new Readable();
+    mockStdin.push(JSON.stringify({ success: true, invoiceId: "456", txHash: "abc" }));
+    mockStdin.push(null);
+    mockStdin.isTTY = false;
+
+    const oldStdin = process.stdin;
+    Object.defineProperty(process, "stdin", { value: mockStdin, configurable: true });
+
+    try {
+      const exitCode = await runCli(["pay"], {
+        createClient: () => client as any,
+        loadConfig: () => TEST_CONFIG,
+        stderr: createMemoryStream(),
+        stdout,
+      });
+
+      expect(exitCode).toBe(0);
+      expect(client.markPaid).toHaveBeenCalledWith(456n);
+    } finally {
+      Object.defineProperty(process, "stdin", { value: oldStdin, configurable: true });
+    }
+  });
+});
+
+describe("help output", () => {
+  async function getHelp(args: string[]): Promise<string> {
+    const stdout = createMemoryStream();
+    await runCli(args, {
+      createClient: () => ({}) as any,
+      loadConfig: () => TEST_CONFIG,
+      stderr: createMemoryStream(),
+      stdout,
+    });
+    return stdout.toString();
+  }
+
+  it("program --help contains Quick tips", async () => {
+    const out = await getHelp(["--help"]);
+    expect(out).toContain("Quick tips");
+    expect(out).toContain("iln dev start");
+    expect(out).toContain("iln dashboard");
+  });
+
+  it("submit --help contains Examples and See also sections", async () => {
+    const out = await getHelp(["submit", "--help"]);
+    expect(out).toContain("Examples:");
+    expect(out).toContain("--payer");
+    expect(out).toContain("--amount");
+    expect(out).toContain("See also:");
+    expect(out).toContain("iln status");
+    expect(out).toContain("iln list");
+  });
+
+  it("fund --help contains Examples and See also sections", async () => {
+    const out = await getHelp(["fund", "--help"]);
+    expect(out).toContain("Examples:");
+    expect(out).toContain("iln fund --id 42");
+    expect(out).toContain("See also:");
+    expect(out).toContain("iln history");
+  });
+
+  it("pay --help contains Examples, Tips, and See also sections", async () => {
+    const out = await getHelp(["pay", "--help"]);
+    expect(out).toContain("Examples:");
+    expect(out).toContain("iln pay --id 42");
+    expect(out).toContain("Tips:");
+    expect(out).toContain("See also:");
+  });
+
+  it("status --help contains Examples and See also sections", async () => {
+    const out = await getHelp(["status", "--help"]);
+    expect(out).toContain("Examples:");
+    expect(out).toContain("iln status --id 42");
+    expect(out).toContain("See also:");
+  });
+
+  it("list --help contains Examples and See also sections", async () => {
+    const out = await getHelp(["list", "--help"]);
+    expect(out).toContain("Examples:");
+    expect(out).toContain("iln list --address");
+    expect(out).toContain("See also:");
+  });
+
+  it("history --help contains Examples and See also sections", async () => {
+    const out = await getHelp(["history", "--help"]);
+    expect(out).toContain("Examples:");
+    expect(out).toContain("iln history --address");
+    expect(out).toContain("--action fund");
+    expect(out).toContain("See also:");
+  });
+
+  it("config --help contains Examples and See also sections", async () => {
+    const out = await getHelp(["config", "--help"]);
+    expect(out).toContain("Examples:");
+    expect(out).toContain("iln config");
+    expect(out).toContain("See also:");
+    expect(out).toContain("iln compat check");
+  });
+
+  it("dashboard --help contains Examples and Tips sections", async () => {
+    const out = await getHelp(["dashboard", "--help"]);
+    expect(out).toContain("Examples:");
+    expect(out).toContain("iln dashboard");
+    expect(out).toContain("Tips:");
+    expect(out).toContain("--refresh");
+    expect(out).toContain("--export");
+  });
+
+  it("xdr decode --help contains Examples and Tips", async () => {
+    const out = await getHelp(["xdr", "decode", "--help"]);
+    expect(out).toContain("Examples:");
+    expect(out).toContain("Tips:");
+  });
+
+  it("dev start --help contains Examples and See also", async () => {
+    const out = await getHelp(["dev", "start", "--help"]);
+    expect(out).toContain("Examples:");
+    expect(out).toContain("iln dev start");
+    expect(out).toContain("See also:");
+    expect(out).toContain("iln dev seed");
+  });
+
+  it("dev seed --help contains Examples, Tips, and See also", async () => {
+    const out = await getHelp(["dev", "seed", "--help"]);
+    expect(out).toContain("Examples:");
+    expect(out).toContain("--scenario");
+    expect(out).toContain("Tips:");
+    expect(out).toContain("See also:");
+  });
+});
+
+describe("man command", () => {
+  it("iln man outputs roff .TH header for top-level", async () => {
+    const stdout = createMemoryStream();
+    const exitCode = await runCli(["man"], {
+      createClient: () => ({}) as any,
+      loadConfig: () => TEST_CONFIG,
+      stderr: createMemoryStream(),
+      stdout,
+    });
+    expect(exitCode).toBe(0);
+    const out = stdout.toString();
+    expect(out).toContain(".TH ILN 1");
+    expect(out).toContain(".SH NAME");
+    expect(out).toContain(".SH SYNOPSIS");
+    expect(out).toContain(".SH COMMANDS");
+    expect(out).toContain(".SH EXAMPLES");
+  });
+
+  it("iln man submit outputs submit subcommand man page", async () => {
+    const stdout = createMemoryStream();
+    const exitCode = await runCli(["man", "submit"], {
+      createClient: () => ({}) as any,
+      loadConfig: () => TEST_CONFIG,
+      stderr: createMemoryStream(),
+      stdout,
+    });
+    expect(exitCode).toBe(0);
+    const out = stdout.toString();
+    expect(out).toContain(".TH ILN-SUBMIT 1");
+    // roff escapes - as \- so iln-submit → iln\-submit in the output
+    expect(out).toContain("iln\\-submit");
+    expect(out).toContain("payer");
+    expect(out).toContain("amount");
+    expect(out).toContain("rate");
+  });
+
+  it("iln man fund outputs fund subcommand man page", async () => {
+    const stdout = createMemoryStream();
+    await runCli(["man", "fund"], {
+      createClient: () => ({}) as any,
+      loadConfig: () => TEST_CONFIG,
+      stderr: createMemoryStream(),
+      stdout,
+    });
+    const out = stdout.toString();
+    expect(out).toContain(".TH ILN-FUND 1");
+    expect(out).toContain("invoice ID");
+  });
+
+  it("iln man unknown-command outputs error message", async () => {
+    const stdout = createMemoryStream();
+    await runCli(["man", "nonexistent"], {
+      createClient: () => ({}) as any,
+      loadConfig: () => TEST_CONFIG,
+      stderr: createMemoryStream(),
+      stdout,
+    });
+    expect(stdout.toString()).toContain("unknown command");
   });
 });
 

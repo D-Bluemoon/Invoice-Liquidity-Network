@@ -8,7 +8,7 @@ export async function run(argv: string[] = process.argv) {
     .name("iln")
     .description("Invoice Liquidity Network CLI")
     .version("0.1.0")
-    .option("--json", "output machine-readable JSON");
+    .option("--format <type>", "output format (table, json, yaml)", "table");
 
   registerCommands(program);
 

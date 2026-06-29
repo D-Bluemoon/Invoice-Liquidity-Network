@@ -454,3 +454,72 @@ export function logSentNotification(
       Date.now(),
     );
 }
+
+export interface DeliveryAnalytics {
+  total: number;
+  byChannel: Record<string, number>;
+  byTrigger: Record<string, number>;
+}
+
+export function getDeliveryAnalytics(): DeliveryAnalytics {
+  const { count: total } = getDb()
+    .prepare("SELECT COUNT(*) as count FROM sent_notifications")
+    .get() as { count: number };
+
+  const channelRows = getDb()
+    .prepare("SELECT channel, COUNT(*) as count FROM sent_notifications GROUP BY channel")
+    .all() as { channel: string; count: number }[];
+
+  const triggerRows = getDb()
+    .prepare("SELECT trigger, COUNT(*) as count FROM sent_notifications GROUP BY trigger")
+    .all() as { trigger: string; count: number }[];
+
+  const byChannel: Record<string, number> = {};
+  for (const row of channelRows) byChannel[row.channel] = row.count;
+
+  const byTrigger: Record<string, number> = {};
+  for (const row of triggerRows) byTrigger[row.trigger] = row.count;
+
+  return { total, byChannel, byTrigger };
+}
+
+export interface ChannelComparisonRow {
+  channel: string;
+  sent: number;
+  failed: number;
+  successRate: number;
+}
+
+export function getChannelComparison(): ChannelComparisonRow[] {
+  const sentRows = getDb()
+    .prepare("SELECT channel, COUNT(*) as sent FROM sent_notifications GROUP BY channel")
+    .all() as { channel: string; sent: number }[];
+
+  const { count: failedWebhook } = getDb()
+    .prepare("SELECT COUNT(*) as count FROM webhook_delivery_logs WHERE status = 'failed'")
+    .get() as { count: number };
+
+  return sentRows.map((row) => {
+    const failed = row.channel === "webhook" ? failedWebhook : 0;
+    const successRate = row.sent > 0 ? (row.sent - failed) / row.sent : 1;
+    return { channel: row.channel, sent: row.sent, failed, successRate };
+  });
+}
+
+export interface TrendRow {
+  date: string;
+  count: number;
+}
+
+export function getTrendAnalytics(days: number): TrendRow[] {
+  const cutoffMs = Date.now() - days * 24 * 60 * 60 * 1000;
+  return getDb()
+    .prepare(
+      `SELECT date(sent_at / 1000, 'unixepoch') as date, COUNT(*) as count
+       FROM sent_notifications
+       WHERE sent_at >= ?
+       GROUP BY date
+       ORDER BY date ASC`,
+    )
+    .all(cutoffMs) as TrendRow[];
+}

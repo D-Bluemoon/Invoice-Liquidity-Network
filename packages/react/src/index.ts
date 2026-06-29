@@ -15,6 +15,7 @@ export {
   useInvoiceList,
   useSubmitInvoice,
   useFundInvoice,
+  useMarkPaid,
   useReputationScore,
   useLPPortfolio,
   useContractStats,
@@ -33,9 +34,14 @@ export type {
   SubmitInvoiceParams,
   UseFundInvoiceResult,
   FundInvoiceParams,
+  UseMarkPaidResult,
+  MarkPaidParams,
   UseReputationScoreResult,
   UseLPPortfolioResult,
   UseContractStatsResult,
   UseGovernanceProposalResult,
   UseTokenBalancesResult,
 } from './hooks';
+
+// Components
+export * from './components';

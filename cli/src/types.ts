@@ -87,3 +87,17 @@ export interface SimulationLike {
     retval?: unknown;
   };
 }
+
+export interface Environment {
+  name: string;
+  contractId: string;
+  rpcUrl: string;
+  networkPassphrase: string;
+  keypairPath?: string;
+  isActive: boolean;
+}
+
+export interface EnvironmentConfig {
+  current: string | null;
+  environments: Record<string, Environment>;
+}

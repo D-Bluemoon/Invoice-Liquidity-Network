@@ -8,6 +8,9 @@
   "scripts": {
     "test": "turbo run test",
     "test:coverage": "turbo run test:coverage",
+    "test:load": "ts-node --esm scripts/load-test.ts",
+    "test:load:indexer": "ts-node --esm scripts/load-test-indexer.ts",
+    "test:load:notifications": "ts-node --esm scripts/load-test-notifications.ts",
     "build": "turbo run build",
     "licence:check": "node scripts/check-licenses.js",
     "generate:types": "ts-node --esm scripts/generate-types.ts",

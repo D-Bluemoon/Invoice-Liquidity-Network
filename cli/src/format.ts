@@ -32,10 +32,59 @@ export function describeConfig(config: ResolvedConfig): string {
   return `${config.network} | ${config.rpcUrl} | ${config.contractId}`;
 }
 
+function formatStatus(status: string): string {
+  switch (status) {
+    case "Pending":   return pc.yellow(status);
+    case "Funded":    return pc.cyan(status);
+    case "Paid":      return pc.green(status);
+    case "Defaulted": return pc.red(status);
+    default:          return status;
+  }
+}
+
+export function formatInvoiceDetailsJson(invoice: Invoice): string {
+  return JSON.stringify(
+    {
+      id: invoice.id.toString(),
+      status: invoice.status,
+      amount: invoice.amount.toString(),
+      amountFunded: invoice.amountFunded.toString(),
+      remaining: (invoice.amount - invoice.amountFunded).toString(),
+      discountRate: invoice.discountRate,
+      dueDate: invoice.dueDate,
+      freelancer: invoice.freelancer,
+      payer: invoice.payer,
+      funder: invoice.funder ?? null,
+      token: invoice.token,
+      fundedAt: invoice.fundedAt ?? null,
+    },
+    null,
+    2,
+  );
+}
+
+export function formatInvoiceListJson(invoices: ListedInvoice[]): string {
+  return JSON.stringify(
+    invoices.map((inv) => ({
+      id: inv.id.toString(),
+      role: inv.role,
+      status: inv.status,
+      amount: inv.amount.toString(),
+      dueDate: inv.dueDate,
+      freelancer: inv.freelancer,
+      payer: inv.payer,
+      funder: inv.funder ?? null,
+      fundedAt: inv.fundedAt ?? null,
+    })),
+    null,
+    2,
+  );
+}
+
 export function formatInvoiceDetails(invoice: Invoice): string {
   const lines = [
     row("Invoice", invoice.id.toString()),
-    row("Status", invoice.status),
+    row("Status", formatStatus(invoice.status)),
     row("Amount", formatAmount(invoice.amount)),
     row("Funded", formatAmount(invoice.amountFunded)),
     row("Remaining", formatAmount(invoice.amount - invoice.amountFunded)),
@@ -50,6 +99,8 @@ export function formatInvoiceDetails(invoice: Invoice): string {
 
   return lines.join("\n");
 }
+
+const STATUS_COL = 2;
 
 export function formatInvoiceList(invoices: ListedInvoice[]): string {
   if (invoices.length === 0) {
@@ -69,10 +120,15 @@ export function formatInvoiceList(invoices: ListedInvoice[]): string {
     Math.max(header.length, ...rows.map((row) => row[index].length)),
   );
 
-  const renderRow = (cells: string[]) =>
-    cells.map((cell, index) => cell.padEnd(widths[index])).join("  ");
+  const separator = widths.map((w) => "-".repeat(w)).join("  ");
 
-  return [pc.bold(renderRow(headers)), ...rows.map(renderRow)].join("\n");
+  const renderRow = (cells: string[]) =>
+    cells.map((cell, index) => {
+      const padded = cell.padEnd(widths[index]);
+      return index === STATUS_COL ? formatStatus(padded) : padded;
+    }).join("  ");
+
+  return [pc.bold(renderRow(headers)), separator, ...rows.map(renderRow)].join("\n");
 }
 
 export function formatProtocolConfig(config: ProtocolConfig): string {
@@ -94,6 +150,23 @@ export function formatProtocolConfig(config: ProtocolConfig): string {
   ];
 
   return lines.filter((line): line is string => line !== null).join("\n");
+}
+
+export function formatProtocolConfigJson(config: ProtocolConfig): string {
+  return JSON.stringify(
+    {
+      minInvoiceAmount: config.minInvoiceAmount.toString(),
+      maxDiscountRate: config.maxDiscountRate,
+      protocolFeeBps: config.protocolFeeBps,
+      minPayerReputation: config.minPayerReputation,
+      decayRateBps: config.decayRateBps,
+      minInvoiceDuration: config.minInvoiceDuration ?? null,
+      maxInvoiceDuration: config.maxInvoiceDuration ?? null,
+      gracePeriodSeconds: config.gracePeriodSeconds ?? null,
+    },
+    null,
+    2,
+  );
 }
 
 const ACTION_LABEL: Record<string, string> = {
@@ -120,10 +193,15 @@ export function formatHistoryTable(invoices: ListedInvoice[]): string {
     Math.max(header.length, ...rows.map((row) => row[index].length)),
   );
 
-  const renderRow = (cells: string[]) =>
-    cells.map((cell, index) => cell.padEnd(widths[index])).join("  ");
+  const separator = widths.map((w) => "-".repeat(w)).join("  ");
 
-  return [pc.bold(renderRow(headers)), ...rows.map(renderRow)].join("\n");
+  const renderRow = (cells: string[]) =>
+    cells.map((cell, index) => {
+      const padded = cell.padEnd(widths[index]);
+      return index === STATUS_COL ? formatStatus(padded) : padded;
+    }).join("  ");
+
+  return [pc.bold(renderRow(headers)), separator, ...rows.map(renderRow)].join("\n");
 }
 
 export function formatHistoryJson(invoices: ListedInvoice[]): string {
@@ -146,4 +224,12 @@ export function formatHistoryJson(invoices: ListedInvoice[]): string {
 
 function row(label: string, value: string): string {
   return `${pc.bold(label.padEnd(11))} ${value}`;
+}
+
+export function helpSection(title: string): string {
+  return pc.bold(title);
+}
+
+export function helpExample(text: string): string {
+  return `  ${pc.dim(text)}`;
 }

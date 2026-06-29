@@ -3,3 +3,4 @@
 export * from './clients/InvoiceClient';
 export * from './crypto-browser';
 export * from './tokens';
+export * from './amount-formatting';

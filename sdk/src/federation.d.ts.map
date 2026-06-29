@@ -1,1 +1,0 @@
-{"version":3,"file":"federation.d.ts","sourceRoot":"","sources":["federation.ts"],"names":[],"mappings":"AAEA,qBAAa,yBAA0B,SAAQ,KAAK;gBACtC,OAAO,EAAE,MAAM;CAI5B;AAWD,wBAAsB,wBAAwB,CAAC,UAAU,EAAE,MAAM,GAAG,OAAO,CAAC,MAAM,CAAC,CA8BlF;AAED,wBAAsB,uBAAuB,CAAC,QAAQ,EAAE,MAAM,GAAG,OAAO,CAAC,MAAM,GAAG,IAAI,CAAC,CA8BtF"}

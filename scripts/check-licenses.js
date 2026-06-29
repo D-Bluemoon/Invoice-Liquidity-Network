@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// Task 1: Dependency License Checker Script
 
 const path = require('path');
 const checker = require('license-checker-rseidelsohn');

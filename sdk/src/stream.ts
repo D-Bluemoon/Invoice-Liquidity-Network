@@ -3,6 +3,22 @@ import type { ContractEvent } from "./types";
 type OnEvent = (e: ContractEvent) => void | Promise<void>;
 type OnError = (err: Error) => void | undefined;
 
+/**
+ * Server-Sent Events (SSE) stream with automatic reconnection.
+ * Used internally for real-time event subscriptions.
+ *
+ * @example
+ * ```ts
+ * const stream = new SSEStream(
+ *   "https://rpc.example.com/contracts/.../events",
+ *   (event) => console.log("Event:", event),
+ *   (err) => console.error("SSE error:", err),
+ * );
+ *
+ * // Later, close the stream
+ * stream.close();
+ * ```
+ */
 export class SSEStream {
   private url: string;
   private onEvent: OnEvent;
@@ -13,6 +29,13 @@ export class SSEStream {
   private readonly maxDelay = 30000;
   private reconnectTimer?: ReturnType<typeof setTimeout>;
 
+  /**
+   * Create a new SSE stream connection.
+   *
+   * @param url - The SSE endpoint URL.
+   * @param onEvent - Callback invoked for each parsed event.
+   * @param onError - Optional callback invoked on stream errors.
+   */
   constructor(url: string, onEvent: OnEvent, onError?: OnError) {
     this.url = url;
     this.onEvent = onEvent;
@@ -94,6 +117,9 @@ export class SSEStream {
     }, delay);
   }
 
+  /**
+   * Close the SSE stream and prevent automatic reconnection.
+   */
   close() {
     this.closed = true;
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
@@ -101,6 +127,25 @@ export class SSEStream {
   }
 }
 
+/**
+ * Open a Server-Sent Events connection to the Stellar RPC event stream.
+ *
+ * @param url - The SSE endpoint URL.
+ * @param onEvent - Callback invoked for each parsed contract event.
+ * @param onError - Optional callback invoked on stream errors.
+ * @returns An object with a `close()` method to terminate the stream.
+ *
+ * @example
+ * ```ts
+ * const handle = openSSE(
+ *   "https://soroban-testnet.stellar.org/contracts/.../events",
+ *   (event) => console.log("Event:", event.type, event.value),
+ * );
+ *
+ * // Later, close the stream
+ * handle.close();
+ * ```
+ */
 export function openSSE(url: string, onEvent: OnEvent, onError?: OnError) {
   const s = new SSEStream(url, onEvent, onError);
   return { close: () => s.close() };

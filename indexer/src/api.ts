@@ -1,183 +1,4 @@
-import express, { Request, Response } from "express";
-import { registry, httpRequestsTotal, httpRequestDuration, httpErrorsTotal } from "./metrics";
-import {
-  getDb,
-  getFreelancerStats,
-  getInvoiceById,
-  getInvoiceHistory,
-  getLPStats,
-  getProtocolStats,
-  getTopLPs,
-  queryInvoices,
-  queryInvoicesPaginated,
-  getCursorUpdatedAt,
-} from "./db";
-import { cacheGet, cacheSet } from "./cache";
-import { createApiRateLimiter } from "./rateLimit";
-
-/**
- * Build and return the Express application.
- * Calling this as a factory (rather than exporting a singleton) makes
- * the app trivially injectable in tests.
- */
-export function createApp(): express.Application {
-  const app = express();
-  // Trust the first hop's X-Forwarded-For (e.g. Railway's proxy) so
-  // per-IP rate limiting sees real client IPs rather than the proxy's.
-  app.set("trust proxy", 1);
-  app.use(createApiRateLimiter());
-  app.use(express.json());
-
-  // Metrics middleware: count requests, measure duration, and capture errors.
-  app.use((req: Request, res: Response, next) => {
-    const end = httpRequestDuration.startTimer({ method: req.method, route: req.path });
-    res.on("finish", () => {
-      const status = String(res.statusCode);
-      httpRequestsTotal.inc({ method: req.method, route: req.path, status }, 1);
-      end({ status });
-      if (res.statusCode >= 500) {
-        httpErrorsTotal.inc({ method: req.method, route: req.path, status });
-      }
-    });
-    next();
-  });
-
-  const startTime = Date.now();
-
-  // ── GET /health ────────────────────────────────────────────────────────────
-  app.get("/health", (_req: Request, res: Response) => {
-    let dbStatus: "ok" | "error" = "ok";
-    try {
-      getDb().prepare("SELECT 1").get();
-    } catch {
-      dbStatus = "error";
-    }
-
-    const lastSyncMs = getCursorUpdatedAt();
-    const uptime = Date.now() - startTime;
-    const status = dbStatus === "ok" ? "ok" : "degraded";
-
-    res.json({
-      status,
-      db: dbStatus,
-      lastSync: lastSyncMs !== null ? new Date(lastSyncMs).toISOString() : null,
-      uptime,
-    });
-  });
-
-  // ── GET /invoices ──────────────────────────────────────────────────────────
-  // Supported query parameters (all optional, ANDed together):
-  //   ?status=Pending|Funded|Paid|Defaulted
-  //   ?freelancer=G...
-  //   ?payer=G...
-  //   ?funder=G...
-  //   ?limit=10 (default 100 max) & ?cursor=opaque
-  app.get("/invoices", async (req: Request, res: Response) => {
-    const { status, freelancer, payer, funder, limit: rawLimit, cursor } = req.query;
-
-    const s = typeof status === "string" ? status : "";
-    const fl = typeof freelancer === "string" ? freelancer : "";
-    const pa = typeof payer === "string" ? payer : "";
-    const fu = typeof funder === "string" ? funder : "";
-    const limit = typeof rawLimit === "string" ? Math.min(parseInt(rawLimit, 10) || 100, 100) : 100;
-    const cacheKey = `invoices:${s}:${fl}:${pa}:${fu}:limit=${limit}:cursor=${cursor ?? ""}`;
-
-    const cached = await cacheGet(cacheKey);
-    if (cached) {
-      res.json(JSON.parse(cached));
-      return;
-    }
-
-    const { invoices, hasMore, nextCursor } = queryInvoicesPaginated(
-      {
-        status: s || undefined,
-        freelancer: fl || undefined,
-        payer: pa || undefined,
-        funder: fu || undefined,
-      },
-      limit,
-      typeof cursor === "string" ? cursor : undefined,
-    );
-
-    const result = { invoices, hasMore, nextCursor };
-    await cacheSet(cacheKey, JSON.stringify(result));
-    res.json(result);
-  });
-
-  app.get("/stats", (_req: Request, res: Response) => {
-    res.json(getProtocolStats());
-  });
-
-  app.get("/lps/top", (req: Request, res: Response) => {
-    const rawLimit =
-      typeof req.query.limit === "string" ? Number(req.query.limit) : 10;
-    const limit =
-      Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 100) : 10;
-    const period =
-      typeof req.query.period === "string" ? req.query.period : "all";
-
-    if (!["all", "week", "month"].includes(period)) {
-      res
-        .status(400)
-        .json({ error: "Invalid period - expected all, week, or month" });
-      return;
-    }
-
-    res.json(getTopLPs(limit, period));
-  });
-
-  app.get("/lps/:address/stats", (req: Request, res: Response) => {
-    res.json(getLPStats(req.params.address));
-  });
-
-  app.get("/freelancers/:address/stats", (req: Request, res: Response) => {
-    res.json(getFreelancerStats(req.params.address));
-  });
-
-  app.get("/history/:address", (req: Request, res: Response) => {
-    const role =
-      typeof req.query.role === "string" ? req.query.role : "freelancer";
-
-    if (role !== "freelancer" && role !== "payer" && role !== "funder") {
-      res.status(400).json({
-        error: "Invalid role - expected freelancer, payer, or funder",
-      });
-      return;
-    }
-
-    res.json(getInvoiceHistory(req.params.address, role));
-  });
-
-  // ── GET /invoice/:id ───────────────────────────────────────────────────────
-  app.get("/invoice/:id", async (req: Request, res: Response) => {
-    const id = parseInt(req.params.id, 10);
-
-    if (isNaN(id) || id <= 0) {
-      res
-        .status(400)
-        .json({ error: "Invalid invoice ID - must be a positive integer" });
-      return;
-    }
-
-    const cacheKey = `invoice:${id}`;
-    const cached = await cacheGet(cacheKey);
-    if (cached) {
-      res.json(JSON.parse(cached));
-      return;
-    }
-
-    const invoice = getInvoiceById(id);
-    if (!invoice) {
-      res.status(404).json({ error: `Invoice #${id} not found` });
-      return;
-    }
-
-    const result = { invoice };
-    await cacheSet(cacheKey, JSON.stringify(result));
-    res.json(result);
-  });
-
-  // ── GET /metrics ─────────────────────────────────────────────────────────
+// ── GET /metrics ─────────────────────────────────────────────────────────
   app.get("/metrics", async (_req: Request, res: Response) => {
     try {
       res.setHeader("Content-Type", registry.contentType);
@@ -187,6 +8,123 @@ export function createApp(): express.Application {
       res.status(500).send("Error collecting metrics");
     }
   });
+
+  // GET /dashboard
+  router.get("/dashboard", (_req: Request, res: Response) => {
+    res.json(getDashboardMetrics());
+  });
+
+  // GET /archive/stats
+  router.get("/archive/stats", (_req: Request, res: Response) => {
+    res.json(getArchiveStats());
+  });
+
+  // GET /archive/invoices
+  router.get("/archive/invoices", (req: Request, res: Response) => {
+    const { status, freelancer, payer, funder } = req.query;
+    const filter = {
+      status: typeof status === "string" ? status : undefined,
+      freelancer: typeof freelancer === "string" ? freelancer : undefined,
+      payer: typeof payer === "string" ? payer : undefined,
+      funder: typeof funder === "string" ? funder : undefined,
+    };
+    res.json({ invoices: queryArchiveInvoices(filter) });
+  });
+
+  // GET /archive/events
+  router.get("/archive/events", (req: Request, res: Response) => {
+    const invoiceId = typeof req.query.invoiceId === "string" ? parseInt(req.query.invoiceId, 10) : undefined;
+    res.json({ events: queryArchiveEvents(invoiceId !== undefined && isNaN(invoiceId) ? undefined : invoiceId) });
+  });
+
+  // POST /archive/restore/:id
+  router.post("/archive/restore/:id", (req: Request, res: Response) => {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id) || id <= 0) {
+      res.status(400).json({ error: "Invalid invoice ID - must be a positive integer" });
+      return;
+    }
+    const success = restoreInvoice(id);
+    if (!success) {
+      res.status(404).json({ error: `Invoice #${id} not found in archive` });
+      return;
+    }
+    res.json({ success: true, message: `Invoice #${id} and associated events restored successfully` });
+  });
+
+  // POST /archive/run
+  router.post("/archive/run", (req: Request, res: Response) => {
+    const olderThanDays = typeof req.body?.olderThanDays === "number" ? req.body.olderThanDays : 90;
+    try {
+      const result = archiveOldData(olderThanDays);
+      res.json({ success: true, ...result });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Archival run failed" });
+    }
+  });
+
+  // ── Backup endpoints ──────────────────────────────────────────────────────
+
+  app.post("/backup", async (_req: Request, res: Response) => {
+    try {
+      const manifest = await backupManager.runBackup();
+      if (manifest) {
+        res.json({ success: true, backup: manifest });
+      } try {                                          // ⚠️ line 74 — this looks broken
+      invoicesUpsertedTotal.inc();
+    } catch {}
+    pubsub.publish(INVOICE_UPDATED, { invoiceUpdated: invoice, trigger...
+    pubsub.publish(EVENT_STREAM, { eventStream: ilnEvent });
+    if (eventType === "submitted") {
+      pubSub.publish("INVOICE_CREATED", invoice);
+    } else {
+      pubSub.publish("INVOICE_UPDATED", invoice);
+    }
+    const backups = backupManager.listBackups();
+    res.json({ backups, total: backups.length });
+});
+
+  // GET /backup/latest — get the latest backup manifest
+  app.get("/backup/latest", (_req: Request, res: Response) => {
+    const latest = backupManager.getLatestBackup();
+    if (latest) {
+      res.json(latest);
+    } else {
+      res.status(404).json({ error: "No backups found" });
+    }
+  });
+
+  // POST /backup/restore — restore from a backup
+  app.post("/backup/restore", async (req: Request, res: Response) => {
+    const { backupPath, verify } = req.body;
+
+    if (!backupPath || typeof backupPath !== "string") {
+      res.status(400).json({ error: "backupPath is required" });
+      return;
+    }
+
+    try {
+      await backupManager.restore({ backupPath, verify: verify !== false });
+      res.json({ success: true, message: "Restore complete" });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        error: err instanceof Error ? err.message : "Restore failed",
+      });
+    }
+  });
+
+  // Catch-all 404 inside the router so a missing /v1/* route doesn't fall
+  // through to the root mount and get processed a second time.
+  router.use((_req: Request, res: Response) => {
+    res.status(404).json({ error: "Not found" });
+  });
+
+  // ── Mount routes ───────────────────────────────────────────────────────────
+  app.use(trackMetrics);
+  app.use(versionNegotiate);
+  app.use("/v1", addV1Headers, router);
+  app.use(addDeprecationHeaders, router);
 
   return app;
 }

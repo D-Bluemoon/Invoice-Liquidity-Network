@@ -1,6 +1,8 @@
 import type { CompatibilityResult } from "./types";
 
+/** Current SDK version. */
 export const SDK_VERSION = "0.1.0";
+/** Minimum contract version required by this SDK. */
 export const MIN_CONTRACT_VERSION = "0.1.0";
 
 export interface VersionInfo {
@@ -45,8 +47,17 @@ const DEPRECATION_WARNINGS: DeprecationWarning[] = [
 ];
 
 /**
- * Parses a semantic version string into a VersionInfo object.
+ * Parse a semantic version string into a VersionInfo object.
  * Tolerates leading "v" or pre-release suffixes (e.g. "v1.2.3-beta.1").
+ *
+ * @param version - The version string to parse.
+ * @returns The parsed version components.
+ *
+ * @example
+ * ```ts
+ * const v = parseVersion("v1.2.3-beta.1");
+ * console.log(v.major, v.minor, v.patch); // 1, 2, 3
+ * ```
  */
 export function parseVersion(version: string): VersionInfo {
   const clean = version.trim().replace(/^v/i, "").split("-")[0];
@@ -60,8 +71,18 @@ export function parseVersion(version: string): VersionInfo {
 }
 
 /**
- * Compares two semantic versions.
- * Returns -1 if a < b, 0 if a === b, 1 if a > b.
+ * Compare two semantic version strings.
+ *
+ * @param a - First version string.
+ * @param b - Second version string.
+ * @returns -1 if a < b, 0 if a === b, 1 if a > b.
+ *
+ * @example
+ * ```ts
+ * compareVersions("1.0.0", "2.0.0"); // -1
+ * compareVersions("1.0.0", "1.0.0"); // 0
+ * compareVersions("2.0.0", "1.0.0"); // 1
+ * ```
  */
 export function compareVersions(a: string, b: string): number {
   const versionA = parseVersion(a);
@@ -80,7 +101,18 @@ export function compareVersions(a: string, b: string): number {
 }
 
 /**
- * Checks if a version is compatible with a range.
+ * Check if a version string falls within a compatible range.
+ *
+ * @param version - The version to check.
+ * @param minVersion - The minimum acceptable version.
+ * @param maxVersion - Optional maximum acceptable version.
+ * @returns `true` if the version is within the range.
+ *
+ * @example
+ * ```ts
+ * isVersionCompatible("1.5.0", "1.0.0", "2.0.0"); // true
+ * isVersionCompatible("0.9.0", "1.0.0");          // false
+ * ```
  */
 export function isVersionCompatible(
   version: string,
@@ -99,15 +131,32 @@ export function isVersionCompatible(
 }
 
 /**
- * Detects the SDK version being used.
+ * Detect the current SDK version.
+ *
+ * @returns The SDK version as a VersionInfo object.
  */
 export function detectSdkVersion(): VersionInfo {
   return parseVersion(SDK_VERSION);
 }
 
 /**
- * Checks compatibility between the SDK and a deployed contract.
- * Calls `get_version` using the provided invoke function.
+ * Check compatibility between the SDK and a deployed contract.
+ * Calls `get_version` on the contract to retrieve its version.
+ *
+ * @param invoke - A function that invokes a contract method by name.
+ * @returns A compatibility result with version info and any issues found.
+ *
+ * @example
+ * ```ts
+ * const result = await checkCompatibility(async (method) => {
+ *   if (method === "get_version") return contract.getVersion();
+ *   throw new Error("Unsupported method");
+ * });
+ *
+ * if (!result.compatible) {
+ *   console.warn("Compatibility issues:", result.issues);
+ * }
+ * ```
  */
 export async function checkCompatibility(
   invoke: (method: string) => Promise<any>,
@@ -158,21 +207,49 @@ export async function checkCompatibility(
 }
 
 /**
- * Returns deprecation warnings for the specified method.
+ * Get deprecation warnings for a specific method.
+ *
+ * @param method - The method name to check.
+ * @returns The deprecation warning, or undefined if the method is not deprecated.
+ *
+ * @example
+ * ```ts
+ * const warning = getDeprecationWarning("getVersion");
+ * if (warning) {
+ *   console.warn(warning.message);
+ * }
+ * ```
  */
 export function getDeprecationWarning(method: string): DeprecationWarning | undefined {
   return DEPRECATION_WARNINGS.find((w) => w.method === method);
 }
 
 /**
- * Returns all deprecation warnings.
+ * Get all deprecation warnings for the current SDK version.
+ *
+ * @returns Array of all deprecation warnings.
  */
 export function getAllDeprecationWarnings(): DeprecationWarning[] {
   return [...DEPRECATION_WARNINGS];
 }
 
 /**
- * Wraps a method call with deprecation warning logging.
+ * Wrap a method call with automatic deprecation warning logging.
+ * If the method is deprecated, logs a warning before executing.
+ *
+ * @param method - The method name to check for deprecation.
+ * @param fn - The function to execute.
+ * @param logger - Optional custom logger (defaults to `console.warn`).
+ * @returns The return value of `fn`.
+ *
+ * @example
+ * ```ts
+ * const result = withDeprecationWarning(
+ *   "getVersion",
+ *   () => oldGetVersion(),
+ *   console.warn,
+ * );
+ * ```
  */
 export function withDeprecationWarning<T>(
   method: string,
@@ -194,7 +271,19 @@ export function withDeprecationWarning<T>(
 }
 
 /**
- * Generates a migration guide between two versions.
+ * Generate a migration guide describing changes between two SDK versions.
+ *
+ * @param fromVersion - The source version to migrate from.
+ * @param toVersion - The target version to migrate to.
+ * @returns A migration guide with breaking changes, deprecations, and additions.
+ *
+ * @example
+ * ```ts
+ * const guide = getMigrationGuide("0.1.0", "1.0.0");
+ * guide.changes.forEach(change => {
+ *   console.log(`[${change.type}] ${change.description}`);
+ * });
+ * ```
  */
 export function getMigrationGuide(fromVersion: string, toVersion: string): MigrationGuide {
   const changes: MigrationChange[] = [];
