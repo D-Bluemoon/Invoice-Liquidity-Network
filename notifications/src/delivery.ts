@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { CONFIG } from "./config";
+import { renderEmailTemplate } from "./templates";
 import type { NotificationPayload, Subscription } from "./types";
 
 const resend = new Resend(CONFIG.resendApiKey);
@@ -12,14 +13,13 @@ export async function sendEmail(
   subscription: Subscription,
   payload: NotificationPayload
 ): Promise<void> {
+  const email = renderEmailTemplate(payload);
+
   await resend.emails.send({
     from: CONFIG.resendFromEmail,
     to: subscription.destination,
-    subject: payload.subject,
-    html: `<p>${payload.message}</p>
-      <p><strong>Invoice #${payload.invoice.id}</strong></p>
-      <p>Status: ${payload.invoice.status}</p>
-      <p>Due date: ${new Date(payload.invoice.due_date * 1000).toISOString()}</p>`,
+    subject: email.subject,
+    html: email.html,
   });
 }
 
