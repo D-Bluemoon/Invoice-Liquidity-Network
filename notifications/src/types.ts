@@ -8,7 +8,51 @@ export type NotificationTrigger =
   | "invoice_due_soon"
   | "invoice_overdue";
 
-export type SubscriptionChannel = "email" | "webhook";
+export type SubscriptionChannel = "email" | "webhook" | "sms" | "websocket";
+
+/** Roles used in the service layer (service.ts / NotificationService). */
+export type ActorRole = "freelancer" | "lp" | "payer";
+
+/** Webhook health status tracked per subscription. */
+export type WebhookStatus = "active" | "failed" | "disabled";
+
+/**
+ * A normalised invoice event emitted by the contract poller and consumed by
+ * the notification service.
+ */
+export interface InvoiceEvent {
+  eventId: string;
+  type: string; // e.g. "funded" | "paid" | "defaulted" | "due_date_warning"
+  invoiceId: number;
+  freelancer: string;
+  payer: string;
+  funder?: string | null;
+  amount: string;
+  dueDate: number;
+  discountRate: number;
+}
+
+/** Result returned by the service after attempting delivery to one subscriber. */
+export interface DeliveryResult {
+  success: boolean;
+  channel: "email" | "webhook";
+  subscriptionId: string;
+}
+
+/**
+ * A subscriber record stored in the database. Extends the legacy
+ * Subscription shape with service-layer fields used by NotificationService.
+ */
+export interface Subscription {
+  id: string;
+  address: string;
+  role: ActorRole;
+  channel: "email" | "webhook";
+  email?: string;
+  webhookUrl?: string;
+  webhookStatus: WebhookStatus;
+  active: boolean;
+}
 
 export interface Invoice {
   id: number;
@@ -24,13 +68,29 @@ export interface Invoice {
   updated_at: number;
 }
 
-export interface Subscription {
+export interface LegacySubscription {
   id: number;
   stellar_address: string;
   channel: SubscriptionChannel;
   destination: string;
   triggers: NotificationTrigger[];
   created_at: number;
+  webhook_secret?: string;
+}
+
+export interface WebhookDeliveryLog {
+  id: number;
+  subscription_id: number;
+  event_id: string | null;
+  trigger: NotificationTrigger;
+  invoice_id: number;
+  recipient_address: string;
+  status: "pending" | "success" | "failed";
+  attempts: number;
+  response_status: number | null;
+  error: string | null;
+  created_at: number;
+  updated_at: number;
 }
 
 export interface NotificationPayload {
@@ -40,5 +100,27 @@ export interface NotificationPayload {
   subject: string;
   message: string;
   actor: "freelancer" | "lp" | "payer";
+  eventId?: string;
   eventType?: ILNEventType;
+}
+
+export interface WebSocketClient {
+  id: string;
+  address: string;
+  socket: WebSocket;
+  subscribedAddresses: Set<string>;
+  lastHeartbeat: number;
+  isAlive: boolean;
+}
+
+export interface WebSocketMessage {
+  type: "subscribe" | "unsubscribe" | "event" | "heartbeat" | "error";
+  payload?: unknown;
+  address?: string;
+  timestamp?: number;
+}
+
+export interface WebSocketSubscription {
+  address: string;
+  triggers?: NotificationTrigger[];
 }

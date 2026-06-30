@@ -6,6 +6,10 @@
   "bin": {
     "iln": "bin/iln.js"
   },
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node bin/iln.js"
   },
@@ -14,7 +18,7 @@
     "ts-node": "^10.9.2"
   },
   "devDependencies": {
-    "typescript": "^5.9.3",
-    "@types/node": "^24.7.2"
+    "@types/node": "^24.7.2",
+    "typescript": "^5.9.3"
   }
 }

@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ILN CLI Configuration Schema",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "integer",
+      "description": "Configuration file version.",
+      "default": 2
+    },
+    "network": {
+      "type": "string",
+      "enum": ["testnet", "mainnet", "standalone"],
+      "description": "Target Stellar network.",
+      "default": "testnet"
+    },
+    "horizonUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "Stellar Horizon API URL."
+    },
+    "rpcUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "Soroban RPC server URL."
+    },
+    "contractIds": {
+      "type": "object",
+      "description": "Contract IDs keyed by role.",
+      "properties": {
+        "invoice": {
+          "type": "string",
+          "description": "Invoice contract ID."
+        },
+        "token": {
+          "type": "string",
+          "description": "Stellar Asset Token contract ID."
+        }
+      },
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "deployer": {
+      "type": "object",
+      "properties": {
+        "keypairPath": {
+          "type": "string",
+          "description": "Path to the deployer keypair file."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

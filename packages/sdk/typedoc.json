@@ -1,0 +1,14 @@
+{
+  "entryPoints": ["src/index.ts"],
+  "entryPointStrategy": "resolve",
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "out": "../../packages/docs/content/sdk-reference/generated",
+  "plugin": ["typedoc-plugin-markdown"],
+  "fileExtension": ".mdx",
+  "hideBreadcrumbs": true,
+  "hidePageHeader": false,
+  "parametersFormat": "table",
+  "propertiesFormat": "table",
+  "enumMembersFormat": "table"
+}

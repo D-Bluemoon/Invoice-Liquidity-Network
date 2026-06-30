@@ -7,21 +7,60 @@ on:
 jobs:
   e2e-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      
+
+      - name: Initialize submodules
+        run: git submodule update --init --recursive
+
       - name: Start Local Stellar Node
-        run: docker compose up -d
-        
+        run: docker compose up -d stellar-node
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 18
-          
-      - name: Wait for RPC
-        run: sleep 15 
-        
-      - name: Install & Run
+          node-version: 20
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: "9.0.0"
+
+      - name: Wait for Stellar RPC
         run: |
-          npm install
-          npm run test:e2e
+          echo "Waiting for Stellar node to be healthy..."
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8000/friendbot > /dev/null 2>&1; then
+              echo "Stellar node is ready"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Stellar node failed to start within timeout"
+          docker compose logs
+          exit 1
+
+      - name: Deploy contracts and seed accounts
+        run: docker compose up --remove-orphans contract-deployer account-seeder
+
+      - name: Install Frontend Dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps
+
+      - name: Run E2E Tests
+        working-directory: frontend
+        run: npm run test:e2e
+        env:
+          NEXT_PUBLIC_API_MOCKING: "enabled"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: frontend/playwright-report/
+          retention-days: 7

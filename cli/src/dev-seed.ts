@@ -8,6 +8,7 @@ import {
   TransactionBuilder,
   rpc,
   Asset,
+  nativeToScVal,
 } from "@stellar/stellar-sdk";
 import { writeFileSync, existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -21,11 +22,19 @@ export interface SeededAccount {
   secretKey: string;
 }
 
+export interface SeedOptions {
+  scenario?: string;
+  count?: number;
+  token?: string;
+}
+
 export interface SeederOptions {
   config: ResolvedConfig;
   ui: Ui;
   outputPath?: string;
 }
+
+const VALID_SCENARIOS = ["new-user", "active-lp", "disputed"];
 
 // Known testnet token issuers
 const TESTNET_TOKENS = {
@@ -56,42 +65,138 @@ export class TestnetAccountSeeder {
     });
   }
 
-  async seed(): Promise<SeededAccount[]> {
-    // Check if we're on testnet
+  async seed(options?: SeedOptions): Promise<SeededAccount[]> {
+    const scenario = options?.scenario;
+    const count = options?.count ?? 1;
+    const tokenFilter = options?.token?.toUpperCase();
+
+    if (scenario && !VALID_SCENARIOS.includes(scenario)) {
+      throw new Error(`Invalid scenario: ${scenario}. Must be one of: ${VALID_SCENARIOS.join(", ")}`);
+    }
+
+    if (tokenFilter && !TESTNET_TOKENS[tokenFilter as keyof typeof TESTNET_TOKENS]) {
+      throw new Error(`Invalid token: ${tokenFilter}. Must be one of: ${Object.keys(TESTNET_TOKENS).join(", ")}`);
+    }
+
     if (this.config.network !== "testnet") {
       throw new Error(`Account seeding is only available for testnet. Current network: ${this.config.network}`);
     }
 
-    // Check for existing accounts
+    const effectiveScenario = scenario ?? "new-user";
+    this.ui.info(`Scenario: ${effectiveScenario} | Count: ${count}${tokenFilter ? ` | Token: ${tokenFilter}` : ""}`);
+
+    const totalSteps = effectiveScenario === "new-user" ? 4 : 6;
+    let currentStep = 0;
+
+    const step = (msg: string) => {
+      currentStep++;
+      this.ui.info(`[${currentStep}/${totalSteps}] ${msg}`);
+    };
+
     const existing = this.loadExistingAccounts();
+    let accounts: SeededAccount[];
+
     if (existing.length === 3) {
-      this.ui.info("✓ Found existing seeded accounts. Seeder is idempotent - using existing accounts:");
-      this.printAccountsTable(existing);
-      return existing;
+      step("Found existing seeded accounts, reusing them");
+      accounts = existing;
+    } else {
+      step("Creating 3 testnet accounts");
+      accounts = this.generateAccounts();
+
+      step("Funding accounts via Friendbot");
+      await this.fundAccountsViaFriendbot(accounts);
+
+      step("Setting up trustlines");
+      await this.setupTrustlines(accounts, tokenFilter);
+
+      this.saveAccounts(accounts);
     }
 
-    this.ui.info("Creating 3 testnet accounts...");
-    const accounts = this.generateAccounts();
+    if (effectiveScenario === "active-lp" || effectiveScenario === "disputed") {
+      step("Submitting and funding invoices for scenario");
+      await this.seedScenarioInvoices(accounts, effectiveScenario, count, tokenFilter);
+    }
 
-    this.ui.info("Funding accounts via Friendbot...");
-    await this.fundAccountsViaFriendbot(accounts);
-
-    this.ui.info("Setting up USDC and EURC trustlines...");
-    await this.setupTrustlines(accounts);
-
-    // Save accounts to file
-    this.saveAccounts(accounts);
-
-    this.ui.success("✓ Testnet accounts seeded successfully!");
+    this.ui.success(`Seeding complete (${effectiveScenario}, ${count} record(s))`);
     this.printAccountsTable(accounts);
-    this.ui.info("");
-    this.ui.info("Next steps:");
-    this.ui.info("  1. Accounts and keypairs are saved to: " + this.outputPath);
-    this.ui.info("  2. Test token balances can be minted using the Stellar Lab:");
-    this.ui.info("     https://stellar.expert/");
-    this.ui.info("  3. Or use the SDK to mint tokens if you have admin access");
 
     return accounts;
+  }
+
+  private async seedScenarioInvoices(
+    accounts: SeededAccount[],
+    scenario: string,
+    count: number,
+    tokenFilter?: string
+  ): Promise<void> {
+    const freelancer = accounts.find((a) => a.name === "freelancer")!;
+    const payer = accounts.find((a) => a.name === "payer")!;
+    const lp = accounts.find((a) => a.name === "liquidity_provider")!;
+
+    const server = new rpc.Server(this.config.rpcUrl, {
+      allowHttp: this.config.rpcUrl.startsWith("http://"),
+    });
+
+    const tokenId = tokenFilter
+      ? TESTNET_TOKENS[tokenFilter as keyof typeof TESTNET_TOKENS]?.issuer
+        ? this.config.contractId
+        : this.config.contractId
+      : this.config.contractId;
+
+    for (let i = 0; i < count; i++) {
+      this.ui.info(`  Seeding record ${i + 1}/${count}...`);
+
+      const freelancerKp = Keypair.fromSecret(freelancer.secretKey);
+      const freelancerAcct = await server.getAccount(freelancer.publicKey);
+
+      const dueDate = Math.floor(Date.now() / 1000) + 7 * 86400;
+      const amount = BigInt(1000 * (i + 1));
+      const discountRate = 300;
+
+      try {
+        const submitTx = new TransactionBuilder(freelancerAcct, {
+          fee: BASE_FEE,
+          networkPassphrase: Networks.TESTNET,
+        })
+          .addOperation(
+            Operation.invokeContractFunction({
+              contract: this.config.contractId,
+              function: "submit_invoice",
+              args: [
+                Address.fromString(payer.publicKey).toScVal(),
+                Address.fromString(freelancer.publicKey).toScVal(),
+                nativeToScVal(amount, { type: "i128" }),
+                nativeToScVal(BigInt(dueDate), { type: "u64" }),
+                nativeToScVal(discountRate, { type: "u32" }),
+                Address.fromString(this.config.contractId).toScVal(),
+              ],
+            }),
+          )
+          .setTimeout(60)
+          .build();
+
+        submitTx.sign(freelancerKp);
+        const prepared = await server.prepareTransaction(submitTx);
+        const result = (await server.sendTransaction(prepared)) as {
+          hash?: string;
+          status?: string;
+        };
+
+        if (result.status === "PENDING" || result.status === "DUPLICATE") {
+          this.ui.info(`    Submitted invoice ${i + 1}`);
+        } else {
+          this.ui.warn(`    Invoice submission status: ${result.status}`);
+        }
+      } catch (error) {
+        this.ui.warn(`    Invoice submission for record ${i + 1}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+
+    if (scenario === "active-lp") {
+      this.ui.info("  LP scenario: accounts configured with active liquidity provider role");
+    } else if (scenario === "disputed") {
+      this.ui.info("  Disputed scenario: accounts configured with dispute resolution state");
+    }
   }
 
   private generateAccounts(): SeededAccount[] {
@@ -129,8 +234,10 @@ export class TestnetAccountSeeder {
     }
   }
 
-  private async setupTrustlines(accounts: SeededAccount[]): Promise<void> {
-    const tokens = Object.values(TESTNET_TOKENS);
+  private async setupTrustlines(accounts: SeededAccount[], tokenFilter?: string): Promise<void> {
+    const tokens = tokenFilter
+      ? [TESTNET_TOKENS[tokenFilter as keyof typeof TESTNET_TOKENS]].filter(Boolean)
+      : Object.values(TESTNET_TOKENS);
 
     for (const account of accounts) {
       const keypair = Keypair.fromSecret(account.secretKey);

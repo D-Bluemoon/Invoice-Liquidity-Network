@@ -6,13 +6,30 @@
  * and generates TypeScript interfaces / type aliases into sdk/src/generated/types.ts.
  *
  * Usage:
- *   npx ts-node scripts/generate-types.ts [--spec <path>]
+ *   npx ts-node scripts/generate-types.ts [--spec <path>] [--output <path>]
  *
- * Default spec path: ILN-Smart-Contract/target/spec.json
+ * Default spec path: backend/target/spec.json
+ * Default output: sdk/src/generated/types.ts
  */
 
 import fs from "fs";
 import path from "path";
+import { createHash } from "crypto";
+
+// ---------------------------------------------------------------------------
+// Version tracking
+// ---------------------------------------------------------------------------
+
+const SDK_VERSION = "0.1.0";
+const GENERATED_AT = new Date().toISOString();
+
+/**
+ * Compute a hash of the spec file for version tracking.
+ */
+function computeSpecHash(specPath: string): string {
+  const content = fs.readFileSync(specPath, "utf8");
+  return createHash("sha256").update(content).digest("hex").slice(0, 8);
+}
 
 // ---------------------------------------------------------------------------
 // Soroban spec types (subset we care about)
@@ -94,6 +111,27 @@ type SorobanType =
   | { type: "Custom"; name: string };
 
 // ---------------------------------------------------------------------------
+// Custom type mappings
+// ---------------------------------------------------------------------------
+
+/**
+ * Custom type mappings allow overriding default Soroban-to-TypeScript type
+ * conversions. For example, mapping Address to a branded string type.
+ */
+interface CustomTypeMappings {
+  sorobanToTs?: Record<string, string>;
+  structOverrides?: Record<string, Record<string, string>>;
+}
+
+const CUSTOM_TYPE_MAPPINGS: CustomTypeMappings = {
+  sorobanToTs: {
+    Address: "string",
+    Symbol: "string",
+    Bytes: "Uint8Array",
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Type mapping
 // ---------------------------------------------------------------------------
 
@@ -110,11 +148,13 @@ function sorobanTypeToTs(t: SorobanType): string {
     case "Bool":
       return "boolean";
     case "String":
-    case "Symbol":
-    case "Address":
       return "string";
+    case "Symbol":
+      return CUSTOM_TYPE_MAPPINGS.sorobanToTs?.Symbol ?? "string";
+    case "Address":
+      return CUSTOM_TYPE_MAPPINGS.sorobanToTs?.Address ?? "string";
     case "Bytes":
-      return "Uint8Array";
+      return CUSTOM_TYPE_MAPPINGS.sorobanToTs?.Bytes ?? "Uint8Array";
     case "BytesN":
       return "Uint8Array";
     case "Void":
@@ -142,8 +182,13 @@ function docComment(doc?: string): string {
 }
 
 function generateStruct(entry: StructEntry): string {
+  const overrides = CUSTOM_TYPE_MAPPINGS.structOverrides?.[entry.name] ?? {};
   const fields = entry.fields
-    .map((f) => `  ${docComment(f.doc)}  ${f.name}: ${sorobanTypeToTs(f.type)};`)
+    .map((f) => {
+      const typeOverride = overrides[f.name];
+      const tsType = typeOverride ?? sorobanTypeToTs(f.type);
+      return `  ${docComment(f.doc)}  ${f.name}: ${tsType};`;
+    })
     .join("\n");
   return `${docComment(entry.doc)}export interface ${entry.name} {\n${fields}\n}\n`;
 }
@@ -177,45 +222,59 @@ function generateErrorEnum(entry: ErrorEntry): string {
 
 const args = process.argv.slice(2);
 const specFlagIdx = args.indexOf("--spec");
+const outputFlagIdx = args.indexOf("--output");
+
 const specPath =
   specFlagIdx !== -1
     ? args[specFlagIdx + 1]
-    : path.resolve("ILN-Smart-Contract", "target", "spec.json");
+    : path.resolve("backend", "target", "spec.json");
 
-const outPath = path.resolve("sdk", "src", "generated", "types.ts");
+const outPath =
+  outputFlagIdx !== -1
+    ? args[outputFlagIdx + 1]
+    : path.resolve("sdk", "src", "generated", "types.ts");
 
 if (!fs.existsSync(specPath)) {
   console.error(
     `Contract spec not found at: ${specPath}\n` +
       `Build the contract first:\n` +
-      `  cd ILN-Smart-Contract && stellar contract build\n` +
+      `  cd backend && cargo build --target wasm32v1-none --release\n` +
       `  stellar contract info --wasm target/wasm32v1-none/release/*.wasm --output-format json > target/spec.json`
   );
   process.exit(1);
 }
 
 const spec: SpecEntry[] = JSON.parse(fs.readFileSync(specPath, "utf8"));
+const specHash = computeSpecHash(specPath);
 
 const sections: string[] = [
   `// !! AUTO-GENERATED — do not edit by hand.`,
   `// Re-generate with: pnpm generate:types`,
   `// Source: ${path.relative(process.cwd(), specPath)}`,
+  `// Spec hash: ${specHash}`,
+  `// SDK version: ${SDK_VERSION}`,
+  `// Generated at: ${GENERATED_AT}`,
   ``,
 ];
 
+let typeCount = 0;
 for (const entry of spec) {
   switch (entry.type) {
     case "SCSpecEntryUDTStructV0":
       sections.push(generateStruct(entry as StructEntry));
+      typeCount++;
       break;
     case "SCSpecEntryUDTEnumV0":
       sections.push(generateEnum(entry as EnumEntry));
+      typeCount++;
       break;
     case "SCSpecEntryUDTUnionV0":
       sections.push(generateUnion(entry as UnionEntry));
+      typeCount++;
       break;
     case "SCSpecEntryUDTErrorEnumV0":
       sections.push(generateErrorEnum(entry as ErrorEntry));
+      typeCount++;
       break;
     // SCSpecEntryFunctionV0 — functions are handled by the SDK client, skip
   }
@@ -223,4 +282,6 @@ for (const entry of spec) {
 
 fs.mkdirSync(path.dirname(outPath), { recursive: true });
 fs.writeFileSync(outPath, sections.join("\n"));
-console.log(`Generated ${sections.length - 4} type blocks → ${path.relative(process.cwd(), outPath)}`);
+console.log(
+  `Generated ${typeCount} type blocks from spec (hash: ${specHash}) → ${path.relative(process.cwd(), outPath)}`
+);

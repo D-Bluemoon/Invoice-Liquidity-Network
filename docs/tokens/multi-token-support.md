@@ -1,16 +1,16 @@
 # Multi-Token Support
 
-Invoice Liquidity Network supports invoices denominated in allowlisted Stellar assets. The production token set is USDC, EURC, and XLM. Each token has its own decimal precision, acquisition path, trustline behavior, and Soroban token contract shape, so client code should treat the invoice token as part of the invoice data model instead of assuming one global unit.
+Invoice Liquidity Network supports invoices denominated in allowlisted Stellar assets. The production token set is **USDC**, **EURC**, and **XLM**. Each token has distinct decimal precision, acquisition path, trustline behavior, and Soroban token contract shape.
 
-For SDK-side amount helpers and client calls, see the [SDK Token Amounts](../../sdk/README.md#token-amounts). Use token-aware helpers in application code whenever possible and pass contract amounts as `bigint` base units.
+---
 
-## Supported Tokens
+## Token Overview
 
-| Token | Asset type | Decimals | Smallest unit | Testnet acquisition | Trustline required | Notes |
+| Token | Asset type | Decimals | Smallest unit | Testnet acquisition | Trustline required | Soroban token contract ID (testnet) |
 | --- | --- | ---: | --- | --- | --- | --- |
-| USDC | Issued Stellar asset exposed through a Soroban token contract | 6 | `0.000001 USDC` | Fund the account with testnet XLM, add a USDC trustline, then mint or receive test USDC from the testnet issuer/tooling | Yes | Stablecoin-style asset. Do not format it with the 7-decimal XLM stroop scale. |
-| EURC | Issued Stellar asset exposed through a Soroban token contract | 6 | `0.000001 EURC` | Fund the account with testnet XLM, add a EURC trustline, then mint or receive test EURC from the testnet issuer/tooling | Yes | Same decimal scale as USDC, but distinct issuer and token contract. |
-| XLM | Native Stellar asset exposed through the native Stellar Asset Contract wrapper | 7 | `0.0000001 XLM` | Use Friendbot to fund the account directly on testnet | No | Native balances pay fees and reserves. The Soroban token ID is the SAC wrapper for native XLM, not a classic trustline asset. |
+| USDC | Issued Stellar asset exposed through a Soroban token contract | 6 | `0.000001 USDC` | Fund with testnet XLM, add USDC trustline, then mint or receive test USDC | Yes | `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA` |
+| EURC | Issued Stellar asset exposed through a Soroban token contract | 6 | `0.000001 EURC` | Fund with testnet XLM, add EURC trustline, then mint or receive test EURC | Yes | `CA5DGX...` (see deployment README) |
+| XLM | Native Stellar asset exposed through the native Stellar Asset Contract wrapper | 7 | `0.0000001 XLM` | Use Friendbot to fund the account directly on testnet | No | `CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4` |
 
 Known testnet issuers used by the development seeder:
 
@@ -19,15 +19,63 @@ Known testnet issuers used by the development seeder:
 | USDC | `GBUQWP3BOUZX34TBIGK5ILGKDFHTQCXY4IQ7ZLVTLZHVNCV3XVJVTSC` |
 | EURC | `GCNY5OXYSY4FZLQS2B4J5NE6BNUL37AJQ4NZ4PROUGH6TWYJF6XZMFC` |
 
-## Decimal Precision
+---
 
-Store and submit all invoice amounts in token base units:
+## Token Selection Guide
 
-- USDC uses 6 decimals, so `1 USDC` is `1_000_000` base units.
-- EURC uses 6 decimals, so `1 EURC` is `1_000_000` base units.
-- XLM uses 7 decimals, so `1 XLM` is `10_000_000` stroops.
+Choosing which token to denominate an invoice in depends on the needs of the freelancer, payer, and liquidity provider.
 
-Never convert token amounts with JavaScript `number` multiplication for user-entered values. Decimal floating point can round values before they become `bigint`. Parse the display string, enforce the token's maximum fractional digits, and then construct the integer base-unit value.
+| Factor | USDC | EURC | XLM |
+| --- | --- | --- | --- |
+| **Volatility** | Low (stablecoin pegged to USD) | Low (stablecoin pegged to EUR) | Moderate (market-driven) |
+| **Typical use case** | General-purpose invoicing, USD-denominated contracts | Euro-zone freelancers and payers | Low-fee experimentation, micro-transactions, native Stellar apps |
+| **Trustline required** | Yes | Yes | No |
+| **XLM reserve impact** | None (asset balance is separate) | None (asset balance is separate) | Shared with fee/reserve balance — must keep minimum reserve |
+| **Liquidity** | Highest — most widely traded | Moderate — euro-corridor pairs | High — native Stellar asset |
+| **SDK decimals** | 6 | 6 | 7 |
+
+### When to use each token
+
+**USDC** is the default choice for most invoices. It is the most liquid stablecoin on Stellar, widely accepted, and carries minimal volatility risk for all parties.
+
+**EURC** is the right choice when the invoicing relationship is euro-denominated. Freelancers and payers in the euro zone avoid USD/EUR conversion costs. The SDK treats EURC identically to USDC (6 decimals, trustline required), so switching between them is a one-line change.
+
+**XLM** is best suited for experimentation, micro-transactions, and native Stellar applications where avoiding trustline friction matters. Because XLM is also used for transaction fees and account reserves, funding an invoice reduces the account's spendable XLM balance — integrations must ensure enough XLM remains for future transactions.
+
+### Decision matrix
+
+```text
+Invoice involves USD or unspecified fiat?
+  ├─ Yes → USDC
+  └─ No
+      └─ Invoice involves EUR?
+          ├─ Yes → EURC
+          └─ No
+              └─ Need trustline-free or native Stellar settlement?
+                  ├─ Yes → XLM
+                  └─ No → USDC
+```
+
+---
+
+## Code Examples Per Token
+
+### Shared setup
+
+All examples assume the SDK is installed and an `ILNSdk` instance is configured:
+
+```ts
+import { ILNSdk, ILN_TESTNET, createKeypairSigner } from "@iln/sdk";
+
+const sdk = new ILNSdk({
+  ...ILN_TESTNET,
+  signer: createKeypairSigner(process.env.STELLAR_SECRET_KEY!),
+});
+```
+
+### Token parsing utility
+
+Use a token-aware parser to convert user-facing amounts to on-chain base units:
 
 ```ts
 const TOKEN_DECIMALS = {
@@ -38,7 +86,7 @@ const TOKEN_DECIMALS = {
 
 type SupportedToken = keyof typeof TOKEN_DECIMALS;
 
-export function parseTokenAmount(displayAmount: string, token: SupportedToken): bigint {
+function parseTokenAmount(displayAmount: string, token: SupportedToken): bigint {
   const decimals = TOKEN_DECIMALS[token];
   const trimmed = displayAmount.trim();
   const match = trimmed.match(/^(\d+)(?:\.(\d+))?$/);
@@ -60,7 +108,7 @@ export function parseTokenAmount(displayAmount: string, token: SupportedToken): 
   return whole * scale + fraction;
 }
 
-export function formatTokenAmount(baseUnits: bigint, token: SupportedToken): string {
+function formatTokenAmount(baseUnits: bigint, token: SupportedToken): string {
   const decimals = TOKEN_DECIMALS[token];
   const scale = 10n ** BigInt(decimals);
   const negative = baseUnits < 0n;
@@ -73,108 +121,214 @@ export function formatTokenAmount(baseUnits: bigint, token: SupportedToken): str
 }
 ```
 
-Correct per-token conversions:
+### USDC example
 
 ```ts
-parseTokenAmount("125.50", "USDC"); // 125_500_000n
-parseTokenAmount("125.50", "EURC"); // 125_500_000n
-parseTokenAmount("125.5000001", "XLM"); // 1_255_000_001n
+const amount = parseTokenAmount("1250.00", "USDC");
+// amount = 1_250_000_000n (6 decimals)
 
-formatTokenAmount(1_000_000n, "USDC"); // "1"
-formatTokenAmount(1_000_000n, "EURC"); // "1"
-formatTokenAmount(10_000_000n, "XLM"); // "1"
-```
-
-Submitting an invoice should carry both the selected token and the token-scaled amount:
-
-```ts
-import { ILNSdk, ILN_TESTNET, createFreighterSigner } from "@invoice-liquidity/sdk";
-
-const token = "USDC" as const;
-const amount = parseTokenAmount("2500.00", token);
-
-const sdk = new ILNSdk({
-  ...ILN_TESTNET,
-  signer: createFreighterSigner(),
-});
-
-await sdk.submitInvoice({
-  freelancer: "G...",
-  payer: "G...",
+const invoiceId = await sdk.submitInvoice({
+  freelancer: "GA...",
+  payer: "GB...",
   amount,
   dueDate: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60,
-  discountRate: 300,
+  discountRate: 300, // 3.00%
 });
+
+console.log(`USDC invoice #${invoiceId} submitted for ${formatTokenAmount(amount, "USDC")} USDC`);
 ```
 
-## Acquiring Tokens On Testnet
+**Key points:**
 
-All testnet accounts need XLM first because XLM pays transaction fees and account reserves.
+- USDC uses 6 decimals: `1 USDC = 1_000_000` base units
+- Requires a USDC trustline on the funder account before funding
+- Display with 2 decimal places for UI summaries, up to 6 for exact values
 
-1. Create or import a Stellar testnet keypair.
-2. Fund it with Friendbot:
-
-```bash
-curl "https://friendbot.stellar.org/?addr=G..."
-```
-
-3. For USDC and EURC, add trustlines before receiving issued assets. The CLI seeder automates this:
-
-```bash
-iln dev seed
-```
-
-4. Mint or receive test USDC/EURC using the configured testnet issuer and Soroban token contract tooling. The generated `.env.testnet.accounts` file records the seeded account keys and the testnet issuers.
-
-XLM does not need a trustline. A Friendbot-funded account can hold and spend testnet XLM immediately, subject to the minimum reserve and transaction fees.
-
-## Trustline Requirements
-
-USDC and EURC are issued assets. Before an account can hold either asset on Stellar testnet, it must submit a `changeTrust` operation for the asset code and issuer. The development seeder creates trustlines for the `freelancer`, `payer`, and `liquidity_provider` accounts.
-
-XLM is native to Stellar and cannot have a trustline. When used from Soroban, native XLM is addressed through the native Stellar Asset Contract wrapper. Client code still interacts with a token contract ID, but the underlying balance behavior is native:
-
-- The same XLM balance pays fees, reserves, and protocol transfers.
-- Available XLM can be lower than total balance because the account must keep its minimum reserve.
-- There is no issuer account or trustline limit for native XLM.
-
-## Token-Specific Quirks
-
-USDC and EURC:
-
-- Use 6 decimal places.
-- Require trustlines for classic asset balances.
-- Have separate issuers and separate Soroban token contracts.
-- Should be displayed with stablecoin-style precision, commonly 2 decimals for UI summaries and up to 6 for exact values.
-
-XLM:
-
-- Uses 7 decimal places, also called stroops.
-- Is acquired directly from Friendbot on testnet.
-- Is represented in Soroban by the native SAC wrapper.
-- Shares balance with fees and reserves, so integrations should leave enough spendable XLM for future transactions.
-
-## Token Allowlist
-
-The token allowlist defines which token contract IDs the protocol accepts for invoices and funding flows. Treat the allowlist as the source of truth for supported tokens in each deployment:
-
-- A token is supported only when its Soroban token contract ID is present in the deployment allowlist.
-- UI token pickers should be built from the allowlist, not from hard-coded symbols alone.
-- Amount parsing should use the metadata for the selected allowlisted token.
-- Adding a new token requires adding its contract ID and metadata, then updating tests, SDK helpers, and this documentation.
-- Removing a token from the allowlist should disable new invoices for that token, while existing indexed invoice history may still reference it.
-
-At minimum, keep this metadata beside each allowlisted token:
+### EURC example
 
 ```ts
-type TokenMetadata = {
-  symbol: "USDC" | "EURC" | "XLM";
-  contractId: string;
-  decimals: 6 | 7;
-  issuer?: string;
-  requiresTrustline: boolean;
-  acquisition: "friendbot" | "trustline-and-mint";
-};
+const amount = parseTokenAmount("890.50", "EURC");
+// amount = 890_500_000n (6 decimals)
+
+const invoiceId = await sdk.submitInvoice({
+  freelancer: "GA...",
+  payer: "GC...",
+  amount,
+  dueDate: Math.floor(Date.now() / 1000) + 14 * 24 * 60 * 60,
+  discountRate: 500, // 5.00%
+});
+
+console.log(`EURC invoice #${invoiceId} submitted for ${formatTokenAmount(amount, "EURC")} EURC`);
 ```
 
-The allowlist prevents unsupported token contracts from entering protocol flows and protects clients from applying the wrong decimal precision to invoice amounts.
+**Key points:**
+
+- EURC uses the same decimal scale as USDC (6 decimals)
+- Requires a separate EURC trustline — USDC trustlines do not cover EURC
+- EURC has a distinct issuer and Soroban token contract from USDC
+- The SDK treats USDC and EURC identically; the only difference is the `token` parameter passed to the contract
+
+### XLM example
+
+```ts
+const amount = parseTokenAmount("250.5000001", "XLM");
+// amount = 2_505_000_001n (7 decimals, stroops)
+
+const invoiceId = await sdk.submitInvoice({
+  freelancer: "GA...",
+  payer: "GB...",
+  amount,
+  dueDate: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60,
+  discountRate: 200, // 2.00%
+});
+
+console.log(`XLM invoice #${invoiceId} submitted for ${formatTokenAmount(amount, "XLM")} XLM`);
+```
+
+**Key points:**
+
+- XLM uses 7 decimals (stroops): `1 XLM = 10_000_000` stroops
+- No trustline is needed — any funded Stellar account can hold XLM
+- The same XLM balance pays fees, reserves, and invoice amounts — ensure the account retains its minimum reserve (`1 XLM` on testnet, `0.5 XLM` on mainnet after protocol 20)
+- The Soroban token contract ID for native XLM is `CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4`
+
+---
+
+## Token-Specific Considerations
+
+### USDC
+
+- **Precision**: 6 decimal places. Enter `"1.00"` to get `1_000_000` base units.
+- **Trustline**: Required before an account can hold USDC. Use `changeTrust` operation with asset code `USDC` and the testnet issuer address.
+- **Issuer**: Testnet issuer is `GBUQWP3BOUZX34TBIGK5ILGKDFHTQCXY4IQ7ZLVTLZHVNCV3XVJVTSC`. Mainnet uses the Circle-issued USDC on Stellar.
+- **Display convention**: Stablecoin-style — commonly show 2 decimals in UIs (`$1,250.00`), up to 6 for exact settlement views.
+- **Liquidity**: Highest of all three tokens. Most LPs will prefer funding USDC invoices.
+
+### EURC
+
+- **Precision**: 6 decimal places (same as USDC).
+- **Trustline**: Required. Uses asset code `EURC` with the testnet issuer address. A USDC trustline does not authorize EURC.
+- **Issuer**: Testnet issuer is `GCNY5OXYSY4FZLQS2B4J5NE6BNUL37AJQ4NZ4PROUGH6TWYJF6XZMFC`.
+- **Use case**: Euro-denominated invoicing. Freelancers and payers in the euro zone avoid FX conversion costs.
+- **Switching from USDC**: The SDK API is identical. Only the token address passed to `submit_invoice` changes.
+
+### XLM
+
+- **Precision**: 7 decimal places (stroops). `0.0000001 XLM` is the smallest unit.
+- **Trustline**: Not required. XLM is native to Stellar.
+- **Reserve requirement**: Every Stellar account must maintain a minimum XLM balance (`1 XLM` testnet, `0.5 XLM` mainnet after protocol 20). Funding an invoice reduces spendable XLM — do not drain the account below the reserve.
+- **Fee currency**: All Stellar transaction fees are paid in XLM. Accounts must keep XLM aside for submission fees regardless of the invoice token.
+- **Contract ID**: The native SAC wrapper address is `CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4` on all networks.
+- **Volatility**: Unlike USDC and EURC, XLM's market price fluctuates. Parties should consider price exposure when denominating invoices in XLM.
+
+---
+
+## Troubleshooting
+
+### Trustline failures
+
+**Problem:** `op_underfunded` or `op_no_trust` error when funding or settling an invoice.
+
+**Cause:** The account receiving USDC or EURC has not established a trustline for that asset.
+
+**Solution:**
+
+```ts
+import { TransactionBuilder, Operation, Keypair } from "@stellar/stellar-sdk";
+
+const server = new rpc.Server("https://soroban-testnet.stellar.org");
+const account = await server.getAccount(publicKey);
+
+const tx = new TransactionBuilder(account, {
+  fee: "100",
+  networkPassphrase: "Test SDF Network ; September 2015",
+})
+  .addOperation(
+    Operation.changeTrust({
+      asset: new Asset("USDC", "GBUQWP3BOUZX34TBIGK5ILGKDFHTQCXY4IQ7ZLVTLZHVNCV3XVJVTSC"),
+      limit: "9223372036854775807",
+    }),
+  )
+  .setTimeout(30)
+  .build();
+
+tx.sign(Keypair.fromSecret(secretKey));
+await server.sendTransaction(tx);
+```
+
+### Insufficient XLM for fees
+
+**Problem:** `op_insufficient_balance` when submitting any transaction.
+
+**Cause:** The source account does not have enough XLM to pay the transaction fee and maintain the minimum reserve.
+
+**Solution:** Fund the account with additional XLM via Friendbot (testnet) or an exchange transfer (mainnet). A Soroban transaction typically requires `1-5 XLM` for fees plus the base reserve.
+
+### Decimal precision errors
+
+**Problem:** Amount displays as `"0.000001"` instead of `"1"`, or the contract rejects an amount as below minimum.
+
+**Cause:** Confusing USDC/EURC 6-decimal units with XLM 7-decimal stroops, or applying the wrong scale.
+
+**Solution:** Always use token-aware parsing (see [Code Examples](#code-examples-per-token) above). Never hard-code decimal assumptions. Validate with the utility:
+
+```ts
+parseTokenAmount("1", "USDC"); // 1_000_000n — correct
+parseTokenAmount("1", "XLM");  // 10_000_000n — correct
+```
+
+A common mistake is treating XLM as 6-decimal:
+
+```ts
+// WRONG — applies USDC scale to XLM
+BigInt("1") * 10n ** 6n; // 1_000_000n (only 0.1 XLM)
+
+// RIGHT — use token-aware parser
+parseTokenAmount("1", "XLM"); // 10_000_000n (1 XLM)
+```
+
+### Token not allowlisted
+
+**Problem:** Contract returns `TokenNotAllowed` error.
+
+**Cause:** The token contract address passed to `submit_invoice` is not in the protocol's allowlist.
+
+**Solution:** Query the allowlist via the contract to see which tokens are currently enabled:
+
+```bash
+stellar contract invoke \
+  --id CD3TE3IAHM737P236XZL2OYU275ZKD6MN7YH7PYYAXYIGEH55OPEWYJC \
+  --source-account S... \
+  --network testnet \
+  -- \
+  get_tokens
+```
+
+If the token is missing, submit a governance proposal to add it (see [Governance Guide](../governance-guide.md#add-a-new-supported-token)).
+
+### Wrong token contract ID
+
+**Problem:** Transaction simulates successfully but fails on submission with contract or token errors.
+
+**Cause:** The wrong Soroban token contract ID was used for the selected token.
+
+**Solution:** Verify the contract ID against the deployment table at the top of this guide. USDC, EURC, and XLM each have a distinct Soroban token contract address.
+
+### XLM reserve too low after funding
+
+**Problem:** After funding an XLM-denominated invoice, subsequent transactions fail with `op_insufficient_balance`.
+
+**Cause:** The account's XLM balance dropped below the minimum reserve after paying the invoice amount.
+
+**Solution:** Accounts funding XLM invoices must hold enough XLM above the reserve to cover the invoice amount plus fees. Monitor the balance before submitting:
+
+```ts
+const account = await server.getAccount(funderAddress);
+const availableXLM = BigInt(account.balances.find((b: any) => b.asset_type === "native")?.balance ?? "0");
+const reserve = 1_000_0000n; // 1 XLM in stroops (testnet)
+const spendable = availableXLM - reserve;
+
+if (invoiceAmount > spendable) {
+  throw new Error("Insufficient XLM above reserve to fund this invoice");
+}
+```

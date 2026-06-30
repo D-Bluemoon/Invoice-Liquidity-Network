@@ -14,6 +14,8 @@ const FRIEND_BOT_URL = "http://localhost:8000/friendbot";
 const NETWORK_PASSPHRASE = "Standalone Network ; February 2017";
 const NETWORK_NAME = "local";
 const ACCOUNT_NAMES = ["freelancer", "payer", "lp"] as const;
+const INDEXER_PORT = 3001;
+const NOTIFICATIONS_PORT = 4001;
 
 export interface CommandResult {
   stderr: string;
@@ -49,10 +51,14 @@ export class LocalDevEnvironment {
     await this.ensureLocalAccounts();
     const contractId = await this.deployContractIfPossible();
     this.writeEnvFile(contractId);
+    await this.startIndexer();
+    await this.startNotificationsService();
     this.ui.success("Local ILN development environment is ready.");
   }
 
   async stop(): Promise<void> {
+    await this.stopIndexer();
+    await this.stopNotificationsService();
     if (await this.containerExists()) {
       await this.runner.run("docker", ["rm", "-f", CONTAINER_NAME]);
       this.ui.success("Stopped local Stellar node.");
@@ -79,6 +85,71 @@ export class LocalDevEnvironment {
 
     const tokenId = this.readFile(".local-usdc-id");
     this.ui.info(`Token: ${tokenId || "not deployed"}`);
+
+    const indexerRunning = await this.isPortInUse(INDEXER_PORT);
+    this.ui.info(`Indexer: ${indexerRunning ? "running" : "stopped"} (port ${INDEXER_PORT})`);
+
+    const notificationsRunning = await this.isPortInUse(NOTIFICATIONS_PORT);
+    this.ui.info(`Notifications: ${notificationsRunning ? "running" : "stopped"} (port ${NOTIFICATIONS_PORT})`);
+  }
+
+  private async startIndexer(): Promise<void> {
+    if (await this.isPortInUse(INDEXER_PORT)) {
+      this.ui.info(`Indexer is already running on port ${INDEXER_PORT}.`);
+      return;
+    }
+
+    this.ui.info("Starting indexer service...");
+    try {
+      await this.runner.run("pnpm", ["--filter", "iln-indexer", "dev"], { cwd: this.cwd });
+    } catch (error) {
+      this.ui.warn(`Failed to start indexer: ${formatError(error)}`);
+    }
+  }
+
+  private async stopIndexer(): Promise<void> {
+    if (await this.isPortInUse(INDEXER_PORT)) {
+      this.ui.info("Stopping indexer service...");
+      try {
+        await this.runner.run("pkill", ["-f", "iln-indexer"]);
+      } catch {
+        // Process may not exist
+      }
+    }
+  }
+
+  private async startNotificationsService(): Promise<void> {
+    if (await this.isPortInUse(NOTIFICATIONS_PORT)) {
+      this.ui.info(`Notifications service is already running on port ${NOTIFICATIONS_PORT}.`);
+      return;
+    }
+
+    this.ui.info("Starting notifications service...");
+    try {
+      await this.runner.run("pnpm", ["--filter", "iln-notifications", "dev"], { cwd: this.cwd });
+    } catch (error) {
+      this.ui.warn(`Failed to start notifications service: ${formatError(error)}`);
+    }
+  }
+
+  private async stopNotificationsService(): Promise<void> {
+    if (await this.isPortInUse(NOTIFICATIONS_PORT)) {
+      this.ui.info("Stopping notifications service...");
+      try {
+        await this.runner.run("pkill", ["-f", "iln-notifications"]);
+      } catch {
+        // Process may not exist
+      }
+    }
+  }
+
+  private async isPortInUse(port: number): Promise<boolean> {
+    try {
+      const result = await this.runner.run("lsof", ["-i", `:${port}`, "-t"]);
+      return result.stdout.trim().length > 0;
+    } catch {
+      return false;
+    }
   }
 
   private async ensureDocker(): Promise<void> {
