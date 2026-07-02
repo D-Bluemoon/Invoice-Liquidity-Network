@@ -16,6 +16,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - '.gitmodules'
+
   pnpm-cache:
     uses: ./.github/workflows/reusable-cache-pnpm.yml
 
@@ -24,6 +39,8 @@ jobs:
 
   test:
     name: Run tests
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -55,6 +72,7 @@ jobs:
 
       - name: Comment PR on failure
         if: failure() && github.event_name == 'pull_request'
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |
@@ -67,6 +85,8 @@ jobs:
 
   build:
     name: Build contract
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -98,6 +118,7 @@ jobs:
 
       - name: Comment PR on failure
         if: failure() && github.event_name == 'pull_request'
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |
@@ -110,6 +131,8 @@ jobs:
 
   lint:
     name: Lint code
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -146,6 +169,7 @@ jobs:
 
       - name: Comment PR on failure
         if: failure() && github.event_name == 'pull_request'
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |
@@ -172,6 +196,7 @@ jobs:
           merge-multiple: true
 
       - name: Publish test results to Checks
+        continue-on-error: true
         uses: dorny/test-reporter@v2
         with:
           name: JUnit Test Results
@@ -260,6 +285,7 @@ jobs:
 
       - name: Comment PR on failure
         if: failure() && github.event_name == 'pull_request'
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |
@@ -285,6 +311,7 @@ jobs:
 
       - name: Comment PR on failure
         if: failure() && github.event_name == 'pull_request'
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |
@@ -330,6 +357,7 @@ jobs:
 
       - name: Comment PR on failure
         if: failure() && github.event_name == 'pull_request'
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |
@@ -361,6 +389,7 @@ jobs:
 
       - name: Comment PR on failure
         if: failure() && github.event_name == 'pull_request'
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |
@@ -395,6 +424,7 @@ jobs:
 
       - name: Comment PR on failure
         if: failure() && github.event_name == 'pull_request'
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |
@@ -407,7 +437,8 @@ jobs:
 
   sdk-types-sync:
     name: SDK types in sync
-    needs: pnpm-cache
+    needs: [pnpm-cache, changes]
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -464,6 +495,7 @@ jobs:
 
       - name: Comment PR on failure
         if: failure() && github.event_name == 'pull_request'
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |
@@ -610,6 +642,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Post results summary to PR
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |
