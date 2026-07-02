@@ -16,7 +16,9 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: "9.0.0"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Lint PR title
         run: |
           echo "${{ github.event.pull_request.title }}" > pr_title
-          pnpm dlx -p @commitlint/cli@17.8.1 -p @commitlint/config-conventional@17.8.1 commitlint --config commitlint.config.js --edit pr_title
+          pnpm exec commitlint --config commitlint.config.js --edit pr_title
