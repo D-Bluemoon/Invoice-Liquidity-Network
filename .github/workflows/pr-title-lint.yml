@@ -13,11 +13,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18
-      - name: Install commitlint
-        run: |
-          npm init -y
-          npm install --no-audit --no-fund @commitlint/cli @commitlint/config-conventional
+      - uses: pnpm/action-setup@v4
+        with:
+          version: "9.0.0"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Lint PR title
         run: |
           echo "${{ github.event.pull_request.title }}" > pr_title
-          npx commitlint --config commitlint.config.js --edit pr_title
+          pnpm exec commitlint --config commitlint.config.js --edit pr_title
