@@ -85,14 +85,26 @@ describe("Error Mapping SDK", () => {
 
     it("uses default descriptive messages and remediation strategies", () => {
       const balanceErr = new InsufficientBalanceError();
+      expect(balanceErr.code).toBe("INSUFFICIENT_BALANCE");
       expect(balanceErr.message).toBe("Insufficient balance to complete the transaction.");
-      expect(balanceErr.remediation).toBe("Ensure the account has enough funds before retrying.");
+      expect(balanceErr.remediation).toBe("Ensure the account has enough funds, then retry.");
+      expect((balanceErr as any).docUrl).toContain("INSUFFICIENT_BALANCE");
+
+
 
       const networkErr = new NetworkError();
+      expect(networkErr.code).toBe("NETWORK_ERROR");
       expect(networkErr.message).toBe("Network request failed.");
+      expect(networkErr.remediation).toContain("RPC endpoint");
 
       const valErr = new ValidationError();
+      expect(valErr.code).toBe("VALIDATION_ERROR");
       expect(valErr.message).toBe("Validation failed.");
+      expect(valErr.remediation).toContain("Validators");
+
+      const contractErr = parseContractError("Error: InvalidDiscountRate");
+      expect(contractErr.code).toBe("INVALID_DISCOUNT_RATE");
+      expect(contractErr.context).toMatchObject({ matchedPattern: "InvalidDiscountRate" });
     });
 
     it("supports overriding custom messages and remediation strategies", () => {
