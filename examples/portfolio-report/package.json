@@ -1,0 +1,28 @@
+{
+  "name": "portfolio-report",
+  "version": "1.0.0",
+  "description": "Portfolio reporting script for Invoice Liquidity Network",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "ts-node index.ts",
+    "build": "tsc",
+    "lint": "eslint . --ext .ts"
+  },
+  "dependencies": {
+    "@iln/indexer": "file:../../packages/indexer",
+    "@stellar/stellar-sdk": "^15.0.1",
+    "commander": "^14.0.3",
+    "json2csv": "^6.0.0-alpha.2"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@iln/eslint-config": "workspace:*",
+    "@types/json2csv": "^5.0.7",
+    "@types/node": "^24.7.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}

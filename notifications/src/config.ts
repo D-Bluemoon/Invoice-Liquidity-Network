@@ -20,7 +20,7 @@ function parseIntEnv(name: string, fallback: number): number {
   return parsed;
 }
 
-export const ALLOWED_CHANNELS = ["email", "webhook"] as const;
+export const ALLOWED_CHANNELS = ["email", "webhook", "sms"] as const;
 export const ALLOWED_TRIGGERS = [
   "invoice_funded",
   "invoice_paid",
@@ -43,6 +43,11 @@ export const CONFIG = {
   dueWarningHours: parseIntEnv("DUE_WARNING_HOURS", 48),
   maxWebhookRetry: 3,
   webhookBackoffBaseMs: 500,
+  twilioAccountSid: process.env.TWILIO_ACCOUNT_SID || "",
+  twilioAuthToken: process.env.TWILIO_AUTH_TOKEN || "",
+  twilioFromNumber: process.env.TWILIO_FROM_NUMBER || "",
+  smsRateLimitWindowMs: parseIntEnv("SMS_RATE_LIMIT_WINDOW_MS", 3600000),
+  smsRateLimitMax: parseIntEnv("SMS_RATE_LIMIT_MAX", 10),
 };
 
 export function isValidEmail(email: string): boolean {
@@ -58,7 +63,11 @@ export function isValidUrl(url: string): boolean {
   }
 }
 
-export function validateChannel(channel: string): channel is "email" | "webhook" {
+export function isValidPhone(phone: string): boolean {
+  return /^\+[1-9]\d{1,14}$/.test(phone);
+}
+
+export function validateChannel(channel: string): channel is "email" | "webhook" | "sms" {
   return ALLOWED_CHANNELS.includes(channel as any);
 }
 

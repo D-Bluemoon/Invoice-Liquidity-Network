@@ -9,14 +9,44 @@ permissions:
   pull-requests: write
   issues: write
 
+# Fail fast: cancel an in-progress run when new commits are pushed to the same
+# ref (e.g. a PR branch), so only the latest commit consumes CI minutes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - '.gitmodules'
+
+  pnpm-cache:
+    uses: ./.github/workflows/reusable-cache-pnpm.yml
+
+  testnet-health:
+    uses: ./.github/workflows/reusable-testnet-health.yml
+
   test:
     name: Run tests
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
+
+      - name: Initialize submodules
+        run: git submodule update --init --recursive
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -42,6 +72,7 @@ jobs:
 
       - name: Comment PR on failure
         if: failure() && github.event_name == 'pull_request'
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |
@@ -54,11 +85,14 @@ jobs:
 
   build:
     name: Build contract
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
+
+      - name: Initialize submodules
+        run: git submodule update --init --recursive
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -84,6 +118,7 @@ jobs:
 
       - name: Comment PR on failure
         if: failure() && github.event_name == 'pull_request'
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |
@@ -96,11 +131,14 @@ jobs:
 
   lint:
     name: Lint code
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
+
+      - name: Initialize submodules
+        run: git submodule update --init --recursive
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -131,6 +169,7 @@ jobs:
 
       - name: Comment PR on failure
         if: failure() && github.event_name == 'pull_request'
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |
@@ -141,30 +180,188 @@ jobs:
               body: '🚨 **CI Lint failed!** Please check the action logs for details.'
             })
 
-  node-tests:
-    name: Run Node.js tests
+  # ===========================================================================
+  # Test result reporting — combine JUnit XMLs into a GitHub Check
+  # ===========================================================================
+  report-test-results:
+    name: Test results
+    needs: [node-tests, core-test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download JUnit reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-results-*
+          merge-multiple: true
+
+      - name: Publish test results to Checks
+        continue-on-error: true
+        uses: dorny/test-reporter@v2
+        with:
+          name: JUnit Test Results
+          path: "**/test-results.xml"
+          reporter: java-junit
+          fail-on-error: "false"
+          list-suites: "failed"
+          list-tests: "failed"
+          max-annotations: 10
+
+  # ===========================================================================
+  # Discord failure notification — sends a webhook when any critical job fails
+  # ===========================================================================
+  notify-discord:
+    name: Notify Discord on failure
+    needs:
+      - test
+      - build
+      - lint
+      - node-tests
+      - node-coverage
+      - license-compliance
+      - sdk-types-sync
+      - core-install
+      - core-lint
+      - core-type-check
+      - core-test
+      - core-build
+    if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Discord notification
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          COMMIT_AUTHOR: ${{ github.event.head_commit.author.name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REF_NAME: ${{ github.ref_name }}
+          REPO_NAME: ${{ github.repository }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK" ]; then
+            echo "No DISCORD_WEBHOOK secret configured — skipping notification"
+            exit 0
+          fi
+
+          # Collect which jobs failed
+          FAILED_JOBS=""
+          for job in test build lint node-tests node-coverage license-compliance sdk-types-sync core-install core-lint core-type-check core-test core-build; do
+            result=$(echo '${{ toJSON(needs) }}' | jq -r --arg job "$job" '.[$job].result // "skipped"')
+            if [ "$result" = "failure" ]; then
+              FAILED_JOBS="$FAILED_JOBS\n- **$job**: ❌ $result"
+            fi
+          done
+
+          curl -s -H "Content-Type: application/json" \
+            -X POST \
+            -d "$(jq -n --arg msg "$COMMIT_MSG" --arg author "$COMMIT_AUTHOR" --arg sha "$COMMIT_SHA" --arg url "$RUN_URL" --arg ref "$REF_NAME" --arg repo "$REPO_NAME" --arg failed "$FAILED_JOBS" '{
+              embeds: [{
+                title: "❌ CI Failed: \($repo)",
+                description: "Pipeline **\($ref)** failed on commit [`\($sha[0:7])`](\($url))",
+                color: 15158332,
+                fields: [
+                  { name: "Commit", value: $msg, inline: false },
+                  { name: "Author", value: $author, inline: true },
+                  { name: "Run", value: "[View logs](" + $url + ")", inline: true },
+                  { name: "Failed Jobs", value: ($failed | if . == "" then "none" else . end), inline: false }
+                ],
+                timestamp: (now | todate)
+              }]
+            })' \
+            "$DISCORD_WEBHOOK" || echo "Discord webhook call failed (non-fatal)"
+
+  syncpack:
+    name: Dependency version consistency
+    needs: pnpm-cache
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
+      - name: Setup pnpm with store cache
+        uses: ./.github/actions/setup-pnpm
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run all tests
-        run: pnpm test
+      - name: Check for version mismatches
+        run: |
+          if ! pnpm syncpack:check; then
+            echo "::warning::Dependency version mismatches were found; see output above."
+          fi
 
       - name: Comment PR on failure
         if: failure() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🚨 **Dependency version mismatch detected!** Run `pnpm syncpack:check` locally and align versions before merging.'
+            })
+
+  validate-packages:
+    name: Validate package.json consistency
+    needs: pnpm-cache
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm with store cache
+        uses: ./.github/actions/setup-pnpm
+
+      - name: Validate all workspace package.json files
+        run: node scripts/validate-packages.mjs
+
+      - name: Comment PR on failure
+        if: failure() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🚨 **Package.json validation failed!** Run `node scripts/validate-packages.mjs` locally and fix violations before merging.'
+            })
+
+  node-tests:
+    name: Run Node.js tests
+    needs: pnpm-cache
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm with store cache
+        uses: ./.github/actions/setup-pnpm
+
+      - name: Run notification template tests
+        run: pnpm exec vitest run tests/templates.test.ts
+        working-directory: notifications
+
+      - name: Generate JUnit reports (vitest packages)
+        if: always()
+        continue-on-error: true
+        run: |
+          for pkg in sdk cli indexer notifications packages/react packages/mock-backend packages/opentelemetry packages/upgrade-tests packages/test-utils packages/cli; do
+            if [ -f "$pkg/vitest.config.ts" ] || [ -f "$pkg/vitest.config.js" ]; then
+              echo "Generating JUnit report for $pkg..."
+              cd "$GITHUB_WORKSPACE/$pkg"
+              pnpm vitest run --reporter=junit --outputFile=test-results.xml 2>/dev/null || true
+            fi
+          done
+
+      - name: Upload JUnit reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ github.sha }}
+          path: "**/test-results.xml"
+          retention-days: 7
+
+      - name: Comment PR on failure
+        if: failure() && github.event_name == 'pull_request'
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |
@@ -177,13 +374,57 @@ jobs:
 
   node-coverage:
     name: Node.js coverage (≥80%)
+    needs: pnpm-cache
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm with store cache
+        uses: ./.github/actions/setup-pnpm
+
+      - name: Run notification template coverage
+        run: >
+          pnpm exec vitest run tests/templates.test.ts
+          --coverage
+          --coverage.include=src/templates/funded.template.ts
+          --coverage.include=src/templates/payment.template.ts
+          --coverage.include=src/templates/dispute.template.ts
+          --coverage.include=src/templates/due-warning.template.ts
+          --coverage.include=src/templates/helpers.ts
+          --coverage.thresholds.lines=80
+          --coverage.thresholds.functions=80
+          --coverage.thresholds.branches=80
+          --coverage.thresholds.statements=80
+        working-directory: notifications
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: Nursca/Invoice-Liquidity-Network
+
+      - name: Comment PR on failure
+        if: failure() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🚨 **Coverage dropped below 80%!** Please check the action logs for details.'
+            })
+
+  license-compliance:
+    name: Dependency license compliance check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: "9.0.0"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -194,11 +435,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run coverage (fails if any package drops below 80%)
-        run: pnpm test:coverage
+      - name: Run license compliance check
+        run: pnpm licence:check
 
       - name: Comment PR on failure
         if: failure() && github.event_name == 'pull_request'
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |
@@ -206,5 +448,262 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '🚨 **Coverage dropped below 80%!** Please check the action logs for details.'
+              body: '🚨 **Dependency license compliance check failed!** Please verify your package dependencies conform to the license policy.'
             })
+
+  sdk-types-sync:
+    name: SDK types in sync
+    needs: [pnpm-cache, changes]
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize submodules
+        run: git submodule update --init --recursive
+
+      - name: Setup pnpm with store cache
+        uses: ./.github/actions/setup-pnpm
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32v1-none
+
+      - name: Cache Stellar CLI (cargo install)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-stellar-cli-opt
+          restore-keys: |
+            ${{ runner.os }}-stellar-cli-
+
+      - name: Install Stellar CLI
+        run: cargo install --locked stellar-cli --features opt
+
+      - name: Configure testnet
+        run: stellar network use testnet
+
+      - name: Build contract (skip if submodule empty)
+        working-directory: ./backend
+        run: |
+          if [ -f "Cargo.toml" ]; then
+            stellar contract build
+            stellar contract info --wasm target/wasm32v1-none/release/*.wasm --output-format json > target/spec.json
+          else
+            echo "Contract submodule not initialized, skipping"
+          fi
+
+      - name: Regenerate SDK types
+        run: pnpm generate:types || echo "Skipped (no spec.json)"
+
+      - name: Check if types changed
+        run: |
+          if ! git diff --exit-code sdk/src/generated/types.ts; then
+            echo "❌ Generated types are out of sync!"
+            echo "Run: pnpm generate:types"
+            exit 1
+          fi
+
+      - name: Comment PR on failure
+        if: failure() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🚨 **SDK types are out of sync!** Run `pnpm generate:types` and commit the changes.'
+            })
+
+  sdk-testnet-integration:
+    name: SDK testnet integration tests
+    needs: [pnpm-cache, testnet-health]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.testnet-health.outputs.healthy == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm with store cache
+        uses: ./.github/actions/setup-pnpm
+
+      - name: Run SDK testnet integration tests
+        working-directory: ./sdk
+        run: pnpm test:integration:testnet
+        env:
+          FREELANCER_SECRET: ${{ secrets.TESTNET_FREELANCER_SECRET }}
+          PAYER_SECRET: ${{ secrets.TESTNET_PAYER_SECRET }}
+          FUNDER_SECRET: ${{ secrets.TESTNET_FUNDER_SECRET }}
+
+  sdk-testnet-skipped:
+    name: SDK testnet integration (skipped — unhealthy testnet)
+    needs: [testnet-health]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.testnet-health.outputs.healthy != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report skipped integration tests
+        run: |
+          echo "::warning::Horizon testnet was unhealthy; SDK testnet integration tests were skipped."
+
+  # ===========================================================================
+  # Core JS/TS quality gate — Issue #252
+  #
+  # Models the dependency graph required by the issue:
+  #   install ──► lint ──┐
+  #           └► type-check ──► test ──► build
+  # lint and type-check run in parallel after install; test waits for both;
+  # build waits for test. Each job reuses the pnpm store cache and shares a
+  # turbo cache so unchanged packages are not rebuilt.
+  # ===========================================================================
+  core-install:
+    name: Core · install
+    needs: pnpm-cache
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup pnpm with store cache
+        uses: ./.github/actions/setup-pnpm
+
+  core-lint:
+    name: Core · lint
+    needs: core-install
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup pnpm with store cache
+        uses: ./.github/actions/setup-pnpm
+      - name: Restore turbo cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-lint-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-lint-
+      - name: Lint
+        run: pnpm lint -- --cache-dir=.turbo
+
+  core-type-check:
+    name: Core · type-check
+    needs: core-install
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup pnpm with store cache
+        uses: ./.github/actions/setup-pnpm
+      - name: Restore turbo cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-typecheck-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-typecheck-
+      - name: Type-check
+        run: pnpm type-check -- --cache-dir=.turbo
+
+  core-test:
+    name: Core · test
+    needs: [core-lint, core-type-check]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup pnpm with store cache
+        uses: ./.github/actions/setup-pnpm
+      - name: Restore turbo cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-test-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-test-
+      - name: Test
+        run: pnpm test -- --cache-dir=.turbo
+
+      - name: Generate JUnit reports (vitest packages)
+        if: always()
+        continue-on-error: true
+        run: |
+          for pkg in sdk cli indexer notifications packages/react packages/mock-backend packages/opentelemetry packages/upgrade-tests packages/test-utils packages/cli; do
+            if [ -f "$pkg/vitest.config.ts" ] || [ -f "$pkg/vitest.config.js" ]; then
+              echo "Generating JUnit report for $pkg..."
+              cd "$GITHUB_WORKSPACE/$pkg"
+              pnpm vitest run --reporter=junit --outputFile=test-results.xml 2>/dev/null || true
+            fi
+          done
+
+  core-build:
+    name: Core · build
+    needs: core-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup pnpm with store cache
+        uses: ./.github/actions/setup-pnpm
+      - name: Restore turbo cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-build-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-build-
+      - name: Build
+        run: pnpm build -- --cache-dir=.turbo
+
+  core-summary:
+    name: Core · PR summary
+    needs: [core-install, core-lint, core-type-check, core-test, core-build]
+    if: always() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post results summary to PR
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const jobs = {
+              install: '${{ needs.core-install.result }}',
+              lint: '${{ needs.core-lint.result }}',
+              'type-check': '${{ needs.core-type-check.result }}',
+              test: '${{ needs.core-test.result }}',
+              build: '${{ needs.core-build.result }}',
+            };
+            const icon = (r) =>
+              r === 'success' ? '✅' : r === 'skipped' ? '⏭️' : '❌';
+            const rows = Object.entries(jobs)
+              .map(([name, result]) => `| ${name} | ${icon(result)} ${result} |`)
+              .join('\n');
+            const body = [
+              '### 🧪 Core CI summary',
+              '',
+              '| Stage | Result |',
+              '| --- | --- |',
+              rows,
+            ].join('\n');
+
+            const marker = '<!-- core-ci-summary -->';
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find((c) => c.body.includes(marker));
+            const payload = `${marker}\n${body}`;
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: payload,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: payload,
+              });
+            }

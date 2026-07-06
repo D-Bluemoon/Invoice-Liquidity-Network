@@ -202,4 +202,36 @@ KEY_WITH_EQUALS=value=with=equals
     expect(result.KEY_WITH_EQUALS).toBe("value=with=equals");
     expect(result["# Comment line"]).toBeUndefined();
   });
+
+  it("should reject invalid scenario", async () => {
+    const seeder = new TestnetAccountSeeder({
+      config: {
+        network: "testnet",
+        contractId: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4",
+        keypairPath: "/tmp/keypair.json",
+        networkPassphrase: "Test SDF Network ; September 2015",
+        rpcUrl: "https://soroban-testnet.stellar.org",
+      },
+      ui: uiMock,
+      outputPath: path.join(tempDir, ".env.testnet.accounts"),
+    });
+
+    await expect(seeder.seed({ scenario: "invalid-scenario" })).rejects.toThrow(/Invalid scenario/);
+  });
+
+  it("should reject invalid token", async () => {
+    const seeder = new TestnetAccountSeeder({
+      config: {
+        network: "testnet",
+        contractId: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4",
+        keypairPath: "/tmp/keypair.json",
+        networkPassphrase: "Test SDF Network ; September 2015",
+        rpcUrl: "https://soroban-testnet.stellar.org",
+      },
+      ui: uiMock,
+      outputPath: path.join(tempDir, ".env.testnet.accounts"),
+    });
+
+    await expect(seeder.seed({ token: "INVALID" })).rejects.toThrow(/Invalid token/);
+  });
 });

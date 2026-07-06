@@ -56,6 +56,19 @@ declare module 'supertest' {
   export default function supertest(app: any): any;
 }
 
+declare module 'twilio' {
+  export default function Twilio(sid: string, token: string): TwilioClient;
+  export interface TwilioClient {
+    messages: {
+      create(options: {
+        to: string;
+        from: string;
+        body: string;
+      }): Promise<{ sid: string; status: string }>;
+    };
+  }
+}
+
 declare module 'vitest' {
   export * from 'vitest';
 }

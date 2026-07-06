@@ -6,7 +6,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "prepare": "husky install",
+    "prepare": "husky install || true",
     "test": "jest",
     "lint": "eslint src --ext .ts"
   },
@@ -17,19 +17,22 @@
     "iln"
   ],
   "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
-    "@stellar/stellar-sdk": "^12.0.0"
+    "@stellar/stellar-sdk": "^15.0.1"
   },
   "devDependencies": {
-    "@types/jest": "^29.5.14",
-    "@types/node": "^20.0.0",
-    "jest": "^29.5.0",
-    "ts-jest": "^29.1.0",
-    "typescript": "^5.0.0"
-    ,
     "@commitlint/cli": "^17.6.0",
     "@commitlint/config-conventional": "^17.6.0",
-    "husky": "^8.0.0"
+    "@iln/eslint-config": "workspace:*",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^24.7.2",
+    "husky": "^8.0.0",
+    "jest": "^29.5.0",
+    "ts-jest": "^29.1.0",
+    "typescript": "^5.9.3"
   },
   "jest": {
     "preset": "ts-jest",

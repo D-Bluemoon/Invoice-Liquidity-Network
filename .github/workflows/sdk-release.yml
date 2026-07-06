@@ -1,0 +1,145 @@
+# ==============================================================================
+# SDK Release — Issue #232
+#
+# Publishes the @iln/sdk package (packages/sdk) to npm on every `v*` version tag,
+# with build provenance (--provenance) for supply-chain transparency, and creates
+# a matching GitHub Release whose body is the changelog section extracted from
+# CHANGELOG.md.
+#
+# On pull requests targeting `main` the workflow performs a dry run only
+# (install + build + pack), so packaging problems are caught before a tag is cut
+# — it never publishes from a PR.
+# ==============================================================================
+
+name: SDK Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'packages/sdk/**'
+      - '.github/workflows/sdk-release.yml'
+
+# Never run two publishes for the same tag concurrently.
+concurrency:
+  group: sdk-release-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: packages/sdk
+
+jobs:
+  # ----------------------------------------------------------------------------
+  # Dry run on PRs to main: prove the package installs, builds and packs cleanly.
+  # No publishing happens here.
+  # ----------------------------------------------------------------------------
+  dry-run:
+    name: Pack dry run (no publish)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: "9.0.0"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+
+      - name: Build SDK
+        run: pnpm build
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Pack (dry run)
+        run: pnpm pack --pack-destination "$RUNNER_TEMP"
+
+      - name: Show tarball contents
+        run: tar -tzf "$RUNNER_TEMP"/*.tgz
+
+  # ----------------------------------------------------------------------------
+  # Publish on `v*` tags: build, test, publish to npm with provenance, then
+  # create a GitHub Release with the changelog for this version.
+  # ----------------------------------------------------------------------------
+  publish:
+    name: Publish to npm
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # create the GitHub Release
+      id-token: write   # required for npm provenance attestation
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: "9.0.0"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+
+      - name: Build SDK
+        run: pnpm build
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Publish to npm with provenance
+        run: pnpm publish --provenance --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"
+
+      - name: Extract changelog for this release
+        id: changelog
+        working-directory: .
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          # Grab the first "## [x.y.z]" section from CHANGELOG.md. Falls back to a
+          # generic message if no matching section is found.
+          notes="$(awk '
+            /^## \[/ { if (seen) exit; seen=1; next }
+            seen { print }
+          ' CHANGELOG.md)"
+          if [ -z "${notes//[$' \t\n']/}" ]; then
+            notes="See CHANGELOG.md for details of this release."
+          fi
+          {
+            echo "notes<<__EOF__"
+            echo "$notes"
+            echo "__EOF__"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body: ${{ steps.changelog.outputs.notes }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
