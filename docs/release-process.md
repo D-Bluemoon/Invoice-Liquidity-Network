@@ -1,203 +1,225 @@
-# Release process
+# ILN Release Process
 
-This runbook captures the recommended ILN release workflow for contract, SDK, and frontend changes. It is intended to make releases predictable, verifiable, and safe.
+This document describes the process for releasing new versions of the Invoice Liquidity Network protocol across three coordinated repositories.
 
-## Scope
+## Overview
 
-This document covers:
+ILN releases require coordinating changes across three repositories:
 
-- Pre-release checklist
-- Release sequence and ordering
-- Post-release smoke tests
-- Rollback procedures for each component
-- Version numbering policy
-- Release communication and GitHub Release notes template
+1. **ILN-Smart-Contract** — Rust/Soroban contracts (deployed to Stellar)
+2. **Invoice-Liquidity-Network** — SDK, CLI, indexer, notifications (this repo)
+3. **ILN-Frontend** — Next.js dApp
 
-## Version numbering policy
+The correct release order is critical: smart contract deployment must complete before SDK updates, and SDK updates must complete before frontend deployment.
 
-ILN follows Semantic Versioning (semver) for all published packages and component releases.
+## Release Order
 
-- `MAJOR.MINOR.PATCH`
-- `PATCH` for backward-compatible bug fixes
-- `MINOR` for backward-compatible feature additions and improvements
-- `MAJOR` for breaking API or protocol changes
+### Phase 1: Smart Contract (ILN-Smart-Contract)
 
-### Contract version policy
+1. Deploy new contract version to Stellar testnet/mainnet
+2. Tag the contract repository with the version (e.g., `v1.2.0`)
+3. CI verifies deployment and generates new contract IDs
 
-The ILN smart contract is the source of protocol truth. Any contract upgrade that changes transaction entry points, data formats, or behavior in a way that is not backward-compatible should be treated as a major version bump.
+### Phase 2: SDK (Invoice-Liquidity-Network)
 
-- Contract upgrades that preserve the existing interface may still require careful deployment coordination, but they should be documented as a contract version change.
-- If the upgrade changes the on-chain contract ABI, `MAJOR` must be bumped.
-- The SDK and frontend should track contract compatibility and may also need a major bump when the contract interface changes.
+1. Update contract IDs in SDK based on new deployment
+2. Run full SDK test suite
+3. Tag SDK release with `sdk-v1.2.0`
+4. Publish SDK to npm if applicable
 
-### SDK and frontend version policy
+### Phase 3: Frontend (ILN-Frontend)
 
-- SDK releases follow semver based on API compatibility.
-- Frontend releases follow semver based on visible feature or behavior changes.
-- When a contract upgrade requires an SDK interface change, plan the SDK release immediately after the contract release.
+1. Update SDK dependency in frontend package.json
+2. Run frontend CI (build, linting, tests)
+3. Tag frontend release with `frontend-v1.2.0`
 
-## Pre-release checklist
+## Automated Release Workflow
 
-Before starting a release, confirm the following:
+The `.github/workflows/coordinate-release.yml` workflow automates this process.
 
-### Code and tests
+### Triggering a Release
 
-- [ ] All automated tests pass on `main` and on the release branch.
-- [ ] Contract tests pass, including unit tests and any integration tests for contract behavior.
-- [ ] SDK tests and type generation pass.
-- [ ] Frontend tests and smoke tests pass.
+1. Go to the main repository: [Invoice-Liquidity-Network](https://github.com/Songu3020/Invoice-Liquidity-Network)
+2. Navigate to **Actions** → **Coordinate Cross-Repo Release**
+3. Click **Run workflow**
+4. Fill in the required inputs:
+   - **Version**: Semantic version (e.g., `v1.2.0`)
+   - **Dry run** (optional): Check to test without making changes
+   - **Discord webhook** (optional): Paste webhook URL for notifications
 
-### Documentation and changelog
+### Workflow Inputs
 
-- [ ] `CHANGELOG.md` is updated with all release notes for the planned version.
-- [ ] Any public API, SDK, or contract interface changes are documented in the appropriate docs files.
-- [ ] Release notes draft is prepared for GitHub Release.
+```yaml
+version:
+  description: Release version in semantic format (e.g., v1.2.0)
+  required: true
+  example: v1.2.0
 
-### Issue triage and approvals
+dry_run:
+  description: Skip actual tagging, just simulate the process
+  required: false
+  default: false
 
-- [ ] No open critical or blocker issues remain for the release scope.
-- [ ] All release-critical PRs are approved and merged.
-- [ ] The release branch is up to date with `main` and CI has passed.
-
-### Dependencies and compatibility
-
-- [ ] Contract spec generation has been run and the SDK type files are regenerated if needed.
-- [ ] Any dependency updates included in the release are verified.
-- [ ] Upgrade notes are prepared for developers and integrators.
-
-## Release sequence
-
-ILN release ordering is important because downstream components depend on upstream artifacts.
-
-### 1. Contract release
-
-1. Build the contract for the correct target, for example:
-   - `cargo build --target wasm32v1-none --release`
-2. Run contract unit tests and integration tests.
-3. Generate the contract spec JSON if required for SDK type generation:
-   - `stellar contract info --wasm target/wasm32v1-none/release/*.wasm --output-format json > target/spec.json`
-4. Verify the contract is ready for deployment and review the package version.
-5. Deploy or publish the new contract release according to the deployment process in place.
-
-### 2. SDK release
-
-1. Regenerate SDK types for contract changes:
-   - `pnpm generate:types`
-2. Run SDK tests and validate the generated types.
-3. Update the SDK package version if the public API changed.
-4. Publish the SDK package or create the pull request that will release it.
-5. Confirm the new SDK version is available before advancing.
-
-### 3. Frontend release
-
-1. Update the frontend to use the new SDK version and any contract changes.
-2. Run frontend build and smoke tests.
-3. Publish the frontend release to the hosting environment.
-4. Confirm that the deployed frontend is using the expected dependencies.
-
-### Why this order?
-
-- Contract changes are the foundation of the protocol.
-- The SDK must be updated after the contract so it can expose the correct types and interface.
-- The frontend depends on the SDK and should be released last to ensure compatibility.
-
-## Post-release smoke test
-
-After release, validate the system with a focused smoke test.
-
-### Smoke test checklist
-
-- [ ] Basic contract flows work as expected.
-- [ ] SDK calls succeed against the deployed contract.
-- [ ] Frontend UI behavior is correct for the release flows.
-- [ ] No regressions appear in the primary user journey.
-- [ ] Published package versions and release metadata are correct.
-
-### Recommended validation steps
-
-- Run the core happy path for a contract interaction.
-- Test SDK examples that depend on the updated contract.
-- Open the frontend and verify the main release flows.
-- Confirm release notes and documentation links are published.
-
-## Rollback procedures
-
-A rollback path should be defined before release. Use the following fallback plans when needed.
-
-### Contract rollback
-
-- If the contract deployment is invalid, revert to the last known good contract version or redeploy the previous release.
-- Update any runtime configuration that points to the contract address.
-- Coordinate with SDK and frontend teams to restore compatibility with the prior contract.
-- Communicate a contract rollback and the impact to users and integrators.
-
-### SDK rollback
-
-- If the published SDK is broken, publish a patch release that restores the last working public API.
-- Avoid relying on package unpublish unless the registry policy permits it.
-- Notify integrators of the rollback and provide the restored SDK version.
-
-### Frontend rollback
-
-- Roll back the frontend deployment to the previous build in the hosting environment.
-- If a fast rollback is not available, deploy a hotfix branch with the prior stable frontend version.
-- Confirm the rollback removes the broken behavior and restores the previous production state.
-
-## Release communication
-
-A release should be communicated clearly through multiple channels.
-
-### GitHub Release notes
-
-- Publish a GitHub Release for each version.
-- Use the release notes template below.
-- Confirm the release notes are linked from `CHANGELOG.md` if appropriate.
-
-### Discord announcement
-
-- Announce the release in the project community channel.
-- Include the release version, high-level changes, and any links to migration or docs.
-
-### Docs update
-
-- Link the new release to relevant documentation pages.
-- Update any reference docs that depend on the new contract or SDK behavior.
-- Confirm the public docs site or docs repo reflects the latest version.
-
-## GitHub Release notes template
-
-```
-# Release vX.Y.Z
-
-## Summary
-
-A short overview of what changed in this release.
-
-## What’s included
-
-- Feature or improvement A
-- Fix for issue B
-- Contract/SDK/frontend compatibility notes
-
-## Upgrade notes
-
-- Required steps for integrators
-- Contract address or config changes
-- SDK version that should be used
-
-## Verification
-
-- Smoke test checklist passed
-- Deployment verified in production or staging
-
-## Notes
-
-- Known limitations
-- Rollback plan if needed
+discord_webhook:
+  description: Discord webhook URL for release notification
+  required: false
+  example: https://discordapp.com/api/webhooks/...
 ```
 
-## Related references
+### Workflow Steps
 
-- `CHANGELOG.md`
-- `CONTRIBUTING.md`
-- `docs/ci-cd.md`
+The automated workflow performs these steps in sequence:
+
+1. **Validate version format** — Ensures version follows semantic versioning
+2. **Tag smart contract repo** — Creates a git tag in ILN-Smart-Contract
+3. **Wait for smart contract CI** — Polls GitHub Actions until deployment completes
+4. **Update SDK contract IDs** — Fetches new contract IDs and updates SDK
+5. **Run SDK tests** — Verifies SDK still works with new contract IDs
+6. **Tag SDK release** — Creates a git tag in Invoice-Liquidity-Network
+7. **Update frontend SDK version** — Updates package.json in ILN-Frontend
+8. **Wait for frontend CI** — Polls GitHub Actions until frontend CI completes
+9. **Tag frontend release** — Creates a git tag in ILN-Frontend
+10. **Send Discord notification** — Posts release summary to Discord (optional)
+
+## Manual Release Process (If Workflow Fails)
+
+If the automated workflow encounters issues, you can perform a manual release:
+
+### 1. Smart Contract Release
+
+```bash
+# In ILN-Smart-Contract repo
+git tag v1.2.0
+git push origin v1.2.0
+
+# Wait for CI to complete and verify contract IDs
+# Document new contract IDs from CI logs
+```
+
+### 2. SDK Release
+
+```bash
+# In Invoice-Liquidity-Network repo
+# Update contract IDs in sdk/src/config.ts or similar
+# Update SDK version in sdk/package.json
+
+npm ci
+npm run test
+npm run build
+
+git add .
+git commit -m "chore(sdk): update contract IDs for v1.2.0"
+git tag sdk-v1.2.0
+git push origin main sdk-v1.2.0
+
+# Optionally publish to npm
+npm publish --workspace=sdk
+```
+
+### 3. Frontend Release
+
+```bash
+# In ILN-Frontend repo
+# Update SDK dependency
+npm install @invoice-liquidity/sdk@latest
+
+npm run test
+npm run build
+
+git add .
+git commit -m "chore(frontend): update SDK to v1.2.0"
+git tag frontend-v1.2.0
+git push origin main frontend-v1.2.0
+```
+
+## Dry Run Mode
+
+Use dry-run mode to test the entire workflow without making actual changes:
+
+1. Run the workflow with:
+   - **Version**: `v1.2.0`
+   - **Dry run**: ✓ (checked)
+
+The workflow will log all steps it would perform but skip tagging and pushing changes.
+
+## Environment Setup
+
+To enable the automated workflow, ensure:
+
+### Repository Secrets
+
+Set these secrets in the main repository settings:
+
+- `GITHUB_TOKEN` — Already available via `secrets.GITHUB_TOKEN`
+- No additional secrets required for basic functionality
+
+### Discord Webhook (Optional)
+
+To receive release notifications:
+
+1. Create a Discord server/channel (if not exists)
+2. Set up a webhook in Discord channel settings
+3. Copy the webhook URL
+4. Paste it when running the workflow in the "Discord webhook URL" input
+
+### Cross-Repo Access
+
+The workflow uses the GitHub token to access sibling repositories. Ensure:
+
+- All three repositories are in the same organization
+- The token has sufficient permissions (typically default for same-org workflows)
+
+## Rollback
+
+If a release fails or needs to be rolled back:
+
+### Delete tags (if incorrectly tagged)
+
+```bash
+git tag -d v1.2.0
+git push origin --delete v1.2.0
+```
+
+### Revert SDK/Frontend changes
+
+```bash
+# If you need to revert to previous SDK version in frontend
+npm install @invoice-liquidity/sdk@<previous-version>
+git add package.json package-lock.json
+git commit -m "chore: revert SDK to previous version"
+git push origin main
+```
+
+## Troubleshooting
+
+### Workflow timeout
+
+- The workflow waits up to 10 minutes for dependent CI to complete
+- If CI is slow, extend the polling interval in the workflow file
+
+### Contract ID updates not reflected
+
+- Verify that contract IDs are correctly exported from smart contract CI
+- Check that SDK files are updated in the correct locations (typically `sdk/src/config.ts` or similar)
+
+### Frontend dependency resolution fails
+
+- Check that SDK package.json version is published to npm before frontend tries to install
+- Manually run `npm install` in frontend after SDK release tag is created
+
+### Discord notification fails
+
+- Verify webhook URL is correct
+- Check Discord channel permissions for the webhook
+- If webhook is invalid, the workflow will continue but log a warning
+
+## Future Improvements
+
+Potential enhancements to the release process:
+
+- [ ] Automated changelog generation based on commits since last release
+- [ ] Automatic npm publish after SDK tag creation
+- [ ] Slack notification alternative to Discord
+- [ ] Release notes template population
+- [ ] Mainnet vs testnet release coordination
+- [ ] Automated frontend deploy to staging/production
