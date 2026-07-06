@@ -25,6 +25,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 notifications/*.txt
+.security/
 
 issue.md
 pr.md
@@ -33,5 +34,15 @@ fix.md
 dist/
 build/
 
+# Turbo cache
+.turbo/
+
+# Yarn
+.yarn/
+yarn.lock
+
 # Load test results
 tests/load/results/
+
+# Docker output directory
+.docker-output/

@@ -5,6 +5,16 @@ import type {
   ActorRole,
   WebhookStatus,
 } from "./types";
+import {
+  buildFundedSubject,
+  buildPaymentSubject,
+  buildDisputeSubject,
+  buildDueWarningSubject,
+  renderFundedEmail,
+  renderPaymentEmail,
+  renderDisputeEmail,
+  renderDueWarningEmail,
+} from "./templates";
 
 // ─── Dependency interfaces (injectable for testing) ────────────────────────────
 
@@ -121,24 +131,54 @@ export class NotificationService {
   }
 
   private buildEmailSubject(event: InvoiceEvent): string {
-    const labels: Record<string, string> = {
-      funded: `Invoice #${event.invoiceId} has been funded`,
-      paid: `Invoice #${event.invoiceId} has been settled`,
-      defaulted: `Invoice #${event.invoiceId} has defaulted`,
-      due_date_warning: `Invoice #${event.invoiceId} is due in 48 hours`,
-    };
-    return labels[event.type] ?? `Invoice #${event.invoiceId} update`;
+    switch (event.type) {
+      case "funded":
+        return buildFundedSubject(event);
+      case "paid":
+        return buildPaymentSubject(event);
+      case "defaulted":
+        return buildDisputeSubject(event);
+      case "due_date_warning":
+        return buildDueWarningSubject(event);
+      default:
+        return `Invoice #${event.invoiceId} update`;
+    }
   }
 
   private buildEmailBody(role: string, event: InvoiceEvent): string {
-    const roleLabel = role === "lp" ? "Liquidity Provider" : role.charAt(0).toUpperCase() + role.slice(1);
-    return [
-      `Hello ${roleLabel},`,
-      ``,
-      `Invoice #${event.invoiceId} status: ${event.type}`,
-      `Amount: ${event.amount}`,
-      `Freelancer: ${event.freelancer}`,
-      `Payer: ${event.payer}`,
-    ].join("\n");
+    const actorRole = role as ActorRole;
+    switch (event.type) {
+      case "funded":
+        return renderFundedEmail({
+          event,
+          recipientRole: actorRole === "payer" ? "payer" : "freelancer",
+        });
+      case "paid":
+        return renderPaymentEmail({
+          event,
+          recipientRole: actorRole === "lp" ? "lp" : "freelancer",
+        });
+      case "defaulted":
+        return renderDisputeEmail({
+          event,
+          recipientRole: actorRole === "lp" ? "lp" : "freelancer",
+        });
+      case "due_date_warning":
+        return renderDueWarningEmail({ event });
+      default: {
+        const roleLabel =
+          actorRole === "lp"
+            ? "Liquidity Provider"
+            : actorRole.charAt(0).toUpperCase() + actorRole.slice(1);
+        return [
+          `Hello ${roleLabel},`,
+          ``,
+          `Invoice #${event.invoiceId} status: ${event.type}`,
+          `Amount: ${event.amount}`,
+          `Freelancer: ${event.freelancer}`,
+          `Payer: ${event.payer}`,
+        ].join("\n");
+      }
+    }
   }
 }

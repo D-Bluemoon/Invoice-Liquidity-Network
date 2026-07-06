@@ -1,0 +1,28 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src/index.ts"],
+  "out": "../docs/sdk-api",
+  "name": "ILN SDK API Reference",
+  "readme": "README.md",
+  "exclude": ["**/*.test.ts", "**/generated/**", "**/__tests__/**"],
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "excludeExternals": true,
+  "includeVersion": true,
+  "navigation": {
+    "includeCategories": true,
+    "includeGroups": true
+  },
+  "categorizeByGroup": true,
+  "categoryOrder": ["Types", "Client", "Analytics", "Notifications"],
+  "sort": ["source-order"],
+  "visibilityFilters": {
+    "protected": false,
+    "private": false,
+    "@deprecated": true
+  },
+  "plugin": [],
+  "githubPages": true,
+  "hideBreadcrumbs": true,
+  "customCss": ""
+}

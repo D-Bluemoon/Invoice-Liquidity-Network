@@ -1,0 +1,322 @@
+# API Reference
+
+The ILN Indexer exposes a REST API for querying invoice data, protocol statistics, and liquidity provider information.
+
+**Base URL**: `http://localhost:3001` (configurable via `PORT` environment variable)
+
+## Endpoints
+
+### Health Check
+
+```
+GET /health
+```
+
+Returns the health status of the indexer service.
+
+**Response**:
+```json
+{
+  "status": "ok",
+  "db": "ok",
+  "lastSync": "2024-01-15T10:30:00.000Z",
+  "uptime": 3600000
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| status | string | Overall status: "ok" or "degraded" |
+| db | string | Database status: "ok" or "error" |
+| lastSync | string | ISO timestamp of last synced ledger |
+| uptime | number | Service uptime in milliseconds |
+
+---
+
+### List Invoices
+
+```
+GET /invoices
+```
+
+Query invoices with optional filters. All query parameters are optional and combined with AND logic.
+
+**Query Parameters**:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| status | string | Filter by status: Pending, Funded, Paid, Defaulted |
+| freelancer | string | Filter by freelancer Stellar address |
+| payer | string | Filter by payer Stellar address |
+| funder | string | Filter by funder Stellar address |
+| limit | number | Max results (default: 100, max: 100) |
+| cursor | string | Opaque cursor for pagination |
+
+**Response**:
+```json
+{
+  "invoices": [
+    {
+      "id": 1,
+      "freelancer": "G...",
+      "payer": "G...",
+      "amount": "10000000",
+      "due_date": 1705305600,
+      "discount_rate": 300,
+      "status": "Funded",
+      "funder": "G...",
+      "funded_at": 1705219200,
+      "created_at": 1705132800000,
+      "updated_at": 1705219200000
+    }
+  ],
+  "hasMore": true,
+  "nextCursor": "MQ=="
+}
+```
+
+**Example**:
+```bash
+# Get pending invoices
+curl "http://localhost:3001/invoices?status=Pending"
+
+# Paginated query
+curl "http://localhost:3001/invoices?limit=10&cursor=MQ=="
+```
+
+---
+
+### Get Invoice by ID
+
+```
+GET /invoice/:id
+```
+
+Retrieve a single invoice by its ID.
+
+**Path Parameters**:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| id | number | Invoice ID (positive integer) |
+
+**Response**:
+```json
+{
+  "invoice": {
+    "id": 1,
+    "freelancer": "G...",
+    "payer": "G...",
+    "amount": "10000000",
+    "due_date": 1705305600,
+    "discount_rate": 300,
+    "status": "Funded",
+    "funder": "G...",
+    "funded_at": 1705219200,
+    "created_at": 1705132800000,
+    "updated_at": 1705219200000
+  }
+}
+```
+
+**Errors**:
+- `400` - Invalid invoice ID
+- `404` - Invoice not found
+
+---
+
+### Protocol Statistics
+
+```
+GET /stats
+```
+
+Returns aggregate protocol statistics.
+
+**Response**:
+```json
+{
+  "totalInvoices": 150,
+  "totalVolume": "1500000000",
+  "totalYield": "45000000",
+  "defaultRate": 0.02
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| totalInvoices | number | Total number of invoices |
+| totalVolume | string | Total volume in stroops |
+| totalYield | string | Total yield earned by LPs in stroops |
+| defaultRate | number | Default rate (0-1) |
+
+---
+
+### Top Liquidity Providers
+
+```
+GET /lps/top
+```
+
+Returns top liquidity providers ranked by yield.
+
+**Query Parameters**:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| limit | number | Max results (default: 10, max: 100) |
+| period | string | Time period: "all", "week", or "month" |
+
+**Response**:
+```json
+[
+  {
+    "address": "G...",
+    "yield": "15000000",
+    "invoiceCount": 25
+  }
+]
+```
+
+---
+
+### LP Statistics
+
+```
+GET /lps/:address/stats
+```
+
+Returns statistics for a specific liquidity provider.
+
+**Path Parameters**:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| address | string | LP's Stellar address |
+
+**Response**:
+```json
+{
+  "deployed": "50000000",
+  "yield": "1500000",
+  "invoiceCount": 10,
+  "defaultRate": 0.05
+}
+```
+
+---
+
+### Freelancer Statistics
+
+```
+GET /freelancers/:address/stats
+```
+
+Returns statistics for a specific freelancer.
+
+**Path Parameters**:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| address | string | Freelancer's Stellar address |
+
+**Response**:
+```json
+{
+  "submitted": 20,
+  "funded": 15,
+  "totalReceived": "120000000",
+  "avgDiscount": 250
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| submitted | number | Total invoices submitted |
+| funded | number | Invoices that were funded |
+| totalReceived | string | Total amount received in stroops |
+| avgDiscount | number | Average discount rate in basis points |
+
+---
+
+### Invoice History
+
+```
+GET /history/:address
+```
+
+Returns invoice history for an address, filtered by role.
+
+**Path Parameters**:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| address | string | Stellar address |
+
+**Query Parameters**:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| role | string | Role filter: "freelancer", "payer", or "funder" (default: "freelancer") |
+
+**Response**:
+```json
+[
+  {
+    "id": 1,
+    "freelancer": "G...",
+    "payer": "G...",
+    "amount": "10000000",
+    "due_date": 1705305600,
+    "discount_rate": 300,
+    "status": "Paid",
+    "funder": "G...",
+    "funded_at": 1705219200,
+    "created_at": 1705132800000,
+    "updated_at": 1705305600000
+  }
+]
+```
+
+---
+
+## Rate Limiting
+
+The API implements rate limiting to prevent abuse:
+
+- **Default**: 100 requests per IP per 60-second window
+- **Configurable** via `RATE_LIMIT_WINDOW_MS` and `RATE_LIMIT_MAX` environment variables
+- **Whitelist**: Internal IPs can be exempted via `RATE_LIMIT_WHITELIST`
+
+Rate limit headers are included in responses:
+- `X-RateLimit-Limit`: Maximum requests per window
+- `X-RateLimit-Remaining`: Remaining requests in current window
+- `X-RateLimit-Reset`: Time when the window resets (Unix timestamp)
+
+---
+
+## Caching
+
+Responses are cached to improve performance:
+
+- **In-memory**: Default caching layer
+- **Redis**: Optional distributed caching via `REDIS_URL` environment variable
+- **Cache invalidation**: Invoice caches are automatically invalidated when new events are processed
+
+---
+
+## Error Responses
+
+All error responses follow this format:
+
+```json
+{
+  "error": "Error message describing the issue"
+}
+```
+
+Common HTTP status codes:
+- `400` - Bad request (invalid parameters)
+- `404` - Resource not found
+- `429` - Rate limit exceeded
+- `500` - Internal server error

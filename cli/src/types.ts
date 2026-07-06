@@ -7,6 +7,10 @@ export interface ResolvedConfig {
   networkPassphrase: string;
   rpcUrl: string;
   tokenId?: string;
+  /** Version pinning. */
+  requiredVersion?: string;
+  /** Whether update notifications are enabled. */
+  autoUpdate?: boolean;
 }
 
 export interface FileConfig {
@@ -34,6 +38,17 @@ export interface Invoice {
 
 export interface ListedInvoice extends Invoice {
   role: "freelancer" | "payer" | "funder";
+}
+
+export interface ProtocolConfig {
+  minInvoiceAmount: bigint;
+  maxDiscountRate: number;
+  protocolFeeBps: number;
+  minPayerReputation: number;
+  decayRateBps: number;
+  maxInvoiceDuration?: number;
+  minInvoiceDuration?: number;
+  gracePeriodSeconds?: number;
 }
 
 export interface SubmitInvoiceInput {
@@ -75,4 +90,18 @@ export interface SimulationLike {
   result?: {
     retval?: unknown;
   };
+}
+
+export interface Environment {
+  name: string;
+  contractId: string;
+  rpcUrl: string;
+  networkPassphrase: string;
+  keypairPath?: string;
+  isActive: boolean;
+}
+
+export interface EnvironmentConfig {
+  current: string | null;
+  environments: Record<string, Environment>;
 }

@@ -1,0 +1,61 @@
+name: SDK API Docs
+
+on:
+  push:
+    paths:
+      - 'packages/sdk/src/**'
+  pull_request:
+    paths:
+      - 'packages/sdk/src/**'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  pnpm-cache:
+    uses: ./.github/workflows/reusable-cache-pnpm.yml
+
+  sdk-api-docs:
+    name: sdk-api-docs
+    needs: [pnpm-cache]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm with store cache
+        uses: ./.github/actions/setup-pnpm
+
+      - name: Generate SDK API docs
+        id: generate
+        run: pnpm --filter @iln/sdk docs:generate
+
+      - name: Commit and push generated docs
+        if: success() && github.event_name != 'pull_request'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add packages/docs/content/sdk-reference/generated/
+          git diff --cached --quiet || git commit -m "chore(docs): regenerate SDK API reference [skip ci]"
+          git push
+
+      - name: Comment on PR with undocumented symbols
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🚨 **SDK API docs generation failed!**\n\nRun `pnpm --filter @iln/sdk docs:generate` locally to see which public symbols are missing JSDoc descriptions.'
+            })
+
+      - name: Write failure to job summary
+        if: failure() && github.event_name != 'pull_request'
+        run: |
+          echo "## SDK Docs Generation Failed" >> $GITHUB_STEP_SUMMARY
+          echo "Undocumented symbols detected. Run \`pnpm --filter @iln/sdk docs:generate\` locally." >> $GITHUB_STEP_SUMMARY
