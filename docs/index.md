@@ -4,6 +4,7 @@
 
 - [**Changelog**](changelog.md) — Aggregated release history with component labels
 - [Analytics](analytics.md)
+- [DeFi Integrations](defi-integrations.md) — Stellar DEX, AMM, Aquarius, and lending composability
 - [LP Funding Tutorial](tutorials/lp-funding.md)
 - [Benchmarks](benchmarks.md)
 - [Governance](governance.md)
