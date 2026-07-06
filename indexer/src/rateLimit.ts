@@ -24,7 +24,12 @@ export function createApiRateLimiter(): RateLimitRequestHandler {
     limit: CONFIG.rateLimitMax,
     standardHeaders: "draft-6",
     legacyHeaders: false,
-    skip: (req: Request) => CONFIG.rateLimitWhitelist.includes(req.ip ?? ""),
+    skip: (req: Request) => {
+      const ip = req.ip ?? "";
+      // Normalize ::ffff:x.x.x.x (IPv4-mapped IPv6) and ::1 to their IPv4 equivalents
+      const normalized = ip.startsWith("::ffff:") ? ip.slice(7) : ip === "::1" ? "127.0.0.1" : ip;
+      return CONFIG.rateLimitWhitelist.includes(ip) || CONFIG.rateLimitWhitelist.includes(normalized);
+    },
     message: {
       error: "Too many requests - please slow down and try again shortly.",
     },

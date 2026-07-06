@@ -1,7 +1,61 @@
 # SDK Trust Model
 
-This document explains the trust assumptions and validation behavior for `@invoice-liquidity/sdk`.
-It is intended for integrators who need to understand what the SDK checks, what it delegates, and what must be protected outside the SDK.
+This document explains the trust assumptions, key management guidelines, security assumptions, threat model, and best practices for `@invoice-liquidity/sdk`. It is intended for integrators who need to understand what the SDK checks, what it delegates, and what must be protected outside the SDK.
+
+For the protocol-wide attack surface, see [threat-model.md](./threat-model.md). For smart contract authorization logic, see [contracts/invoice-contract.md](./contracts/invoice-contract.md). For package provenance and supply-chain verification, see [security.md](./security.md).
+
+---
+
+## Trust Model Overview
+
+`@invoice-liquidity/sdk` is a thin client. It builds Stellar/Soroban transactions, validates address format, enforces signer identity, and delegates everything else — business-rule enforcement, cryptographic verification, and key custody — to the chain and to the signer implementation you provide.
+
+### Trust chain
+
+```
+User (holds private key in Freighter or backend)
+  │  signs via createFreighterSigner or createKeypairSigner
+  ▼
+SDK (builds XDR, validates address format, enforces signer identity match)
+  │  submits over TLS
+  ▼
+Soroban RPC Node (simulates, prepares, and forwards the transaction)
+  │
+  ▼
+Stellar Network / Soroban Contract (cryptographically verifies signature, enforces rules)
+  │  emits contract events
+  ▼
+Indexer (read-only event mirror, eventually consistent)
+```
+
+**What breaks at each hop if that hop is compromised:**
+
+| Compromised hop | Impact |
+|---|---|
+| User's key (stolen or phished) | Attacker can submit, fund, pay, or claim default on behalf of the user |
+| SDK configuration (`rpcUrl`, `contractId`, `networkPassphrase`) | SDK may target a malicious contract or a different network |
+| Soroban RPC node | Simulation results can be forged; prepared XDR may differ from simulated XDR |
+| Network / contract | Protocol-level invariants are violated; out of scope for the SDK |
+| Indexer | Dashboards show stale or incorrect state; canonical state on-chain is unaffected |
+
+---
+
+## Security Assumptions
+
+The SDK provides its stated security properties only when all of the following are true. If any assumption is violated, the protection it supports is lost.
+
+| Assumption | If violated |
+|---|---|
+| The Soroban RPC node is honest and TLS-terminated | Simulation results may be forged and bad XDR may be prepared for signing |
+| `contractId` in config matches the genuine ILN deployment | SDK targets an attacker-controlled contract that can steal assets |
+| `networkPassphrase` in config is correct for the target network | Signed transactions may be replayed on a different network |
+| The signer holds the correct keypair and protects it from disclosure | Unauthorized transactions can be submitted using the stolen identity |
+| The calling application does not mutate SDK internals or inject hostile callbacks | Prototype pollution or callback injection can corrupt transaction construction |
+| Private keys never leave the signer boundary | Key theft enables full account takeover without any further SDK involvement |
+| Batch operations all originate from the same source account | Mixing accounts in a batch produces unpredictable authorization failures |
+| `OfflineManager` storage is not accessible to untrusted code | Queued pre-signed payloads can be replayed or tampered with |
+
+---
 
 ## What the SDK validates
 
@@ -16,6 +70,8 @@ It is intended for integrators who need to understand what the SDK checks, what 
 - **Signer identity checks**
   - State-changing operations verify the signer public key matches the expected `freelancer`, `funder`, or payer address when required.
   - This prevents SDK calls from being signed by the wrong account.
+
+---
 
 ## What the SDK does not validate
 
@@ -35,6 +91,8 @@ It is intended for integrators who need to understand what the SDK checks, what 
   - The SDK validates low-level input shape and address format, but it is not a complete policy engine.
   - It does not validate whether a transaction is semantically correct for your application beyond the contract invocation.
 
+---
+
 ## What the SDK trusts
 
 - **Soroban RPC node**
@@ -53,6 +111,8 @@ It is intended for integrators who need to understand what the SDK checks, what 
   - The SDK trusts the `contractId`, `rpcUrl`, and `networkPassphrase` provided in configuration.
   - It does not verify that the contract address belongs to the genuine Invoice Liquidity Network deployment.
 
+---
+
 ## Trust levels by component
 
 - **SDK input validation**: Low-to-moderate trust
@@ -70,43 +130,220 @@ It is intended for integrators who need to understand what the SDK checks, what 
 - **Contract logic**: High trust
   - Business rules, token allowlists, and amount constraints are enforced by the deployed contract.
 
+---
+
+## Key Management Guidelines
+
+The `TransactionSigner` interface is the highest-trust boundary in the SDK. Choose the right implementation for your environment and follow the guidance below.
+
+### Browser / frontend (Freighter)
+
+Use `createFreighterSigner` for any integration that runs in a user's browser. Freighter stores private keys in the extension's secure enclave and never exposes them to page JavaScript.
+
+```typescript
+import { createFreighterSigner, ILNSdk } from "@invoice-liquidity/sdk";
+
+const signer = createFreighterSigner();
+const sdk = new ILNSdk({
+  contractId: process.env.CONTRACT_ID,
+  rpcUrl: process.env.RPC_URL,
+  networkPassphrase: process.env.NETWORK_PASSPHRASE,
+  signer,
+});
+```
+
+Rules for browser signing:
+
+- Never bundle a `secretKey` in client-side code or environment variables that are embedded in the bundle.
+- `createFreighterSigner` internally calls `assertFreighterNetwork` to verify the extension is connected to the expected `networkPassphrase`. If the user's wallet is on the wrong network, the SDK throws before signing.
+- Always display the invoice ID, counterparty address, and amount to the user before they approve the signing prompt. The signing dialog itself is controlled by the extension; your UI context is what the user sees first.
+
+### Backend / Node.js (keypair signer)
+
+Use `createKeypairSigner` only in isolated, server-side processes where the secret key is never exposed to the network or browser.
+
+```typescript
+import { createKeypairSigner, ILNSdk } from "@invoice-liquidity/sdk";
+
+const signer = createKeypairSigner(process.env.SECRET_KEY);
+const sdk = new ILNSdk({
+  contractId: process.env.CONTRACT_ID,
+  rpcUrl: process.env.RPC_URL,
+  networkPassphrase: process.env.NETWORK_PASSPHRASE,
+  signer,
+});
+```
+
+Rules for backend signing:
+
+- Load `SECRET_KEY` from environment variables or a secrets manager (e.g., AWS Secrets Manager, Vault). Never hardcode it.
+- Never log `secretKey`, the `Keypair` object, or signed XDR strings.
+- Run the signing process in a network-isolated environment with no inbound public access.
+- Rotate keys on a defined schedule. Stellar supports adding and removing signers from an account without disrupting the account's on-chain history.
+- Restrict filesystem and process access in the signing service so that a compromised dependency cannot read environment variables.
+
+### Production backend (HSM or external KMS)
+
+For production deployments that require hardware-level key isolation, implement a custom `TransactionSigner` that delegates to an HSM, AWS KMS, or Hashicorp Vault. The private key never leaves the hardware boundary.
+
+```typescript
+import type { SignTransactionOptions, TransactionSigner } from "@invoice-liquidity/sdk";
+
+function createVaultSigner(publicKey: string): TransactionSigner {
+  return {
+    async getPublicKey() {
+      return publicKey;
+    },
+    async signTransaction(transactionXdr: string, options: SignTransactionOptions) {
+      // Send XDR to Vault Transit engine (or HSM API) for signing.
+      // The secret key never leaves the Vault boundary.
+      const response = await vault.transit.sign({
+        name: "iln-signer",
+        input: transactionXdr,
+        hash_algorithm: "sha2-256",
+      });
+      // Rehydrate the transaction and inject the signature.
+      return attachSignature(transactionXdr, response.signature, options.networkPassphrase);
+    },
+  };
+}
+```
+
+The `TransactionSigner` contract guarantees that:
+- `getPublicKey()` returns the Stellar public key (G... address) corresponding to the key material.
+- `signTransaction(xdr, options)` returns a fully signed XDR string using the same key material.
+
+If your custom signer returns a public key from one keypair but signs with another, the on-chain signature verification will fail, and you will receive a `TransactionFailedError`.
+
+### Key isolation rules (all environments)
+
+- **One keypair per role.** Freelancers, funders, and payers should each use distinct Stellar accounts. Sharing a keypair across roles can cause identity confusion in signer identity checks.
+- **Separate testnet and mainnet keys.** Never use the same `secretKey` on both networks. `ILN_TESTNET` is exported from `sdk/src/signers.ts` as a convenience config for testnet.
+- **Do not use protocol keys for admin or treasury operations.** If the contract has admin or upgrade authorities, use a dedicated keypair managed separately from signing keys used by SDK operations.
+
+---
+
+## SDK-Specific Threat Model
+
+The following threats are specific to SDK integration. For the full protocol threat model — including frontend, API, indexer, and governance surface — see [threat-model.md](./threat-model.md).
+
+### Dependency compromise
+
+**Threat:** A malicious npm package in the dependency tree overrides globals (`fetch`, `URL`, crypto helpers) or injects payload-shaping callbacks that mutate transaction parameters after SDK validation.
+
+**SDK mitigation:** The SDK uses typed helpers, validates payload shapes before SCVal encoding, and keeps the transaction construction surface small and explicit.
+
+**Integrator action:**
+- Verify the SDK's package attestation on every install: `npm audit signatures @invoice-liquidity/sdk`. See [security.md](./security.md) for SLSA Level 3 verification details.
+- Pin `@invoice-liquidity/sdk` to an exact version in your `package-lock.json` or `yarn.lock`.
+- Review transitive dependency updates before merging automated dependency PRs.
+
+### XDR interception and replay
+
+**Threat:** An attacker mutates the XDR between simulation and signing, or replays a signed transaction envelope on a different network or at a future time.
+
+**SDK mitigation:** The SDK builds, prepares, and signs in one validated pipeline using the same transaction object. The `networkPassphrase` is embedded in every signed transaction, binding it cryptographically to the target network.
+
+**Integrator action:**
+- Never accept raw XDR payloads from user input, third-party APIs, or untrusted sources and pass them directly to a signer.
+- If you cache or queue XDR between stages, store it in a tamper-evident location and re-validate before signing.
+
+### Signer impersonation
+
+**Threat:** A custom `TransactionSigner` implementation returns a different public key from `getPublicKey()` than the one actually used to sign in `signTransaction()`.
+
+**SDK mitigation:** Before building a write transaction, the SDK calls `signer.getPublicKey()` and compares the result against the expected role address (`params.freelancer`, `params.funder`, or `params.payer`). A mismatch throws before any transaction is built.
+
+**Integrator action:**
+- Prefer `createKeypairSigner` or `createFreighterSigner` over custom implementations.
+- If you write a custom signer, ensure `getPublicKey()` and `signTransaction()` derive the address from the same underlying key material.
+- Test your custom signer against a full SDK integration (not just the interface) before deploying.
+
+### Configuration poisoning
+
+**Threat:** An attacker controls `contractId`, `rpcUrl`, or `networkPassphrase` — for example, by injecting environment variables at runtime or by intercepting a dynamic config fetch.
+
+**SDK mitigation:** None. The SDK fully trusts configuration. It does not pin, verify, or compare config values against a known-good source.
+
+**Integrator action:**
+- Hardcode or pin `contractId` and `networkPassphrase` in server-side environment config, not in user-supplied input or a dynamically fetched remote file.
+- Load config from environment variables at startup; do not accept config overrides from API request parameters or query strings.
+- Maintain a separate, trusted reference for the canonical `contractId` (for example, pinned in a checked-in constants file), and validate against it at startup.
+
+### Offline queue exposure
+
+**Threat:** The `OfflineManager` queues operations when the network is unavailable and persists them to storage (e.g., `localStorage` in a browser). Unsigned XDR stored in the queue can be read, modified, or replayed by any code with access to that storage.
+
+**SDK behavior:** Operations are enqueued before signing. The signer is invoked at submission time, not at enqueue time, so the queue contains pre-signing parameters rather than signed payloads. However, the parameters are enough for an attacker to construct and submit equivalent transactions if they can also access a signer.
+
+**Integrator action:**
+- In sensitive deployments, use encrypted or access-controlled storage for the offline queue.
+- Scope the `OfflineManager`'s storage key so that different users or roles cannot read each other's queues.
+- Monitor for unexpected queue submissions after reconnect.
+
+---
+
 ## Recommended best practices
 
-- Use a dedicated Soroban RPC / Horizon node for production workloads.
-  - Dedicated nodes reduce risk of shared or misconfigured infrastructure leaking stale or incorrect state.
+- **Use a dedicated Soroban RPC / Horizon node for production workloads.**
+  Dedicated nodes reduce risk of shared or misconfigured infrastructure leaking stale or incorrect state.
 
-- Verify transaction simulation before signing and sending.
-  - The SDK uses simulation to expose contract errors before signing, but client code should inspect simulation results and handle failures explicitly.
+- **Verify transaction simulation before signing and sending.**
+  The SDK uses simulation to expose contract errors before signing, but client code should inspect simulation results and handle failures explicitly.
 
-- Never expose secret keys to frontend code.
-  - Use browser-safe signing providers such as Freighter and keep `createKeypairSigner` secrets on backend services only.
+- **Never expose secret keys to frontend code.**
+  Use browser-safe signing providers such as Freighter and keep `createKeypairSigner` secrets on backend services only.
 
-- Validate application-level business data before passing it to the SDK.
-  - Check invoice amounts, due dates, and counterparty addresses in your own code to avoid invalid user input.
+- **Validate application-level business data before passing it to the SDK.**
+  Check invoice amounts, due dates, and counterparty addresses in your own code to avoid invalid user input.
 
-- Confirm `contractId` and `networkPassphrase` are correct for your deployment.
-  - A wrong contract ID or network configuration can cause the SDK to target the wrong Soroban contract.
+- **Confirm `contractId` and `networkPassphrase` are correct for your deployment.**
+  A wrong contract ID or network configuration can cause the SDK to target the wrong Soroban contract. Validate these values at startup against a pinned reference — not from the same source as your secret key.
+
+- **Audit custom `TransactionSigner` implementations.**
+  Any code you write that implements `TransactionSigner` sits in the highest-trust position in the SDK stack. Have it reviewed separately from the rest of your integration.
+
+- **Use testnet for all development and staging.**
+  Export `ILN_TESTNET` from `sdk/src/signers.ts` as your base config. Never use mainnet keys in a development or CI environment.
+
+- **Inspect simulation results for fee and auth anomalies.**
+  Before accepting a `simulateTransaction` result, check for unexpected fee values, authorization requirements, or contract errors. Abort if the result does not match your expectations.
+
+- **Monitor for unexpected transactions.**
+  Subscribe to address-level events via the indexer to detect unauthorized fund movements against your accounts. An unexpected `InvoiceFundedEvent` or `InvoiceDefaultedEvent` for your address is a signal of key compromise or misconfiguration.
+
+---
 
 ## Security notes on XDR serialization
 
 - The SDK serializes transactions to XDR for signing and submission.
-  - Raw XDR is treated as the canonical transaction format between the SDK and signer.
+  Raw XDR is treated as the canonical transaction format between the SDK and signer.
 
 - Do not trust XDR payloads received from untrusted sources.
-  - Only sign XDR generated by your own SDK instance or a trusted client-side provider.
+  Only sign XDR generated by your own SDK instance or a trusted client-side provider.
 
 - `TransactionBuilder.fromXDR(...)` is used internally to rehydrate signed transactions.
-  - This call assumes the transaction belongs to the configured network passphrase.
+  This call assumes the transaction belongs to the configured network passphrase.
 
 - Avoid exposing signed XDR in insecure logs, browser storage, or third-party channels.
-  - Signed transactions can be submitted or replayed if intercepted before network submission.
+  Signed transactions can be submitted or replayed if intercepted before network submission.
+
+---
 
 ## Summary
 
-`@invoice-liquidity/sdk` is a thin wrapper that:
+`@invoice-liquidity/sdk` is a thin transaction builder that:
 
 - validates low-level address format and request shape,
-- delegates most business-rule enforcement to the deployed Soroban contract,
+- enforces signer identity for state-changing operations,
+- delegates all business-rule enforcement to the deployed Soroban contract,
 - and depends on trusted RPC/Horizon nodes and signer implementations for correctness.
 
-Integrators should treat the SDK as a client-side helper, not a security boundary for business or off-chain validation.
+The SDK's security posture is only as strong as the key management, RPC node, and configuration it is given. Integrators are responsible for protecting private keys, pinning configuration, and verifying package integrity. The SDK is a client-side helper, not a security boundary for business or off-chain validation.
+
+**Related documents:**
+
+- [threat-model.md](./threat-model.md) — Protocol-wide attack surface (frontend, API, indexer, governance)
+- [contracts/invoice-contract.md](./contracts/invoice-contract.md) — On-chain authorization and state machine
+- [security.md](./security.md) — Package provenance and SLSA Level 3 verification
+- [notifications.md](./notifications.md) — Webhook HMAC signing and WebSocket subscription security

@@ -11,6 +11,8 @@ import {
 } from "@stellar/stellar-sdk";
 import { createLogger } from "./logger";
 import { track } from "./usage-analytics";
+import { Cache, type CacheOptions } from "./cache";
+import { Validators } from "./validators";
 
 import type { Invoice, InvoiceState } from "@iln/shared";
 
@@ -35,7 +37,9 @@ import { openSSE } from "./stream";
 import { ILNEventEmitter } from "./event-emitter";
 import type { InvoiceEventData, WalletEventData, ErrorEventData } from "./event-emitter";
 
+/** Callback invoked when a contract event is received via SSE. */
 export type EventCallback = (event: ContractEvent) => void | Promise<void>;
+/** Function that terminates an active event subscription. */
 export type Unsubscribe = () => void;
 
 import { checkCompatibility } from "./compatibility";
@@ -49,6 +53,13 @@ import {
   WalletNotConnectedError,
   ILNError,
 } from "./errors";
+import {
+  OfflineManager,
+  OfflineQueuedError,
+  type OfflineConfig,
+  type OfflineQueueItem,
+  type OfflineState,
+} from "./offline";
 import {
   resolveRequestTimeouts,
   TimeoutError,
@@ -70,6 +81,35 @@ type SimulationLike = {
   };
 };
 
+/**
+ * Main SDK client for interacting with the ILN Soroban smart contract.
+ *
+ * Provides methods for submitting, funding, paying, and querying invoices,
+ * as well as batch operations, real-time event subscriptions, and protocol
+ * configuration access.
+ *
+ * @example
+ * ```ts
+ * import { ILNSdk, ILN_TESTNET, createKeypairSigner } from "@invoice-liquidity/sdk";
+ *
+ * const sdk = new ILNSdk({
+ *   ...ILN_TESTNET,
+ *   signer: createKeypairSigner(secretKey),
+ * });
+ *
+ * // Submit an invoice
+ * const invoiceId = await sdk.submitInvoice({
+ *   freelancer: "GABC...",
+ *   payer: "GDEF...",
+ *   amount: 1000000n,
+ *   dueDate: Math.floor(Date.now() / 1000) + 86400,
+ *   discountRate: 500,
+ * });
+ *
+ * // Get invoice details
+ * const invoice = await sdk.getInvoice(invoiceId);
+ * ```
+ */
 export class ILNSdk {
   private readonly contractId: string;
   private readonly networkPassphrase: string;
@@ -80,7 +120,14 @@ export class ILNSdk {
   private protocolConfigCache: { expiresAt: number; value: ProtocolConfig } | null = null;
   private readonly logger = createLogger("client");
   private readonly analyticsNetwork: string;
+  private readonly cache: Cache<unknown>;
+  private readonly cacheEnabled: boolean;
+  private offlineManager: OfflineManager | null = null;
 
+  /**
+   * Create a new ILN SDK client.
+   * @param config - SDK configuration including contract ID, RPC URL, and optional signer.
+   */
   constructor(config: ILNSdkConfig) {
     this.contractId = config.contractId;
     this.networkPassphrase = config.networkPassphrase;
@@ -89,6 +136,15 @@ export class ILNSdk {
     this.signer = config.signer;
     this.requestTimeouts = resolveRequestTimeouts(config);
     this.analyticsNetwork = config.networkPassphrase.includes('Test SDF Network') ? 'testnet' : 'mainnet';
+    
+    const cacheConfig = config.cache ?? { ttl: 60000, storage: "memory", enabled: true };
+    this.cache = new Cache(cacheConfig);
+    this.cacheEnabled = cacheConfig.enabled ?? true;
+
+    if (config.offline !== undefined) {
+      this.offlineManager = new OfflineManager(config.offline);
+      this.offlineManager.onSubmit((item) => this.executeQueuedOperation(item));
+    }
   }
 
   private async wrapRpcCall<T>(promise: Promise<T>, operationName: string): Promise<T> {
@@ -122,6 +178,24 @@ export class ILNSdk {
     }
   }
 
+  /**
+   * Build a transaction operation for submitting an invoice.
+   * Use this to compose batch transactions with other operations.
+   *
+   * @param params - Invoice submission parameters.
+   * @returns A Stellar transaction operation that can be added to a TransactionBuilder.
+   *
+   * @example
+   * ```ts
+   * const op = sdk.buildSubmitInvoiceOperation({
+   *   freelancer: "GABC...",
+   *   payer: "GDEF...",
+   *   amount: 1000000n,
+   *   dueDate: Math.floor(Date.now() / 1000) + 86400,
+   *   discountRate: 500,
+   * });
+   * ```
+   */
   public buildSubmitInvoiceOperation(params: SubmitInvoiceParams): TransactionOperation {
     return this.buildInvokeContractFunctionOperation(params.freelancer, "submit_invoice", [
       this.toAddress(params.freelancer),
@@ -132,6 +206,13 @@ export class ILNSdk {
     ]);
   }
 
+  /**
+   * Build a transaction operation for funding an invoice.
+   * Use this to compose batch transactions with other operations.
+   *
+   * @param params - Invoice funding parameters.
+   * @returns A Stellar transaction operation.
+   */
   public buildFundInvoiceOperation(params: FundInvoiceParams): TransactionOperation {
     return this.buildInvokeContractFunctionOperation(params.funder, "fund_invoice", [
       this.toAddress(params.funder),
@@ -139,12 +220,25 @@ export class ILNSdk {
     ]);
   }
 
+  /**
+   * Build a transaction operation for marking an invoice as paid.
+   *
+   * @param sourceAddress - The Stellar address of the payer marking the invoice as paid.
+   * @param params - Payment parameters containing the invoice ID.
+   * @returns A Stellar transaction operation.
+   */
   public buildMarkPaidOperation(sourceAddress: string, params: MarkPaidParams): TransactionOperation {
     return this.buildInvokeContractFunctionOperation(sourceAddress, "mark_paid", [
       nativeToScVal(params.invoiceId, { type: "u64" }),
     ]);
   }
 
+  /**
+   * Build a transaction operation for claiming a default on an unpaid invoice.
+   *
+   * @param params - Default claim parameters.
+   * @returns A Stellar transaction operation.
+   */
   public buildClaimDefaultOperation(params: ClaimDefaultParams): TransactionOperation {
     return this.buildInvokeContractFunctionOperation(params.funder, "claim_default", [
       this.toAddress(params.funder),
@@ -152,6 +246,24 @@ export class ILNSdk {
     ]);
   }
 
+  /**
+   * Build a batched transaction containing multiple operations.
+   * Simulates the transaction to validate all operations before returning.
+   *
+   * @param operations - Array of Stellar transaction operations (1-100 operations).
+   * @returns The built and simulated transaction, ready for signing and submission.
+   * @throws {ValidationError} If the batch is empty or exceeds 100 operations.
+   * @throws {WalletNotConnectedError} If no signer is configured and no operation sources are provided.
+   *
+   * @example
+   * ```ts
+   * const ops = [
+   *   sdk.buildSubmitInvoiceOperation({ ... }),
+   *   sdk.buildFundInvoiceOperation({ ... }),
+   * ];
+   * const tx = await sdk.batch(ops);
+   * ```
+   */
   public  async batch(operations: TransactionOperation[]): Promise<BuiltTransaction> {
     if (operations.length === 0) {
       throw new ValidationError("Batch must contain at least one operation.");
@@ -180,6 +292,22 @@ export class ILNSdk {
     return transaction;
   }
 
+  /**
+   * Batch-submit multiple invoices in a single transaction.
+   * Only invoices where the freelancer matches the signer address are included.
+   *
+   * @param params - Batch submission parameters containing an array of invoices.
+   * @returns Results for each invoice including success/failure status and total fee.
+   *
+   * @example
+   * ```ts
+   * const result = await sdk.batchSubmitInvoices({
+   *   invoices: [
+   *     { freelancer: "GABC...", payer: "GDEF...", amount: 1000n, dueDate: 1234567890, discountRate: 500 },
+   *   ],
+   * });
+   * ```
+   */
   async batchSubmitInvoices(params: BatchSubmitParams): Promise<BatchResult> {
     const signerAddress = await this.requireSignerAddress();
     const results: BatchResult["results"] = [];
@@ -232,6 +360,20 @@ export class ILNSdk {
     }
   }
 
+  /**
+   * Batch-fund multiple invoices in a single transaction.
+   *
+   * @param params - Batch funding parameters with funder address and invoice IDs.
+   * @returns Results for each invoice including success/failure status and total fee.
+   *
+   * @example
+   * ```ts
+   * const result = await sdk.batchFundInvoices({
+   *   funder: "GABC...",
+   *   invoiceIds: [1n, 2n, 3n],
+   * });
+   * ```
+   */
   async batchFundInvoices(params: BatchFundParams): Promise<BatchResult> {
     const signerAddress = await this.requireSignerAddress();
     const results: BatchResult["results"] = [];
@@ -281,6 +423,19 @@ export class ILNSdk {
     }
   }
 
+  /**
+   * Batch-mark multiple invoices as paid in a single transaction.
+   *
+   * @param params - Batch payment parameters with invoice IDs.
+   * @returns Results for each invoice including success/failure status and total fee.
+   *
+   * @example
+   * ```ts
+   * const result = await sdk.batchMarkPaid({
+   *   invoiceIds: [1n, 2n, 3n],
+   * });
+   * ```
+   */
   async batchMarkPaid(params: BatchPayParams): Promise<BatchResult> {
     const signerAddress = await this.requireSignerAddress();
     const results: BatchResult["results"] = [];
@@ -318,6 +473,18 @@ export class ILNSdk {
     }
   }
 
+  /**
+   * Estimate the network fee for a batch of operations without submitting.
+   *
+   * @param operations - Array of Stellar transaction operations.
+   * @returns The estimated total fee in stroops.
+   *
+   * @example
+   * ```ts
+   * const fee = await sdk.estimateBatchFee(ops);
+   * console.log(`Estimated fee: ${fee} stroops`);
+   * ```
+   */
   async estimateBatchFee(operations: TransactionOperation[]): Promise<bigint> {
     if (operations.length === 0) {
       return BigInt(0);
@@ -416,6 +583,19 @@ export class ILNSdk {
     }
   }
 
+  /**
+   * Check SDK compatibility with the deployed contract version.
+   *
+   * @returns A compatibility result indicating whether the SDK and contract versions are compatible.
+   *
+   * @example
+   * ```ts
+   * const compat = await sdk.checkCompatibility();
+   * if (!compat.compatible) {
+   *   console.warn("Compatibility issues:", compat.issues);
+   * }
+   * ```
+   */
   async checkCompatibility(): Promise<CompatibilityResult> {
     const invoke = async (method: string): Promise<any> => {
       const transaction = this.buildReadTransaction(method, []);
@@ -427,8 +607,22 @@ export class ILNSdk {
   }
 
   /**
-   * Subscribe to contract events for a specific invoice id. Returns an
-   * unsubscribe function that terminates the stream.
+   * Subscribe to real-time contract events for a specific invoice.
+   * Uses Server-Sent Events (SSE) to receive live updates.
+   *
+   * @param id - The invoice ID to filter events for.
+   * @param callback - Function called when a matching event is received.
+   * @returns An unsubscribe function that terminates the SSE stream.
+   *
+   * @example
+   * ```ts
+   * const unsubscribe = sdk.subscribeToInvoice(42n, (event) => {
+   *   console.log("Invoice event:", event.type, event.value);
+   * });
+   *
+   * // Later, to stop listening:
+   * unsubscribe();
+   * ```
    */
   subscribeToInvoice(id: bigint | string, callback: EventCallback): Unsubscribe {
     const invoiceId = String(id);
@@ -457,8 +651,19 @@ export class ILNSdk {
   }
 
   /**
-   * Subscribe to contract events related to a specific Stellar address.
-   * Returns an unsubscribe function.
+   * Subscribe to real-time contract events related to a specific Stellar address.
+   * Matches events where the address appears in topics or value.
+   *
+   * @param address - The Stellar address to filter events for.
+   * @param callback - Function called when a matching event is received.
+   * @returns An unsubscribe function that terminates the SSE stream.
+   *
+   * @example
+   * ```ts
+   * const unsubscribe = sdk.subscribeToAddress("GABC...", (event) => {
+   *   console.log("Address event:", event.type);
+   * });
+   * ```
    */
   subscribeToAddress(address: string, callback: EventCallback): Unsubscribe {
     const base = this.rpcUrl.replace(/\/$/, "");
@@ -484,7 +689,33 @@ export class ILNSdk {
     return new ILNEventEmitter(options);
   }
 
+  /**
+   * Submit a new invoice to the ILN contract.
+   * The transaction must be signed by the freelancer address.
+   *
+   * @param params - Invoice submission parameters.
+   * @returns The on-chain invoice ID as a bigint.
+   * @throws {ValidationError} If the signer address doesn't match the freelancer.
+   *
+   * @example
+   * ```ts
+   * const invoiceId = await sdk.submitInvoice({
+   *   freelancer: "GABC...",
+   *   payer: "GDEF...",
+   *   amount: 1000000n,
+   *   dueDate: Math.floor(Date.now() / 1000) + 86400,
+   *   discountRate: 500,
+   * });
+   * console.log(`Invoice ${invoiceId} submitted`);
+   * ```
+   */
   async submitInvoice(params: SubmitInvoiceParams): Promise<bigint> {
+    Validators.assertValid(Validators.validateInvoiceSubmission(params), "submitInvoice");
+
+    if (this.offlineManager && !this.offlineManager.getIsOnline()) {
+      throw new OfflineQueuedError(this.offlineManager.enqueue("submitInvoice", params));
+    }
+
     const signerAddress = await this.requireSignerAddress();
 
     if (signerAddress !== params.freelancer) {
@@ -512,6 +743,10 @@ export class ILNSdk {
 
       await this.signAndSend(preparedTransaction, params.freelancer, "submitInvoice");
       track("submitInvoice", this.analyticsNetwork, true);
+      
+      // Invalidate cache for this invoice after submission
+      this.cache.invalidate(`invoice:${invoiceId}`);
+      
       return invoiceId;
     } catch (err: any) {
       track("submitInvoice", this.analyticsNetwork, false, err?.code ?? err?.name);
@@ -519,7 +754,28 @@ export class ILNSdk {
     }
   }
 
+  /**
+   * Fund an existing invoice, providing liquidity to the freelancer.
+   * The transaction must be signed by the funder address.
+   *
+   * @param params - Invoice funding parameters.
+   * @throws {ValidationError} If the signer address doesn't match the funder.
+   *
+   * @example
+   * ```ts
+   * await sdk.fundInvoice({
+   *   funder: "GABC...",
+   *   invoiceId: 42n,
+   * });
+   * ```
+   */
   async fundInvoice(params: FundInvoiceParams): Promise<void> {
+    Validators.assertValid(Validators.validateFunding(params), "fundInvoice");
+
+    if (this.offlineManager && !this.offlineManager.getIsOnline()) {
+      throw new OfflineQueuedError(this.offlineManager.enqueue("fundInvoice", params));
+    }
+
     const signerAddress = await this.requireSignerAddress();
 
     if (signerAddress !== params.funder) {
@@ -547,13 +803,34 @@ export class ILNSdk {
 
       await this.signAndSend(preparedTransaction, params.funder, "fundInvoice");
       track("fundInvoice", this.analyticsNetwork, true);
+      
+      // Invalidate cache for this invoice after funding
+      this.cache.invalidate(`invoice:${params.invoiceId}`);
+      
     } catch (err: any) {
       track("fundInvoice", this.analyticsNetwork, false, err?.code ?? err?.name);
       throw err;
     }
   }
 
+  /**
+   * Mark an invoice as paid, completing the payment cycle.
+   * The transaction is signed by the configured signer (payer).
+   *
+   * @param params - Payment parameters with the invoice ID.
+   *
+   * @example
+   * ```ts
+   * await sdk.markPaid({ invoiceId: 42n });
+   * ```
+   */
   async markPaid(params: MarkPaidParams): Promise<void> {
+    Validators.assertValid(Validators.validatePayment(params), "markPaid");
+
+    if (this.offlineManager && !this.offlineManager.getIsOnline()) {
+      throw new OfflineQueuedError(this.offlineManager.enqueue("markPaid", params));
+    }
+
     try {
       const payer = await this.requireSignerAddress();
       const transaction = await this.buildWriteTransaction(payer, "mark_paid", [
@@ -575,13 +852,36 @@ export class ILNSdk {
 
       await this.signAndSend(preparedTransaction, payer, "markPaid");
       track("markPaid", this.analyticsNetwork, true);
+      
+      // Invalidate cache for this invoice after payment
+      this.cache.invalidate(`invoice:${params.invoiceId}`);
+      
     } catch (err: any) {
       track("markPaid", this.analyticsNetwork, false, err?.code ?? err?.name);
       throw err;
     }
   }
 
+  /**
+   * Claim a default on an unpaid invoice after the grace period has elapsed.
+   * The transaction must be signed by the funder address.
+   *
+   * @param params - Default claim parameters.
+   * @throws {ValidationError} If the signer address doesn't match the funder.
+   *
+   * @example
+   * ```ts
+   * await sdk.claimDefault({
+   *   funder: "GABC...",
+   *   invoiceId: 42n,
+   * });
+   * ```
+   */
   async claimDefault(params: ClaimDefaultParams): Promise<void> {
+    if (this.offlineManager && !this.offlineManager.getIsOnline()) {
+      throw new OfflineQueuedError(this.offlineManager.enqueue("claimDefault", params));
+    }
+
     const signerAddress = await this.requireSignerAddress();
 
     if (signerAddress !== params.funder) {
@@ -615,7 +915,31 @@ export class ILNSdk {
     }
   }
 
-  async getInvoice(invoiceId: bigint): Promise<Invoice> {
+  /**
+   * Retrieve the current state of an invoice from the contract.
+   *
+   * @param invoiceId - The on-chain ID of the invoice to retrieve.
+   * @param options - Optional cache options to bypass the cache.
+   * @returns The full invoice data including status, amounts, participants, and timestamps.
+   *
+   * @example
+   * ```ts
+   * const invoice = await sdk.getInvoice(42n);
+   * console.log(`Status: ${invoice.status}`);
+   * console.log(`Amount: ${invoice.amount}`);
+   * ```
+   */
+  async getInvoice(invoiceId: bigint, options?: CacheOptions): Promise<Invoice> {
+    const cacheKey = `invoice:${invoiceId}`;
+    
+    // Try cache first
+    if (this.cacheEnabled && !options?.bypass) {
+      const cached = this.cache.get<Invoice>(cacheKey, options);
+      if (cached) {
+        return cached;
+      }
+    }
+
     try {
       const transaction = this.buildReadTransaction("get_invoice", [
         nativeToScVal(invoiceId, { type: "u64" }),
@@ -628,6 +952,12 @@ export class ILNSdk {
 
       const result = this.extractInvoiceResult(simulation);
       track("getInvoice", this.analyticsNetwork, true);
+      
+      // Cache the result
+      if (this.cacheEnabled && !options?.bypass) {
+        this.cache.set(cacheKey, result);
+      }
+      
       return result;
     } catch (err: any) {
       track("getInvoice", this.analyticsNetwork, false, err?.code ?? err?.name);
@@ -635,7 +965,18 @@ export class ILNSdk {
     }
   }
 
-  /** Fetch reputation score for an address */
+  /**
+   * Fetch the reputation score for a Stellar address.
+   *
+   * @param address - The Stellar address to query.
+   * @returns The reputation score as a number.
+   *
+   * @example
+   * ```ts
+   * const reputation = await sdk.getReputation("GABC...");
+   * console.log(`Reputation: ${reputation}`);
+   * ```
+   */
   async getReputation(address: string): Promise<number> {
     const transaction = this.buildReadTransaction("get_reputation", [
       this.toAddress(address),
@@ -648,7 +989,17 @@ export class ILNSdk {
     throw new Error("Unexpected reputation result type");
   }
 
-  /** Fetch contract-wide statistics */
+  /**
+   * Fetch contract-wide statistics including total invoices, volume, and yield.
+   *
+   * @returns Protocol statistics as a native object from the contract.
+   *
+   * @example
+   * ```ts
+   * const stats = await sdk.getStats();
+   * console.log(stats);
+   * ```
+   */
   async getStats(): Promise<unknown> {
     const transaction = this.buildReadTransaction("get_stats", []);
     const simulation = await this.simulateReadTransaction("get_stats", transaction);
@@ -656,7 +1007,17 @@ export class ILNSdk {
     return scValToNative(result);
   }
 
-  /** Fetch governance proposal by id */
+  /**
+   * Fetch a governance proposal by its ID.
+   *
+   * @param id - The proposal ID as a bigint.
+   * @returns The proposal data as returned by the contract.
+   *
+   * @example
+   * ```ts
+   * const proposal = await sdk.getProposal(1n);
+   * ```
+   */
   async getProposal(id: bigint): Promise<unknown> {
     const transaction = this.buildReadTransaction("get_proposal", [
       nativeToScVal(id, { type: "u64" }),
@@ -666,6 +1027,18 @@ export class ILNSdk {
     return scValToNative(result);
   }
 
+  /**
+   * Fetch protocol-level configuration from the contract.
+   * Results are cached for 5 minutes to reduce RPC calls.
+   *
+   * @returns The current protocol configuration including fee rates and limits.
+   *
+   * @example
+   * ```ts
+   * const config = await sdk.getProtocolConfig();
+   * console.log(`Max discount rate: ${config.maxDiscountRate} bps`);
+   * ```
+   */
   async getProtocolConfig(): Promise<ProtocolConfig> {
     const now = Date.now();
     if (this.protocolConfigCache && this.protocolConfigCache.expiresAt > now) {
@@ -687,7 +1060,17 @@ export class ILNSdk {
     return config;
   }
 
-  /** Raw storage key lookup */
+  /**
+   * Perform a raw storage key lookup on the contract.
+   *
+   * @param key - The storage key to look up.
+   * @returns The string value stored at the given key.
+   *
+   * @example
+   * ```ts
+   * const value = await sdk.getStorage("my_key");
+   * ```
+   */
   async getStorage(key: string): Promise<string> {
     const transaction = this.buildReadTransaction("get_storage", [
       nativeToScVal(key, { type: "string" }),
@@ -1126,5 +1509,95 @@ export class ILNSdk {
     }
 
     return String(error);
+  }
+
+  // ── Offline queue public API ──────────────────────────────────────────────
+
+  /**
+   * Returns the current offline queue state, or null if the offline queue is
+   * not enabled for this SDK instance.
+   */
+  getOfflineState(): OfflineState | null {
+    return this.offlineManager?.getState() ?? null;
+  }
+
+  /**
+   * Returns the underlying OfflineManager, or null when the queue is disabled.
+   * Use this for advanced queue management (retry, remove, clear).
+   */
+  getOfflineManager(): OfflineManager | null {
+    return this.offlineManager;
+  }
+
+  /**
+   * Manually mark the SDK as online/offline.
+   * Useful for Node.js environments that don't have browser connectivity events.
+   * When set to `true`, the queue is flushed immediately.
+   */
+  setOnline(online: boolean): void {
+    this.offlineManager?.setOnline(online);
+  }
+
+  /**
+   * Flush all pending offline queue items immediately.
+   * No-op when the offline queue is not enabled.
+   */
+  async flushOfflineQueue(): Promise<void> {
+    if (this.offlineManager) {
+      await this.offlineManager.processQueue();
+    }
+  }
+
+  private async executeQueuedOperation(item: OfflineQueueItem): Promise<boolean> {
+    try {
+      const params = item.params as any;
+      switch (item.operation) {
+        case "submitInvoice":
+          await this.submitInvoice(params as SubmitInvoiceParams);
+          break;
+        case "fundInvoice":
+          await this.fundInvoice(params as FundInvoiceParams);
+          break;
+        case "markPaid":
+          await this.markPaid(params as MarkPaidParams);
+          break;
+        case "claimDefault":
+          await this.claimDefault(params as ClaimDefaultParams);
+          break;
+        default:
+          return false;
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Get cache statistics
+   */
+  getCacheStatistics() {
+    return this.cache.getStatistics();
+  }
+
+  /**
+   * Clear all cache entries
+   */
+  clearCache() {
+    this.cache.clear();
+  }
+
+  /**
+   * Invalidate cache entries matching a pattern
+   */
+  invalidateCache(pattern?: string) {
+    return this.cache.invalidate(pattern);
+  }
+
+  /**
+   * Reset cache statistics
+   */
+  resetCacheStatistics() {
+    this.cache.resetStatistics();
   }
 }

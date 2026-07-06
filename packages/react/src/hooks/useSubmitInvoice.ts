@@ -1,6 +1,5 @@
-import { useCallback, useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useILNClient } from '../context';
-import { useQueryClient } from '@tanstack/react-query';
 
 export interface SubmitInvoiceParams {
   issuer: string;
@@ -55,32 +54,17 @@ export function useSubmitInvoice(): UseSubmitInvoiceResult {
   const client = useILNClient();
   const queryClient = useQueryClient();
 
-  const [isPending, setIsPending] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const { mutateAsync, isPending, error, reset } = useMutation({
+    mutationFn: (params: SubmitInvoiceParams): Promise<unknown> =>
+      (client as unknown as { submitInvoice(p: SubmitInvoiceParams): Promise<unknown> })
+        .submitInvoice(params),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['invoices'] }),
+  });
 
-  const submitInvoice = useCallback(
-    async (params: SubmitInvoiceParams): Promise<unknown> => {
-      setIsPending(true);
-      setError(null);
-
-      try {
-        const result = await (client as unknown as { submitInvoice(p: SubmitInvoiceParams): Promise<unknown> }).submitInvoice(params);
-        await queryClient.invalidateQueries({ queryKey: ['invoices'] });
-        return result;
-      } catch (err) {
-        const e = err instanceof Error ? err : new Error('Failed to submit invoice');
-        setError(e);
-        throw e;
-      } finally {
-        setIsPending(false);
-      }
-    },
-    [client, queryClient],
-  );
-
-  const reset = useCallback(() => {
-    setError(null);
-  }, []);
-
-  return { submitInvoice, isPending, error, reset };
+  return {
+    submitInvoice: mutateAsync,
+    isPending,
+    error: error instanceof Error ? error : null,
+    reset,
+  };
 }

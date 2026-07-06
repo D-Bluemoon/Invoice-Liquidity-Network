@@ -42,11 +42,11 @@ beforeEach(() => {
   seedInvoice(5, { status: "Defaulted", freelancer: G4 });
 });
 
-// ── /health ───────────────────────────────────────────────────────────────────
+// ── GET /v1/health ────────────────────────────────────────────────────────────
 
-describe("GET /health", () => {
+describe("GET /v1/health", () => {
   it("returns 200 with all required fields", async () => {
-    const res = await request(app).get("/health");
+    const res = await request(app).get("/v1/health");
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty("status");
     expect(res.body).toHaveProperty("db");
@@ -55,45 +55,45 @@ describe("GET /health", () => {
   });
 
   it("reports status ok and db ok when database is healthy", async () => {
-    const res = await request(app).get("/health");
+    const res = await request(app).get("/v1/health");
     expect(res.body.status).toBe("ok");
     expect(res.body.db).toBe("ok");
   });
 
   it("returns null lastSync when the indexer has never synced", async () => {
-    const res = await request(app).get("/health");
+    const res = await request(app).get("/v1/health");
     expect(res.body.lastSync).toBeNull();
   });
 
   it("returns an ISO 8601 lastSync timestamp after a ledger is processed", async () => {
     setCursorLedger(12345);
-    const res = await request(app).get("/health");
+    const res = await request(app).get("/v1/health");
     expect(res.body.lastSync).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
   });
 
   it("returns a non-negative uptime in milliseconds", async () => {
-    const res = await request(app).get("/health");
+    const res = await request(app).get("/v1/health");
     expect(typeof res.body.uptime).toBe("number");
     expect(res.body.uptime).toBeGreaterThanOrEqual(0);
   });
 });
 
-// ── GET /invoices (unfiltered) ─────────────────────────────────────────────────
+// ── GET /v1/invoices (unfiltered) ─────────────────────────────────────────────
 
-describe("GET /invoices", () => {
+describe("GET /v1/invoices", () => {
   it("returns all invoices", async () => {
-    const res = await request(app).get("/invoices");
+    const res = await request(app).get("/v1/invoices");
     expect(res.status).toBe(200);
     expect(res.body.invoices).toHaveLength(5);
   });
 
   it("returns invoices as an array", async () => {
-    const res = await request(app).get("/invoices");
+    const res = await request(app).get("/v1/invoices");
     expect(Array.isArray(res.body.invoices)).toBe(true);
   });
 
   it("each invoice has required fields", async () => {
-    const res = await request(app).get("/invoices");
+    const res = await request(app).get("/v1/invoices");
     const inv = res.body.invoices[0];
     expect(inv).toHaveProperty("id");
     expect(inv).toHaveProperty("status");
@@ -103,9 +103,9 @@ describe("GET /invoices", () => {
   });
 });
 
-describe("GET /stats", () => {
+describe("GET /v1/stats", () => {
   it("returns protocol-level analytics", async () => {
-    const res = await request(app).get("/stats");
+    const res = await request(app).get("/v1/stats");
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
       totalInvoices: 5,
@@ -116,9 +116,9 @@ describe("GET /stats", () => {
   });
 });
 
-describe("GET /lps/:address/stats", () => {
+describe("GET /v1/lps/:address/stats", () => {
   it("returns LP deployment, yield, invoice count, and default rate", async () => {
-    const res = await request(app).get(`/lps/${G3}/stats`);
+    const res = await request(app).get(`/v1/lps/${G3}/stats`);
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
       deployed: "200000000",
@@ -129,9 +129,9 @@ describe("GET /lps/:address/stats", () => {
   });
 });
 
-describe("GET /freelancers/:address/stats", () => {
+describe("GET /v1/freelancers/:address/stats", () => {
   it("returns freelancer submission and payout stats", async () => {
-    const res = await request(app).get(`/freelancers/${G1}/stats`);
+    const res = await request(app).get(`/v1/freelancers/${G1}/stats`);
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
       submitted: 2,
@@ -142,24 +142,24 @@ describe("GET /freelancers/:address/stats", () => {
   });
 });
 
-describe("GET /history/:address", () => {
+describe("GET /v1/history/:address", () => {
   it("returns invoice history for a supported role", async () => {
-    const res = await request(app).get(`/history/${G3}?role=funder`);
+    const res = await request(app).get(`/v1/history/${G3}?role=funder`);
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(2);
     res.body.forEach((inv: any) => expect(inv.funder).toBe(G3));
   });
 
   it("rejects unsupported roles", async () => {
-    const res = await request(app).get(`/history/${G3}?role=admin`);
+    const res = await request(app).get(`/v1/history/${G3}?role=admin`);
     expect(res.status).toBe(400);
     expect(res.body).toHaveProperty("error");
   });
 });
 
-describe("GET /lps/top", () => {
+describe("GET /v1/lps/top", () => {
   it("returns LPs sorted by realized yield", async () => {
-    const res = await request(app).get("/lps/top?limit=5&period=all");
+    const res = await request(app).get("/v1/lps/top?limit=5&period=all");
     expect(res.status).toBe(200);
     expect(res.body).toEqual([
       {
@@ -171,104 +171,104 @@ describe("GET /lps/top", () => {
   });
 
   it("rejects unsupported periods", async () => {
-    const res = await request(app).get("/lps/top?period=year");
+    const res = await request(app).get("/v1/lps/top?period=year");
     expect(res.status).toBe(400);
     expect(res.body).toHaveProperty("error");
   });
 });
 
-// ── GET /invoices?status ───────────────────────────────────────────────────────
+// ── GET /v1/invoices?status ───────────────────────────────────────────────────
 
-describe("GET /invoices?status", () => {
+describe("GET /v1/invoices?status", () => {
   it("filters by Pending", async () => {
-    const res = await request(app).get("/invoices?status=Pending");
+    const res = await request(app).get("/v1/invoices?status=Pending");
     expect(res.status).toBe(200);
     expect(res.body.invoices).toHaveLength(2);
     res.body.invoices.forEach((inv: any) => expect(inv.status).toBe("Pending"));
   });
 
   it("filters by Funded", async () => {
-    const res = await request(app).get("/invoices?status=Funded");
+    const res = await request(app).get("/v1/invoices?status=Funded");
     expect(res.body.invoices).toHaveLength(1);
     expect(res.body.invoices[0].id).toBe(2);
   });
 
   it("filters by Paid", async () => {
-    const res = await request(app).get("/invoices?status=Paid");
+    const res = await request(app).get("/v1/invoices?status=Paid");
     expect(res.body.invoices).toHaveLength(1);
     expect(res.body.invoices[0].id).toBe(3);
   });
 
   it("filters by Defaulted", async () => {
-    const res = await request(app).get("/invoices?status=Defaulted");
+    const res = await request(app).get("/v1/invoices?status=Defaulted");
     expect(res.body.invoices).toHaveLength(1);
     expect(res.body.invoices[0].status).toBe("Defaulted");
   });
 
   it("returns empty array for unknown status", async () => {
-    const res = await request(app).get("/invoices?status=Unknown");
+    const res = await request(app).get("/v1/invoices?status=Unknown");
     expect(res.body.invoices).toHaveLength(0);
   });
 });
 
-// ── GET /invoices?freelancer ──────────────────────────────────────────────────
+// ── GET /v1/invoices?freelancer ──────────────────────────────────────────────
 
-describe("GET /invoices?freelancer", () => {
+describe("GET /v1/invoices?freelancer", () => {
   it("filters by freelancer address", async () => {
-    const res = await request(app).get(`/invoices?freelancer=${G1}`);
+    const res = await request(app).get(`/v1/invoices?freelancer=${G1}`);
     expect(res.status).toBe(200);
     expect(res.body.invoices).toHaveLength(2);
     res.body.invoices.forEach((inv: any) => expect(inv.freelancer).toBe(G1));
   });
 
   it("returns empty array when no invoices match freelancer", async () => {
-    const res = await request(app).get("/invoices?freelancer=GNOTEXIST");
+    const res = await request(app).get("/v1/invoices?freelancer=GNOTEXIST");
     expect(res.body.invoices).toHaveLength(0);
   });
 });
 
-// ── GET /invoices?payer ───────────────────────────────────────────────────────
+// ── GET /v1/invoices?payer ───────────────────────────────────────────────────
 
-describe("GET /invoices?payer", () => {
+describe("GET /v1/invoices?payer", () => {
   it("filters by payer address", async () => {
-    const res = await request(app).get(`/invoices?payer=${G2}`);
+    const res = await request(app).get(`/v1/invoices?payer=${G2}`);
     expect(res.status).toBe(200);
     expect(res.body.invoices).toHaveLength(5);
     res.body.invoices.forEach((inv: any) => expect(inv.payer).toBe(G2));
   });
 });
 
-// ── GET /invoices?funder ──────────────────────────────────────────────────────
+// ── GET /v1/invoices?funder ──────────────────────────────────────────────────
 
-describe("GET /invoices?funder", () => {
+describe("GET /v1/invoices?funder", () => {
   it("filters by funder address", async () => {
-    const res = await request(app).get(`/invoices?funder=${G3}`);
+    const res = await request(app).get(`/v1/invoices?funder=${G3}`);
     expect(res.body.invoices).toHaveLength(2);
     res.body.invoices.forEach((inv: any) => expect(inv.funder).toBe(G3));
   });
 });
 
-// ── GET /invoices — combined filters ─────────────────────────────────────────
+// ── GET /v1/invoices — combined filters ──────────────────────────────────────
 
-describe("GET /invoices — combined filters", () => {
+describe("GET /v1/invoices — combined filters", () => {
   it("ANDs status and freelancer", async () => {
-    const res = await request(app).get(`/invoices?status=Pending&freelancer=${G4}`);
+    const res = await request(app).get(`/v1/invoices?status=Pending&freelancer=${G4}`);
     expect(res.body.invoices).toHaveLength(1);
     expect(res.body.invoices[0].id).toBe(4);
   });
 
   it("ANDs status and funder", async () => {
-    const res = await request(app).get(`/invoices?status=Paid&funder=${G3}`);
+    const res = await request(app).get(`/v1/invoices?status=Paid&funder=${G3}`);
     expect(res.body.invoices).toHaveLength(1);
     expect(res.body.invoices[0].id).toBe(3);
   });
 });
 
-// ── GET /invoice/:id ──────────────────────────────────────────────────────────
+// ── GET /v1/invoice/:id ───────────────────────────────────────────────────────
 
-describe("GET /invoice/:id", () => {
+describe("GET /v1/invoice/:id", () => {
   it("returns the correct invoice for a known ID", async () => {
-    const res = await request(app).get("/invoice/2");
+    const res = await request(app).get("/v1/invoice/2");
     expect(res.status).toBe(200);
     expect(res.body.invoice.id).toBe(2);
     expect(res.body.invoice.status).toBe("Funded");
@@ -276,19 +276,76 @@ describe("GET /invoice/:id", () => {
   });
 
   it("returns 404 for an unknown ID", async () => {
-    const res = await request(app).get("/invoice/999");
+    const res = await request(app).get("/v1/invoice/999");
     expect(res.status).toBe(404);
     expect(res.body).toHaveProperty("error");
   });
 
   it("returns 400 for a non-numeric ID", async () => {
-    const res = await request(app).get("/invoice/abc");
+    const res = await request(app).get("/v1/invoice/abc");
     expect(res.status).toBe(400);
     expect(res.body).toHaveProperty("error");
   });
 
   it("returns 400 for id = 0", async () => {
-    const res = await request(app).get("/invoice/0");
+    const res = await request(app).get("/v1/invoice/0");
     expect(res.status).toBe(400);
+  });
+});
+
+// ── Versioning headers ────────────────────────────────────────────────────────
+
+describe("v1 versioning headers", () => {
+  it("GET /v1/health includes API-Version: 1 header", async () => {
+    const res = await request(app).get("/v1/health");
+    expect(res.headers["api-version"]).toBe("1");
+  });
+
+  it("GET /v1/invoices includes API-Version: 1 header", async () => {
+    const res = await request(app).get("/v1/invoices");
+    expect(res.headers["api-version"]).toBe("1");
+  });
+
+  it("GET /v1/invoice/:id includes API-Version: 1 header", async () => {
+    const res = await request(app).get("/v1/invoice/1");
+    expect(res.headers["api-version"]).toBe("1");
+  });
+});
+
+// ── Backward compat / deprecation headers ────────────────────────────────────
+
+describe("backward compat deprecation headers", () => {
+  it("GET /health still returns 200", async () => {
+    const res = await request(app).get("/health");
+    expect(res.status).toBe(200);
+  });
+
+  it("GET /health returns Deprecation: true header", async () => {
+    const res = await request(app).get("/health");
+    expect(res.headers["deprecation"]).toBe("true");
+  });
+
+  it("GET /health returns a Sunset header", async () => {
+    const res = await request(app).get("/health");
+    expect(res.headers["sunset"]).toBeDefined();
+  });
+
+  it("GET /invoices returns Deprecation: true header", async () => {
+    const res = await request(app).get("/invoices");
+    expect(res.headers["deprecation"]).toBe("true");
+  });
+
+  it("version negotiation via Accept header sets API-Version response header", async () => {
+    const res = await request(app)
+      .get("/invoices")
+      .set("Accept", "application/vnd.iln.v1+json");
+    expect(res.headers["api-version"]).toBe("1");
+  });
+
+  it("version negotiation via API-Version request header sets API-Version response header", async () => {
+    const res = await request(app)
+      .get("/invoices")
+      .set("API-Version", "1");
+    expect(res.headers["api-version"]).toBe("1");
   });
 });

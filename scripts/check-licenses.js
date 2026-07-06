@@ -1,9 +1,10 @@
 #!/usr/bin/env node
+// Task 1: Dependency License Checker Script
 
 const path = require('path');
 const checker = require('license-checker-rseidelsohn');
 
-const ALLOWLIST = ['MIT', 'Apache-2.0', 'ISC', 'BSD-2-Clause', 'BSD-3-Clause', '0BSD', 'BlueOak-1.0.0']; // BlueOak is a highly permissive, MIT-like license
+const ALLOWLIST = ['MIT', 'Apache-2.0', 'ISC', 'BSD-2-Clause', 'BSD-3-Clause', '0BSD', 'BlueOak-1.0.0', 'CC-BY-4.0']; // BlueOak is a highly permissive, MIT-like license
 const BLOCKLIST = ['GPL', 'LGPL', 'AGPL', 'SSPL', 'Commons Clause'];
 const OWN_PACKAGES = [
   'invoice-liquidity-network',

@@ -1,9 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFundInvoice } from './useFundInvoice';
 import type { FundInvoiceParams } from './useFundInvoice';
 import { createMockILNClient } from '../test/mocks';
 import { TestWrapper } from '../test/wrapper';
+import { ILNContext } from '../context/ILNContext';
 
 const validParams: FundInvoiceParams = {
   invoiceId: 42,
@@ -94,5 +96,59 @@ describe('useFundInvoice', () => {
     act(() => { result.current.reset(); });
 
     expect(result.current.error).toBeNull();
+  });
+
+  it('rolls back optimistic update on error', async () => {
+    const mockClient = createMockILNClient({
+      fundInvoice: vi.fn().mockRejectedValue(new Error('tx failed')),
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    queryClient.setQueryData(['invoices', 'detail', 42], { id: 42, status: 'Pending' });
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>
+        <ILNContext.Provider value={mockClient as any}>{children}</ILNContext.Provider>
+      </QueryClientProvider>
+    );
+
+    const { result } = renderHook(() => useFundInvoice(), { wrapper });
+
+    await act(async () => {
+      await result.current.fundInvoice(validParams).catch(() => undefined);
+    });
+
+    expect(queryClient.getQueryData(['invoices', 'detail', 42])).toEqual({
+      id: 42,
+      status: 'Pending',
+    });
+  });
+
+  it('succeeds and leaves error null', async () => {
+    const mockClient = createMockILNClient({
+      fundInvoice: vi.fn().mockResolvedValue(undefined),
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    queryClient.setQueryData(['invoices', 'detail', 42], { id: 42, status: 'Pending' });
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>
+        <ILNContext.Provider value={mockClient as any}>{children}</ILNContext.Provider>
+      </QueryClientProvider>
+    );
+
+    const { result } = renderHook(() => useFundInvoice(), { wrapper });
+
+    await act(async () => {
+      await result.current.fundInvoice(validParams);
+    });
+
+    expect(result.current.error).toBeNull();
+    expect(mockClient.fundInvoice).toHaveBeenCalledWith(validParams);
   });
 });

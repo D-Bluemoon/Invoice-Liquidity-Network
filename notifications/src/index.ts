@@ -3,6 +3,7 @@ import { createApp } from "./api";
 import { startPolling } from "./poller";
 import { NotificationWebSocketServer } from "./websocket";
 import { CONFIG } from "./config";
+import { TemplateEngine } from "./template-engine";
 
 const app = createApp();
 const server = http.createServer(app);
@@ -20,4 +21,5 @@ startPolling().catch((err) => {
   process.exit(1);
 });
 
-export { app, server, wsServer };
+export { app, server, wsServer, TemplateEngine };
+export type { Template, TemplateContext, RenderResult, TemplateTestResult } from "./template-engine";

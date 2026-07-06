@@ -52,6 +52,22 @@ export interface OfflineState {
 export type StateChangeCallback = (state: OfflineState) => void;
 export type SubmitCallback = (item: OfflineQueueItem) => Promise<boolean>;
 
+/**
+ * Thrown by SDK write methods when the offline queue is enabled and the
+ * client is currently offline. Catch this error to present a "queued" state
+ * to the user — the operation will be retried automatically when connectivity
+ * is restored.
+ */
+export class OfflineQueuedError extends Error {
+  public readonly item: OfflineQueueItem;
+
+  constructor(item: OfflineQueueItem) {
+    super(`Operation "${item.operation}" queued for submission when back online (id: ${item.id})`);
+    this.name = "OfflineQueuedError";
+    this.item = item;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Default Configuration
 // ---------------------------------------------------------------------------

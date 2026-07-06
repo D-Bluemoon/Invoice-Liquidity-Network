@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { setLocale, mapError } from '../errors'
+import { setLocale, mapError, detectLocale } from '../errors'
 import enMessages from '../locales/en.json'
 import frMessages from '../locales/fr.json'
 
@@ -60,4 +60,36 @@ describe('locale switching', () => {
     setLocale('en', enMessages)
     expect(mapError({ code: 'NotFunded' }).message).toBe('Not funded')
   })
+
+  it('supports default Spanish locale out-of-the-box', () => {
+    setLocale('es')
+    expect(mapError({ code: 'InvalidAmount' }).message).toBe('Importe no válido')
+    expect(mapError({ code: 'InvoiceNotFound' }).message).toBe('Factura no encontrada')
+  })
+
+  it('falls back to English when a message key is missing in the active locale', () => {
+    setLocale('partial-lang', {
+      InvalidAmount: 'Partial Invalid',
+      Unknown: 'Partial Unknown',
+    } as any)
+
+    // Key present in active locale:
+    expect(mapError({ code: 'InvalidAmount' }).message).toBe('Partial Invalid')
+    // Key missing in active locale, falls back to English:
+    expect(mapError({ code: 'AlreadyFunded' }).message).toBe('Already funded')
+    // Key missing in both, falls back to active locale Unknown:
+    expect(mapError({ code: 'WeirdCode' }).message).toBe('Partial Unknown')
+  })
+
+  it('detects locale from environment variables in Node context', () => {
+    const originalEnv = process.env.LANG
+    try {
+      process.env.LANG = 'fr_FR.UTF-8'
+      const detected = detectLocale()
+      expect(detected).toBe('fr')
+    } finally {
+      process.env.LANG = originalEnv
+    }
+  })
 })
+

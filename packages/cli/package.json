@@ -17,7 +17,7 @@
     "access": "public"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "scripts": {
     "build": "tsup src/index.ts src/bin.ts --format esm --dts --clean",

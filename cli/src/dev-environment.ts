@@ -4,6 +4,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import type { Ui } from "./format";
+import { withProgressBar } from "./progress";
 
 const execFileAsync = promisify(execFile);
 
@@ -44,15 +45,31 @@ export class LocalDevEnvironment {
   }
 
   async start(): Promise<void> {
-    await this.ensureDocker();
-    await this.startContainer();
-    await this.waitForFriendbot();
-    await this.ensureLocalNetwork();
-    await this.ensureLocalAccounts();
-    const contractId = await this.deployContractIfPossible();
-    this.writeEnvFile(contractId);
-    await this.startIndexer();
-    await this.startNotificationsService();
+    await withProgressBar(7, "Starting local environment", async (bar) => {
+      bar.increment(1, "Checking Docker");
+      await this.ensureDocker();
+
+      bar.increment(1, "Starting Stellar node");
+      await this.startContainer();
+
+      bar.increment(1, "Waiting for Friendbot");
+      await this.waitForFriendbot();
+
+      bar.increment(1, "Configuring network");
+      await this.ensureLocalNetwork();
+
+      bar.increment(1, "Funding local accounts");
+      await this.ensureLocalAccounts();
+
+      bar.increment(1, "Deploying contract");
+      const contractId = await this.deployContractIfPossible();
+
+      bar.increment(1, "Writing config and starting services");
+      this.writeEnvFile(contractId);
+      await this.startIndexer();
+      await this.startNotificationsService();
+    });
+
     this.ui.success("Local ILN development environment is ready.");
   }
 

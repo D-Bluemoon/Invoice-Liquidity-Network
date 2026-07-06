@@ -6,6 +6,8 @@
 
 Typed JavaScript and TypeScript SDK for the Invoice Liquidity Network Soroban contract on Stellar.
 
+New to ILN terminology? See the protocol [glossary](../docs/glossary.md) for Stellar, invoice factoring, and security terms used by the SDK.
+
 By participating in this project, you agree to abide by our [Code of Conduct](../CODE_OF_CONDUCT.md).
 
 ## Quick Start

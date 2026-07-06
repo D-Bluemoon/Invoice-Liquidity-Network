@@ -8,21 +8,7 @@ export async function run(argv: string[] = process.argv) {
     .name("iln")
     .description("Invoice Liquidity Network CLI")
     .version("0.1.0")
-    .option(
-      "--format <format>",
-      "output format: table | json | yaml",
-      "table"
-    );
-
-  program.hook("preAction", () => {
-    const { format } = program.opts();
-
-    if (!["table", "json", "yaml"].includes(format)) {
-      throw new Error(
-        `Invalid format "${format}". Use table, json, or yaml.`
-      );
-    }
-  });
+    .option("--format <type>", "output format (table, json, yaml)", "table");
 
   registerCommands(program);
 

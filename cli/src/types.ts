@@ -7,6 +7,10 @@ export interface ResolvedConfig {
   networkPassphrase: string;
   rpcUrl: string;
   tokenId?: string;
+  /** Version pinning. */
+  requiredVersion?: string;
+  /** Whether update notifications are enabled. */
+  autoUpdate?: boolean;
 }
 
 export interface FileConfig {
@@ -86,4 +90,18 @@ export interface SimulationLike {
   result?: {
     retval?: unknown;
   };
+}
+
+export interface Environment {
+  name: string;
+  contractId: string;
+  rpcUrl: string;
+  networkPassphrase: string;
+  keypairPath?: string;
+  isActive: boolean;
+}
+
+export interface EnvironmentConfig {
+  current: string | null;
+  environments: Record<string, Environment>;
 }
