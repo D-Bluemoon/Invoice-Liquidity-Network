@@ -1,143 +1,123 @@
-# ILN Glossary of Terms
+# Glossary
 
-A reference guide to domain-specific terms used throughout the Invoice Liquidity Network protocol and documentation. Terms are listed in alphabetical order.
-
----
+Protocol terminology used across ILN docs, SDKs, contracts, indexer, and notifications. Terms are sorted alphabetically.
 
 ## Basis Points (bps)
 
-A unit of measurement equal to one-hundredth of one percent (0.01%). Used to express discount rates and yield with precision.
+A unit equal to one-hundredth of one percent, so 100 bps equals 1%. ILN uses bps for discount rates, fees, and yield calculations because integer math is safer in contracts and SDKs.
 
-**ILN usage:** A freelancer submitting an invoice with a 300 bps discount rate is offering a 3% discount on the invoice face value to attract liquidity providers.
+See: [Protocol Economics](protocol-economics.md)
 
----
+## Circuit Breaker
+
+A safety control that pauses or limits sensitive protocol actions during an incident. In ILN, circuit breakers are relevant to contract funding, settlement, upgrades, indexing, and notification delivery.
+
+See: [Security](security.md)
 
 ## Discount Rate
 
-The percentage deducted from an invoice's face value that a liquidity provider receives as compensation for funding the invoice early.
+The percentage discount a submitter accepts in exchange for receiving liquidity before the payer settles the invoice. A 300 bps discount means the liquidity provider funds 97% of face value and earns the 3% spread at settlement.
 
-**ILN usage:** When a freelancer calls `submit_invoice()`, they set a discount rate (in basis points) that determines how much of the invoice value they receive upfront versus what the LP earns at settlement.
-
----
-
-## Due Date
-
-The date by which a payer is expected to settle an invoice in full.
-
-**ILN usage:** The due date is passed as a parameter in `submit_invoice()` and determines the timeframe within which the payer must call `mark_paid()` to release funds to the LP.
-
----
+See: [Protocol Economics](protocol-economics.md)
 
 ## Effective Yield
 
-The annualised return earned by a liquidity provider on a funded invoice, accounting for the discount rate and the time between funding and settlement.
+The annualized return implied by the discount rate and time to settlement. ILN examples commonly calculate this as `(discount_bps / 10000) * (365 / days_to_settlement)`.
 
-**ILN usage:** An LP funding a 30-day invoice at 300 bps discount earns an effective yield of approximately 36% APR, calculated as `(bps / 10000) * (365 / days_to_due_date)`.
+See: [LP Funding Tutorial](tutorials/lp-funding.md)
 
----
+## HMAC
 
-## Freelancer
+Hash-based Message Authentication Code, a signature-like digest used to verify that a webhook payload came from the expected sender and was not modified. ILN notification receivers should reject webhook requests with missing or invalid HMAC values.
 
-A service provider, creator, or SME that submits an outstanding invoice to the ILN protocol to receive immediate liquidity at a discount rather than waiting for the payer to settle.
-
-**ILN usage:** The freelancer calls `submit_invoice()` with the invoice details, receives USDC immediately after an LP funds it, and is responsible for ensuring the payer settles on time.
-
----
-
-## Funded State
-
-The lifecycle state of an invoice after a liquidity provider has called `fund_invoice()` and the freelancer has received their discounted payment.
-
-**ILN usage:** An invoice in the Funded State is awaiting settlement by the payer; the LP's capital is locked in the contract until `mark_paid()` is called.
-
----
+See: [Notifications](notifications.md)
 
 ## Horizon
 
-The Stellar network's REST API server that provides access to ledger data, account balances, transaction history, and fee estimates.
+Stellar's REST API service for account data, transactions, ledgers, assets, and network metadata. ILN tooling may use Horizon alongside Soroban RPC for account and network state.
 
-**ILN usage:** The ILN indexer queries Horizon to track contract events and invoice state changes, and the SDK uses Horizon endpoints to fetch account sequence numbers before submitting transactions.
+See: [Stellar Primer](stellar-primer.md)
 
----
+## Invoice Factoring
 
-## LP (Liquidity Provider)
+A financing model where an invoice holder sells or discounts an unpaid invoice to receive cash before the payer settles. ILN implements a DeFi version where liquidity providers fund invoices on-chain and receive settlement value later.
 
-A participant who funds invoices on the ILN protocol by sending stablecoins to the contract in exchange for the right to receive the full invoice amount when the payer settles.
+See: [Protocol Overview](protocol-overview.md)
 
-**ILN usage:** An LP calls `fund_invoice()` with a valid invoice ID, sends the discounted amount to the contract, and earns the spread between the funded amount and the face value when the payer calls `mark_paid()`.
+## Ledger
 
----
+An ordered batch of Stellar transactions accepted by network consensus. ILN indexers track ledger ranges to reconstruct invoice events and settlement state.
 
-## Mark Paid
+See: [Indexer Data Model](indexer-data-model.md)
 
-The action taken by a payer to confirm that an invoice has been settled off-chain, triggering the release of the full invoice amount from the contract to the LP.
+## Liquidity Provider (LP)
 
-**ILN usage:** The payer calls `mark_paid()` on the ILN contract once they have transferred funds off-chain; this releases the full invoice face value held in escrow to the liquidity provider.
+A participant who funds invoices by providing liquidity at the discounted amount. The LP expects to receive the invoice face value at settlement and earns the difference as yield.
 
----
+See: [LP Funding Tutorial](tutorials/lp-funding.md)
 
 ## Payer
 
-The client or organisation that owes payment on an outstanding invoice and is responsible for calling `mark_paid()` to settle the invoice on-chain.
+The customer or counterparty responsible for settling the invoice. ILN uses payer identity and behavior as part of invoice authorization, settlement, and reputation flows.
 
-**ILN usage:** The payer's wallet address is recorded in the invoice at submission time; only that address is authorised to call `mark_paid()` for a given invoice.
+See: [Submit Your First Invoice](tutorials/first-invoice.md)
 
----
+## Quorum
 
-## Pending State
+The minimum approval threshold required for a governance or administrative decision. ILN uses quorum concepts for maintainer sign-off, governance changes, and mainnet readiness decisions.
 
-The lifecycle state of an invoice after it has been submitted by a freelancer but before any liquidity provider has funded it.
-
-**ILN usage:** An invoice in the Pending State is visible to LPs browsing the protocol; it remains in this state until `fund_invoice()` is called or it expires unfunded.
-
----
+See: [Governance Guide](governance-guide.md)
 
 ## Reputation Score
 
-An on-chain metric assigned to freelancers and payers that reflects their track record of successful invoice settlements on the ILN protocol.
+A score that represents observed reliability for submitters, payers, or related protocol actors. ILN reputation can help liquidity providers assess invoice risk and discount expectations.
 
-**ILN usage:** A payer with a high Reputation Score signals reliability to LPs, potentially attracting funding at lower discount rates; the score is updated by the ILN-Smart-Contract after each `mark_paid()` call.
+See: [Reputation Contract](contracts/reputation-contract.md)
 
----
+## Settlement
 
-## SAC (Stellar Asset Contract)
+The point where the payer's obligation is marked as paid and the protocol releases or accounts for final value owed to the liquidity provider. Settlement changes invoice state and is a core event for indexer and notification consumers.
 
-A Soroban smart contract that wraps a native Stellar asset, making it accessible to other Soroban contracts via the standard token interface.
-
-**ILN usage:** USDC on the ILN protocol is represented as a SAC, allowing the ILN contract to call `transfer()` directly on the token contract to move funds between freelancers, LPs, and the escrow.
-
----
+See: [Invoice Contract](contracts/invoice-contract.md)
 
 ## Soroban
 
-Stellar's smart contract platform that allows developers to write and deploy WebAssembly (WASM) contracts on the Stellar ledger.
+Stellar's smart contract platform, where contracts are compiled to WebAssembly and run with Stellar ledger integration. ILN contract logic for invoices, reputation, and governance is designed for Soroban.
 
-**ILN usage:** All ILN core logic — invoice submission, funding, settlement, and governance — is implemented as Soroban smart contracts deployed to the Stellar network.
+See: [Stellar Primer](stellar-primer.md)
 
----
+## Stellar Asset Contract (SAC)
 
-## Stroop
+A Soroban contract interface that represents Stellar assets for smart contract use. ILN uses SAC-compatible assets such as USDC-style stablecoins for funding and settlement flows.
 
-The smallest unit of XLM (Stellar's native currency), equal to one ten-millionth of one XLM (0.0000001 XLM). Used for precise fee and balance calculations.
-
-**ILN usage:** Transaction fees on the ILN protocol are denominated in stroops; the SDK exposes fee estimates in stroops via the Horizon `fee_estimate` endpoint before submitting contract invocations.
-
----
+See: [Multi-Token Support](tokens/multi-token-support.md)
 
 ## Submitter
 
-The wallet address that signs and broadcasts a transaction to the Stellar network on behalf of a freelancer or payer. May be the same as the freelancer or an automated relay.
+The account or service that submits an invoice transaction to the network. The submitter may be the invoice owner directly or an authorized integration using the SDK or CLI.
 
-**ILN usage:** In the ILN CLI, the submitter is configured via the `--source` flag; in the SDK, it is the wallet passed to the `submitInvoice()` call, which must hold enough XLM to cover the transaction fee.
+See: [SDK Quickstart](sdk-quickstart.md)
 
----
+## Timelock
+
+A delay between approval and execution of a sensitive action, such as an upgrade or parameter change. Timelocks give users and maintainers time to inspect pending governance changes before they take effect.
+
+See: [Governance Guide](governance-guide.md)
 
 ## Trustline
 
-An explicit opt-in relationship between a Stellar account and a non-native asset that allows the account to hold and transact that asset.
+A Stellar account's explicit opt-in to hold a non-native asset. Users must have the correct trustline before receiving or transacting certain Stellar assets outside pure Soroban contract custody.
 
-**ILN usage:** Before an LP can receive USDC through the ILN protocol, their Stellar account must have an established trustline for the USDC SAC; the ILN frontend prompts LPs to create this trustline during onboarding.
+See: [Stellar Primer](stellar-primer.md)
 
----
+## XDR
 
-*For terms not listed here, refer to the [Stellar Developers Portal](https://developers.stellar.org) or open an issue in the [ILN repository](https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network).*
+External Data Representation, the binary serialization format used by Stellar for transactions, operations, ledger entries, and contract data. ILN SDK and CLI code must encode and decode XDR exactly to avoid signing or submission bugs.
+
+See: [`sdk/src/xdr.ts`](../sdk/src/xdr.ts)
+
+## Yield
+
+The return earned by a liquidity provider for funding an invoice. In ILN, yield usually comes from the discount between the funded amount and the invoice face value paid at settlement.
+
+See: [Protocol Economics](protocol-economics.md)

@@ -4,6 +4,7 @@
   "troubleshooting": "Troubleshooting",
   "analytics": "Analytics",
   "local-development": "Local Development",
+  "mainnet-launch-checklist": "Mainnet Launch Checklist",
   "notifications": "Notifications",
   "sdk-api-reference": "SDK API Reference",
   "sdk-migration-guide": "SDK Migration Guide",
@@ -13,5 +14,6 @@
   "cross-repo-sync": "Cross-Repo Sync",
   "branch-protection": "Branch Protection",
   "project-board": "Project Board",
+  "security": "Security",
   "security-guide": "Security Guide"
 }

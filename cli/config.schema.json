@@ -50,6 +50,14 @@
         }
       },
       "additionalProperties": false
+    },
+    "aliases": {
+      "type": "object",
+      "description": "Custom CLI aliases, e.g. { \"sub\": \"submit\" }",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "default": {}
     }
   },
   "additionalProperties": false

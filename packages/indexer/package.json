@@ -6,7 +6,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "prepare": "husky install",
+    "prepare": "husky install || true",
     "test": "jest",
     "lint": "eslint src --ext .ts"
   },
@@ -17,6 +17,9 @@
     "iln"
   ],
   "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "@stellar/stellar-sdk": "^15.0.1"
   },

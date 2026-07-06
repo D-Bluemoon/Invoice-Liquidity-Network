@@ -26,7 +26,14 @@
     "dead-code:check": "knip",
     "gitleaks:scan": "pnpm exec gitleaks detect --no-git -s . --config gitleaks.toml --baseline-path .secrets.baseline",
     "gitleaks:baseline": "pnpm exec gitleaks detect --no-git -s . --config gitleaks.toml --report-format json --report-path .secrets.baseline",
-    "syncpack:check": "syncpack list-mismatches"
+    "security:audit": "node scripts/dependency-audit.js audit",
+    "security:audit:fix": "node scripts/dependency-audit.js audit --fix",
+    "security:snyk": "node scripts/dependency-audit.js snyk",
+    "security:licenses": "node scripts/dependency-audit.js licenses",
+    "security:scan": "node scripts/dependency-audit.js scan",
+    "security:report": "node scripts/dependency-audit.js report",
+    "syncpack:check": "syncpack list-mismatches",
+    "validate:packages": "node scripts/validate-packages.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "2.31.0",
@@ -45,7 +52,7 @@
     "node": ">=20",
     "pnpm": ">=9"
   },
-  "prepare": "husky install",
+  "prepare": "husky install || true",
   "bin": {
     "iln": "packages/scripts/bin/iln.js"
   },
@@ -54,5 +61,5 @@
       "axios": ">=1.16.0"
     }
   },
-  "packageManager": "yarn@4.16.0"
+  "packageManager": "pnpm@9.0.0"
 }

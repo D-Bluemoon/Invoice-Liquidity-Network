@@ -12,6 +12,8 @@ jobs:
   snyk:
     name: Snyk Vulnerability Scanner
     runs-on: ubuntu-latest
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -28,10 +30,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Skip Snyk when token is unavailable
+        if: env.SNYK_TOKEN == ''
+        run: echo "SNYK_TOKEN is not available for this run; skipping Snyk scan."
+
       - name: Setup Snyk CLI
+        if: env.SNYK_TOKEN != ''
         uses: snyk/actions/setup@master
 
       - name: Snyk test
+        if: env.SNYK_TOKEN != ''
         run: snyk test --all-projects --severity-threshold=high
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}

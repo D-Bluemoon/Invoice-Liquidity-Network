@@ -54,6 +54,13 @@ import {
   ILNError,
 } from "./errors";
 import {
+  OfflineManager,
+  OfflineQueuedError,
+  type OfflineConfig,
+  type OfflineQueueItem,
+  type OfflineState,
+} from "./offline";
+import {
   resolveRequestTimeouts,
   TimeoutError,
   withTimeout,
@@ -115,6 +122,7 @@ export class ILNSdk {
   private readonly analyticsNetwork: string;
   private readonly cache: Cache<unknown>;
   private readonly cacheEnabled: boolean;
+  private offlineManager: OfflineManager | null = null;
 
   /**
    * Create a new ILN SDK client.
@@ -132,6 +140,11 @@ export class ILNSdk {
     const cacheConfig = config.cache ?? { ttl: 60000, storage: "memory", enabled: true };
     this.cache = new Cache(cacheConfig);
     this.cacheEnabled = cacheConfig.enabled ?? true;
+
+    if (config.offline !== undefined) {
+      this.offlineManager = new OfflineManager(config.offline);
+      this.offlineManager.onSubmit((item) => this.executeQueuedOperation(item));
+    }
   }
 
   private async wrapRpcCall<T>(promise: Promise<T>, operationName: string): Promise<T> {
@@ -698,7 +711,11 @@ export class ILNSdk {
    */
   async submitInvoice(params: SubmitInvoiceParams): Promise<bigint> {
     Validators.assertValid(Validators.validateInvoiceSubmission(params), "submitInvoice");
-    
+
+    if (this.offlineManager && !this.offlineManager.getIsOnline()) {
+      throw new OfflineQueuedError(this.offlineManager.enqueue("submitInvoice", params));
+    }
+
     const signerAddress = await this.requireSignerAddress();
 
     if (signerAddress !== params.freelancer) {
@@ -754,7 +771,11 @@ export class ILNSdk {
    */
   async fundInvoice(params: FundInvoiceParams): Promise<void> {
     Validators.assertValid(Validators.validateFunding(params), "fundInvoice");
-    
+
+    if (this.offlineManager && !this.offlineManager.getIsOnline()) {
+      throw new OfflineQueuedError(this.offlineManager.enqueue("fundInvoice", params));
+    }
+
     const signerAddress = await this.requireSignerAddress();
 
     if (signerAddress !== params.funder) {
@@ -805,7 +826,11 @@ export class ILNSdk {
    */
   async markPaid(params: MarkPaidParams): Promise<void> {
     Validators.assertValid(Validators.validatePayment(params), "markPaid");
-    
+
+    if (this.offlineManager && !this.offlineManager.getIsOnline()) {
+      throw new OfflineQueuedError(this.offlineManager.enqueue("markPaid", params));
+    }
+
     try {
       const payer = await this.requireSignerAddress();
       const transaction = await this.buildWriteTransaction(payer, "mark_paid", [
@@ -853,6 +878,10 @@ export class ILNSdk {
    * ```
    */
   async claimDefault(params: ClaimDefaultParams): Promise<void> {
+    if (this.offlineManager && !this.offlineManager.getIsOnline()) {
+      throw new OfflineQueuedError(this.offlineManager.enqueue("claimDefault", params));
+    }
+
     const signerAddress = await this.requireSignerAddress();
 
     if (signerAddress !== params.funder) {
@@ -1480,6 +1509,68 @@ export class ILNSdk {
     }
 
     return String(error);
+  }
+
+  // ── Offline queue public API ──────────────────────────────────────────────
+
+  /**
+   * Returns the current offline queue state, or null if the offline queue is
+   * not enabled for this SDK instance.
+   */
+  getOfflineState(): OfflineState | null {
+    return this.offlineManager?.getState() ?? null;
+  }
+
+  /**
+   * Returns the underlying OfflineManager, or null when the queue is disabled.
+   * Use this for advanced queue management (retry, remove, clear).
+   */
+  getOfflineManager(): OfflineManager | null {
+    return this.offlineManager;
+  }
+
+  /**
+   * Manually mark the SDK as online/offline.
+   * Useful for Node.js environments that don't have browser connectivity events.
+   * When set to `true`, the queue is flushed immediately.
+   */
+  setOnline(online: boolean): void {
+    this.offlineManager?.setOnline(online);
+  }
+
+  /**
+   * Flush all pending offline queue items immediately.
+   * No-op when the offline queue is not enabled.
+   */
+  async flushOfflineQueue(): Promise<void> {
+    if (this.offlineManager) {
+      await this.offlineManager.processQueue();
+    }
+  }
+
+  private async executeQueuedOperation(item: OfflineQueueItem): Promise<boolean> {
+    try {
+      const params = item.params as any;
+      switch (item.operation) {
+        case "submitInvoice":
+          await this.submitInvoice(params as SubmitInvoiceParams);
+          break;
+        case "fundInvoice":
+          await this.fundInvoice(params as FundInvoiceParams);
+          break;
+        case "markPaid":
+          await this.markPaid(params as MarkPaidParams);
+          break;
+        case "claimDefault":
+          await this.claimDefault(params as ClaimDefaultParams);
+          break;
+        default:
+          return false;
+      }
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**

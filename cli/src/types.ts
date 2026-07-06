@@ -7,6 +7,10 @@ export interface ResolvedConfig {
   networkPassphrase: string;
   rpcUrl: string;
   tokenId?: string;
+  /** Version pinning. */
+  requiredVersion?: string;
+  /** Whether update notifications are enabled. */
+  autoUpdate?: boolean;
 }
 
 export interface FileConfig {

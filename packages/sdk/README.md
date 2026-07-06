@@ -2,6 +2,8 @@
 
 Typed TypeScript SDK for the Invoice Liquidity Network — works in Node.js and modern browsers.
 
+New to ILN terminology? See the protocol [glossary](../../docs/glossary.md) for Stellar, invoice factoring, and security terms used by the SDK.
+
 ## Install
 
 ```bash

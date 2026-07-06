@@ -1,6 +1,7 @@
 // sdk/index.ts
 
 import { mapError } from './errors'
+import { Validators } from './src/validators'
 export { setLocale, detectLocale } from './errors'
 export type { ErrorMessages } from './errors'
 
@@ -31,13 +32,11 @@ export type { ErrorMessages } from './errors'
 export async function submitInvoice(invoke: any, params: {
   freelancer: string
   payer: string
-  amount: number
+  amount: bigint
   dueDate: number
   discountRate: number
 }) {
-  if (!params.amount || params.amount <= 0) {
-    throw new Error('Invalid amount')
-  }
+  Validators.assertValid(Validators.validateInvoiceSubmission(params), 'submitInvoice')
 
   try {
     const res = await invoke('submit_invoice', params)
@@ -67,11 +66,9 @@ export async function submitInvoice(invoke: any, params: {
  */
 export async function fundInvoice(invoke: any, params: {
   funder: string
-  invoiceId: number
+  invoiceId: bigint
 }) {
-  if (!params.invoiceId) {
-    throw new Error('Invalid invoiceId')
-  }
+  Validators.assertValid(Validators.validateFunding(params), 'fundInvoice')
 
   try {
     await invoke('fund_invoice', params)
@@ -95,11 +92,9 @@ export async function fundInvoice(invoke: any, params: {
  * ```
  */
 export async function markPaid(invoke: any, params: {
-  invoiceId: number
+  invoiceId: bigint
 }) {
-  if (!params.invoiceId) {
-    throw new Error('Invalid invoiceId')
-  }
+  Validators.assertValid(Validators.validatePayment(params), 'markPaid')
 
   try {
     await invoke('mark_paid', params)
@@ -123,11 +118,9 @@ export async function markPaid(invoke: any, params: {
  * ```
  */
 export async function claimDefault(invoke: any, params: {
-  invoiceId: number
+  invoiceId: bigint
 }) {
-  if (!params.invoiceId) {
-    throw new Error('Invalid invoiceId')
-  }
+  Validators.assertValid(Validators.validatePayment({ invoiceId: params.invoiceId }), 'claimDefault')
 
   try {
     await invoke('claim_default', params)
@@ -152,11 +145,9 @@ export async function claimDefault(invoke: any, params: {
  * ```
  */
 export async function getInvoice(invoke: any, params: {
-  invoiceId: number
+  invoiceId: bigint
 }) {
-  if (!params.invoiceId) {
-    throw new Error('Invalid invoiceId')
-  }
+  Validators.assertValid(Validators.validatePayment({ invoiceId: params.invoiceId }), 'getInvoice')
 
   try {
     const res = await invoke('get_invoice', params)
