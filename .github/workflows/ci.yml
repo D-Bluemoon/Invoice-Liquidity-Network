@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ['main']
   pull_request:
 
 permissions:
@@ -200,11 +200,11 @@ jobs:
         uses: dorny/test-reporter@v2
         with:
           name: JUnit Test Results
-          path: "**/test-results.xml"
+          path: '**/test-results.xml'
           reporter: java-junit
-          fail-on-error: "false"
-          list-suites: "failed"
-          list-tests: "failed"
+          fail-on-error: 'false'
+          list-suites: 'failed'
+          list-tests: 'failed'
           max-annotations: 10
 
   # ===========================================================================
@@ -221,6 +221,7 @@ jobs:
       - license-compliance
       - sdk-types-sync
       - core-install
+      - core-format
       - core-lint
       - core-type-check
       - core-test
@@ -245,7 +246,7 @@ jobs:
 
           # Collect which jobs failed
           FAILED_JOBS=""
-          for job in test build lint node-tests node-coverage license-compliance sdk-types-sync core-install core-lint core-type-check core-test core-build; do
+          for job in test build lint node-tests node-coverage license-compliance sdk-types-sync core-install core-format core-lint core-type-check core-test core-build; do
             result=$(echo '${{ toJSON(needs) }}' | jq -r --arg job "$job" '.[$job].result // "skipped"')
             if [ "$result" = "failure" ]; then
               FAILED_JOBS="$FAILED_JOBS\n- **$job**: ❌ $result"
@@ -356,7 +357,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ github.sha }}
-          path: "**/test-results.xml"
+          path: '**/test-results.xml'
           retention-days: 7
 
       - name: Comment PR on failure
@@ -424,7 +425,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
-          version: "9.0.0"
+          version: '9.0.0'
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -571,6 +572,17 @@ jobs:
       - name: Setup pnpm with store cache
         uses: ./.github/actions/setup-pnpm
 
+  core-format:
+    name: Core · format
+    needs: core-install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup pnpm with store cache
+        uses: ./.github/actions/setup-pnpm
+      - name: Check formatting
+        run: pnpm format:check
+
   core-lint:
     name: Core · lint
     needs: core-install
@@ -609,7 +621,7 @@ jobs:
 
   core-test:
     name: Core · test
-    needs: [core-lint, core-type-check]
+    needs: [core-format, core-lint, core-type-check]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -655,7 +667,7 @@ jobs:
 
   core-summary:
     name: Core · PR summary
-    needs: [core-install, core-lint, core-type-check, core-test, core-build]
+    needs: [core-install, core-format, core-lint, core-type-check, core-test, core-build]
     if: always() && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
@@ -666,6 +678,7 @@ jobs:
           script: |
             const jobs = {
               install: '${{ needs.core-install.result }}',
+              format: '${{ needs.core-format.result }}',
               lint: '${{ needs.core-lint.result }}',
               'type-check': '${{ needs.core-type-check.result }}',
               test: '${{ needs.core-test.result }}',
