@@ -105,6 +105,14 @@ pnpm test
 - `notifications/` — webhook notification service
 - `docs/` — shared documentation and contribution guides
 
+### Formatting
+
+This repository uses a shared root Prettier configuration to keep formatting consistent across packages.
+
+- Run `pnpm format` to apply formatting.
+- Run `pnpm format:check` to verify formatting without changing files.
+- Generated outputs and Markdown files are excluded by the root `.prettierignore`.
+
 ---
 
 ## Issue process
