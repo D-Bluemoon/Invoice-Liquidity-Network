@@ -31,7 +31,7 @@ jobs:
         github.event.inputs.network == 'mainnet' ||
         needs.testnet-health.outputs.healthy == 'true'
       )
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
     environment: ${{ github.event.inputs.network }}
     permissions:
       contents: read

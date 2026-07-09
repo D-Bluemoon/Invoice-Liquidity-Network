@@ -13,7 +13,7 @@ permissions:
 jobs:
   update-checklist:
     name: Update checklist statuses
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
 
     steps:
       - name: Checkout

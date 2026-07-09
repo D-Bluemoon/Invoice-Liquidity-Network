@@ -10,7 +10,7 @@ on:
 
 jobs:
   browser-tests:
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
     defaults:
       run:
         working-directory: packages/sdk

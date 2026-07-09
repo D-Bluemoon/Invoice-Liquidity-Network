@@ -18,7 +18,7 @@ concurrency:
 jobs:
   changes:
     name: Detect changed paths
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
     steps:
@@ -41,12 +41,11 @@ jobs:
     name: Run tests
     needs: changes
     if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
     steps:
       - uses: actions/checkout@v4
-
-      - name: Initialize submodules
-        run: git submodule update --init --recursive
+        with:
+          submodules: recursive
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -87,12 +86,11 @@ jobs:
     name: Build contract
     needs: changes
     if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
     steps:
       - uses: actions/checkout@v4
-
-      - name: Initialize submodules
-        run: git submodule update --init --recursive
+        with:
+          submodules: recursive
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -133,12 +131,11 @@ jobs:
     name: Lint code
     needs: changes
     if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
     steps:
       - uses: actions/checkout@v4
-
-      - name: Initialize submodules
-        run: git submodule update --init --recursive
+        with:
+          submodules: recursive
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -187,7 +184,7 @@ jobs:
     name: Test results
     needs: [node-tests, core-test]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
     steps:
       - name: Download JUnit reports
         uses: actions/download-artifact@v4
@@ -227,7 +224,7 @@ jobs:
       - core-test
       - core-build
     if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
     steps:
       - name: Send Discord notification
         env:
@@ -274,7 +271,7 @@ jobs:
   syncpack:
     name: Dependency version consistency
     needs: pnpm-cache
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
     steps:
       - uses: actions/checkout@v4
 
@@ -303,7 +300,7 @@ jobs:
   validate-packages:
     name: Validate package.json consistency
     needs: pnpm-cache
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
     steps:
       - uses: actions/checkout@v4
 
@@ -329,7 +326,7 @@ jobs:
   node-tests:
     name: Run Node.js tests
     needs: pnpm-cache
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
     steps:
       - uses: actions/checkout@v4
 
@@ -376,7 +373,7 @@ jobs:
   node-coverage:
     name: Node.js coverage (≥80%)
     needs: pnpm-cache
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
     steps:
       - uses: actions/checkout@v4
 
@@ -419,7 +416,7 @@ jobs:
 
   license-compliance:
     name: Dependency license compliance check
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
     steps:
       - uses: actions/checkout@v4
 
@@ -456,12 +453,11 @@ jobs:
     name: SDK types in sync
     needs: [pnpm-cache, changes]
     if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
     steps:
       - uses: actions/checkout@v4
-
-      - name: Initialize submodules
-        run: git submodule update --init --recursive
+        with:
+          submodules: recursive
 
       - name: Setup pnpm with store cache
         uses: ./.github/actions/setup-pnpm
@@ -527,7 +523,7 @@ jobs:
     name: SDK testnet integration tests
     needs: [pnpm-cache, testnet-health]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.testnet-health.outputs.healthy == 'true'
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -547,7 +543,7 @@ jobs:
     name: SDK testnet integration (skipped — unhealthy testnet)
     needs: [testnet-health]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.testnet-health.outputs.healthy != 'true'
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
     steps:
       - name: Report skipped integration tests
         run: |
@@ -566,7 +562,7 @@ jobs:
   core-install:
     name: Core · install
     needs: pnpm-cache
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
     steps:
       - uses: actions/checkout@v4
       - name: Setup pnpm with store cache
@@ -575,7 +571,7 @@ jobs:
   core-format:
     name: Core · format
     needs: core-install
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
     steps:
       - uses: actions/checkout@v4
       - name: Setup pnpm with store cache
@@ -587,7 +583,7 @@ jobs:
     name: Core · lint
     needs: core-install
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
     steps:
       - uses: actions/checkout@v4
       - name: Setup pnpm with store cache
@@ -605,7 +601,7 @@ jobs:
     name: Core · type-check
     needs: core-install
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
     steps:
       - uses: actions/checkout@v4
       - name: Setup pnpm with store cache
@@ -622,7 +618,7 @@ jobs:
   core-test:
     name: Core · test
     needs: [core-format, core-lint, core-type-check]
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
     steps:
       - uses: actions/checkout@v4
       - name: Setup pnpm with store cache
@@ -651,7 +647,7 @@ jobs:
   core-build:
     name: Core · build
     needs: core-test
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
     steps:
       - uses: actions/checkout@v4
       - name: Setup pnpm with store cache
@@ -669,7 +665,7 @@ jobs:
     name: Core · PR summary
     needs: [core-install, core-format, core-lint, core-type-check, core-test, core-build]
     if: always() && github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
     steps:
       - name: Post results summary to PR
         continue-on-error: true

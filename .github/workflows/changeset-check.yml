@@ -19,7 +19,7 @@ on:
 jobs:
   changeset-check:
     name: Require changeset for package changes
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
 
     steps:
       - name: Checkout

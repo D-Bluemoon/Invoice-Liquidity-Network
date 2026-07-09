@@ -21,7 +21,7 @@ jobs:
   knip:
     name: knip
     needs: pnpm-cache
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
     # Advisory only — do not fail the workflow on violations.
     continue-on-error: true
     steps:

@@ -27,7 +27,7 @@ on:
 jobs:
   health:
     name: Horizon testnet health
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
     outputs:
       healthy: ${{ steps.check.outputs.healthy }}
     steps:

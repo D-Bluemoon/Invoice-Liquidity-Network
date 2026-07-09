@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   e2e-tests:
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
     if: vars.RUN_E2E == 'true'
     steps:
       - uses: actions/checkout@v4

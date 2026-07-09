@@ -9,7 +9,7 @@ on:
 jobs:
   changes:
     name: Detect changed paths
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
     steps:
@@ -25,14 +25,13 @@ jobs:
   coverage:
     name: Run tests and collect coverage
     needs: changes
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-nursca
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Initialize submodules
-        run: git submodule update --init --recursive
+        with:
+          submodules: recursive
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
