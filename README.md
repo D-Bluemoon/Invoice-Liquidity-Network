@@ -5,8 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Status](https://img.shields.io/badge/status-status.iln.finance-brightgreen)](https://status.iln.finance)
 
-**Turn unpaid invoices into instant liquidity on-chain, on Stellar.***********
-
+**Turn unpaid invoices into instant liquidity on-chain, on Stellar.****\*******
 
 i just need to create a draft meaninful pr
 
@@ -24,12 +23,12 @@ i just need to create a draft prrr
 
 ## Organisation Repositories
 
-| Repository | Description | Language |
-|------------|-------------|----------|
+| Repository                                                                                          | Description                                                                 | Language   |
+| --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ---------- |
 | [Invoice-Liquidity-Network](https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network) | **This repo** — org overview, shared docs, SDK, CLI, indexer, notifications | TypeScript |
-| [ILN-Frontend](https://github.com/Invoice-Liquidity-Network/ILN-Frontend) | Next.js dApp — freelancer dashboard, LP analytics, governance UI | TypeScript |
-| [ILN-Smart-Contract](https://github.com/Invoice-Liquidity-Network/ILN-Smart-Contract) | 
-Soroban smart contracts — invoice lifecycle, multi-token, reputation | Rust |
+| [ILN-Frontend](https://github.com/Invoice-Liquidity-Network/ILN-Frontend)                           | Next.js dApp — freelancer dashboard, LP analytics, governance UI            | TypeScript |
+| [ILN-Smart-Contract](https://github.com/Invoice-Liquidity-Network/ILN-Smart-Contract)               |
+| Soroban smart contracts — invoice lifecycle, multi-token, reputation                                | Rust                                                                        |
 
 ---
 
@@ -62,11 +61,11 @@ Freelancer                  ILN Contract              Liquidity Provider
 
 ## Stellar Testnet Deployment
 
-| Contract | Contract ID |
-|---------|-------------|
-| ILN-Distribution | `CAQGPMT3EQK4AABMIR66JJXEOCNCLPTDNXMS5OHZXH4LI24UYAF25V5B` |
+| Contract          | Contract ID                                                |
+| ----------------- | ---------------------------------------------------------- |
+| ILN-Distribution  | `CAQGPMT3EQK4AABMIR66JJXEOCNCLPTDNXMS5OHZXH4LI24UYAF25V5B` |
 | Invoice-Liquidity | `CCPASLHKRFBMVV5PZG3LKDGKFEDXZMB5U7DK42CVLUVWCMUCSRPVBIMO` |
-| ILN-Governance | `CD7GOIU3GNK7EZHG7XWBC7VI4NRVGMRCU7X2FOCAPQN6EGTSW46BY4EB` |
+| ILN-Governance    | `CD7GOIU3GNK7EZHG7XWBC7VI4NRVGMRCU7X2FOCAPQN6EGTSW46BY4EB` |
 
 > Mainnet deployment coming after audit. Do not use with real funds until then.
 
@@ -77,6 +76,7 @@ Freelancer                  ILN Contract              Liquidity Provider
 This is the **organisation root** — it contains shared infrastructure used across all ILN sub-projects:
 
 ### SDK (`sdk/`)
+
 A typed JavaScript/TypeScript SDK with browser Freighter signing and Node.js keypair support.
 
 ```bash
@@ -86,6 +86,7 @@ npm install @invoice-liquidity/sdk
 See [`sdk/README.md`](./sdk/README.md) for full API documentation.
 
 ### CLI (`cli/`)
+
 A command-line tool for interacting with the ILN contract on testnet and mainnet.
 
 ```bash
@@ -102,22 +103,25 @@ iln status --id 1
 See [`cli/README.md`](./cli/README.md) for setup and usage.
 
 ### Indexer (`indexer/`)
+
 A Node.js service that indexes contract events and exposes a REST API for the frontend.
 
 ### Notifications (`notifications/`)
+
 A webhook-based notification service for invoice lifecycle events.
 
 See [`docs/notifications.md`](./docs/notifications.md) for setup.
 
 ### Scripts (`scripts/`)
+
 Deployment and development helper scripts.
 
-| Script | Purpose |
-|--------|---------|
-| `scripts/deploy.ts` | Deploy contract to testnet/mainnet |
+| Script                    | Purpose                            |
+| ------------------------- | ---------------------------------- |
+| `scripts/deploy.ts`       | Deploy contract to testnet/mainnet |
 | `scripts/fund-wallets.sh` | Fund testnet wallets via Friendbot |
-| `scripts/seed.sh` | Seed test data |
-| `scripts/dev-setup.sh` | Set up a local dev environment |
+| `scripts/seed.sh`         | Seed test data                     |
+| `scripts/dev-setup.sh`    | Set up a local dev environment     |
 
 ---
 
@@ -189,22 +193,22 @@ npm run test:e2e              # Run E2E integration tests
 
 ## Documentation
 
-| Doc | Description |
-|-----|-------------|
-| [`docs/index.md`](./docs/index.md) | Protocol overview |
-| [`docs/tutorials/lp-funding.md`](./docs/tutorials/lp-funding.md) | LP funding tutorial |
-| [`docs/governance.md`](./docs/governance.md) | Governance guide |
-| [`docs/multi-token.md`](./docs/multi-token.md) | Multi-token support |
-| [`docs/notifications.md`](./docs/notifications.md) | Notification system |
-| [`docs/api-collection.md`](./docs/api-collection.md) | Horizon and Soroban RPC API collection examples |
-| [`docs/local-development.md`](./docs/local-development.md) | Local dev setup |
-| [`docs/mainnet-launch-checklist.md`](./docs/mainnet-launch-checklist.md) | Mainnet readiness checklist with owners, statuses, and sign-off |
-| [`docs/glossary.md`](./docs/glossary.md) | Protocol terminology for Stellar, invoice factoring, DeFi, and security terms |
-| [`docs/tutorials/first-invoice.md`](./docs/tutorials/first-invoice.md) | Hands-on invoice submission tutorial |
-| [`docs/ci-cd.md`](./docs/ci-cd.md) | CI/CD and deployment environments |
-| [`CONTRIBUTING.md`](./CONTRIBUTING.md) | How to contribute |
-| [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md) | Community standards and guidelines |
-| [`SECURITY.md`](./SECURITY.md) | Security policy |
+| Doc                                                                      | Description                                                                   |
+| ------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| [`docs/index.md`](./docs/index.md)                                       | Protocol overview                                                             |
+| [`docs/tutorials/lp-funding.md`](./docs/tutorials/lp-funding.md)         | LP funding tutorial                                                           |
+| [`docs/governance.md`](./docs/governance.md)                             | Governance guide                                                              |
+| [`docs/multi-token.md`](./docs/multi-token.md)                           | Multi-token support                                                           |
+| [`docs/notifications.md`](./docs/notifications.md)                       | Notification system                                                           |
+| [`docs/api-collection.md`](./docs/api-collection.md)                     | Horizon and Soroban RPC API collection examples                               |
+| [`docs/local-development.md`](./docs/local-development.md)               | Local dev setup                                                               |
+| [`docs/mainnet-launch-checklist.md`](./docs/mainnet-launch-checklist.md) | Mainnet readiness checklist with owners, statuses, and sign-off               |
+| [`docs/glossary.md`](./docs/glossary.md)                                 | Protocol terminology for Stellar, invoice factoring, DeFi, and security terms |
+| [`docs/tutorials/first-invoice.md`](./docs/tutorials/first-invoice.md)   | Hands-on invoice submission tutorial                                          |
+| [`docs/ci-cd.md`](./docs/ci-cd.md)                                       | CI/CD and deployment environments                                             |
+| [`CONTRIBUTING.md`](./CONTRIBUTING.md)                                   | How to contribute                                                             |
+| [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md)                             | Community standards and guidelines                                            |
+| [`SECURITY.md`](./SECURITY.md)                                           | Security policy                                                               |
 
 ---
 
@@ -242,3 +246,4 @@ The ILN documentation is built with [Nextra](https://nextra.site) and deployed t
 cd packages/docs
 npm install
 npm run dev
+```
