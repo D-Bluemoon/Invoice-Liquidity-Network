@@ -5,9 +5,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Status](https://img.shields.io/badge/status-status.iln.finance-brightgreen)](https://status.iln.finance)
 
-**Turn unpaid invoices into instant liquidity on-chain, on Stellar.****\*******
+**Turn unpaid invoices into instant liquidity on-chain, on Stellar.**
 
-i just need to create a draft meaninful pr
 
 # Invoice Liquidity Network (ILN)
 
@@ -19,16 +18,14 @@ No banks. No credit checks. No 60-day waits.
 
 ---
 
-i just need to create a draft prrr
 
 ## Organisation Repositories
 
 | Repository                                                                                          | Description                                                                 | Language   |
 | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ---------- |
 | [Invoice-Liquidity-Network](https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network) | **This repo** — org overview, shared docs, SDK, CLI, indexer, notifications | TypeScript |
-| [ILN-Frontend](https://github.com/Invoice-Liquidity-Network/ILN-Frontend)                           | Next.js dApp — freelancer dashboard, LP analytics, governance UI            | TypeScript |
-| [ILN-Smart-Contract](https://github.com/Invoice-Liquidity-Network/ILN-Smart-Contract)               |
-| Soroban smart contracts — invoice lifecycle, multi-token, reputation                                | Rust                                                                        |
+| [ILN-Frontend](https://github.com/Invoice-Liquidity-Network/ILN-Frontend) | Next.js dApp — freelancer dashboard, LP analytics, governance UI | TypeScript |
+| [ILN-Smart-Contract](https://github.com/Invoice-Liquidity-Network/ILN-Smart-Contract) | Soroban smart contracts — invoice lifecycle, multi-token, reputation | Rust |
 
 ---
 
