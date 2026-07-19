@@ -35,3 +35,44 @@ This inconsistency creates real friction:
   needs a single registered scope.
 - Dependency resolution is harder to reason about when names are split
   across three conventions.
+
+---
+
+## Detailed Design
+
+### Naming rules
+
+1. **All packages** use the `@iln/` scope.
+2. **Package name** mirrors the directory name under `packages/` (or the
+   top-level service directory). Use lowercase, no dots, hyphens allowed.
+3. **Root package** keeps its current unscoped name (`invoice-liquidity-network`)
+   because it is `private: true` and never published to npm.
+4. **Example packages** keep unscoped names with an `iln-` prefix (e.g.
+   `iln-react-example`) because they are reference code, not published.
+5. **Legacy top-level directories** (`cli/`, `docs/`, `indexer/`, `notifications/`,
+   `sdk/`) should be migrated into `packages/` in a separate follow-up; this
+   RFC only renames the `name` field, not the directory layout.
+
+### Name mapping
+
+| # | Directory | Current name | Proposed name | Change? |
+|---|---|---|---|---|
+| 1 | `packages/sdk/` | `@iln/sdk-next` | `@iln/sdk` | yes |
+| 2 | `packages/cli/` | `@iln/cli` | `@iln/cli` | no |
+| 3 | `packages/indexer/` | `@iln/indexer` | `@iln/indexer` | no |
+| 4 | `packages/react/` | `@iln/react` | `@iln/react` | no |
+| 5 | `packages/shared/` | `@iln/shared` | `@iln/shared` | no |
+| 6 | `packages/eslint-config/` | `@iln/eslint-config` | `@iln/eslint-config` | no |
+| 7 | `packages/mock-backend/` | `@iln/mock-backend` | `@iln/mock-backend` | no |
+| 8 | `packages/opentelemetry/` | `@iln/opentelemetry` | `@iln/opentelemetry` | no |
+| 9 | `packages/scripts/` | `@iln/scripts` | `@iln/scripts` | no |
+| 10 | `packages/test-utils/` | `@iln/test-utils` | `@iln/test-utils` | no |
+| 11 | `packages/upgrade-tests/` | `@iln/upgrade-tests` | `@iln/upgrade-tests` | no |
+| 12 | `packages/invoice-sdk/` | `@iln/invoice-sdk` | `@iln/invoice-sdk` | no |
+| 13 | `packages/docs/` | `@invoice-liquidity/docs-next` | `@iln/docs` | yes |
+| 14 | `docs/` | `@invoice-liquidity/docs` | `@iln/docs-legacy` | yes |
+| 15 | `cli/` | `@invoice-liquidity/cli` | `@iln/cli-legacy` | yes |
+| 16 | `indexer/` | `iln-indexer` | `@iln/indexer-service` | yes |
+| 17 | `notifications/` | `iln-notifications` | `@iln/notifications` | yes |
+| 18 | `sdk/` | `@iln/sdk` | `@iln/sdk-legacy` | yes |
+| 19 | `tests/sdk-integration/` | `@iln/sdk-integration-tests` | `@iln/sdk-integration-tests` | no |
