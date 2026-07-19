@@ -102,3 +102,46 @@ The rename is split into **10 follow-up issues** to avoid a single massive PR:
 - npm scope ownership: the `@iln` scope must be verified as registered and
   accessible to all maintainers before renames land.
 - No secret or credential changes are required for name renames.
+
+---
+
+## Drawbacks
+
+- Every rename is a **breaking change** for downstream consumers that import
+  by package name. The phased approach limits blast radius, but anyone with
+  a pinned `@invoice-liquidity/*` dependency will need to update.
+- The `@iln/sdk-next` → `@iln/sdk` rename is the riskiest because `@iln/sdk`
+  already exists at `sdk/`. The migration must retire the old `sdk/` package
+  (renaming it to `@iln/sdk-legacy`) before the new `packages/sdk/` takes
+  the `@iln/sdk` name.
+- Some CI workflows and `turbo.json` pipeline names reference package names
+  directly. Each rename requires updating those references.
+
+---
+
+## Alternatives
+
+**Keep the three conventions as-is.** This is the cheapest option short-term
+but compounds the problem as the workspace grows. Every new package forces a
+choice between conventions with no guidance.
+
+**Use `@invoice-liquidity/*` everywhere.** This scope is more descriptive but
+longer to type, harder to grep, and already has fewer adopters (3 vs 16).
+The cost of migrating the 16 existing `@iln/*` packages outweighs the
+benefit of the longer name.
+
+**Use a different scope entirely (e.g. `@iln-xyz/*`).** No precedent in the
+workspace and no obvious advantage.
+
+---
+
+## Unresolved Questions
+
+1. Should the root `invoice-liquidity-network` package also be scoped to
+   `@iln/network` for consistency, or is the unscoped name acceptable since
+   it is `private: true`?
+2. What is the right deprecation window for `@iln/sdk-next` before the
+   `@iln/sdk` name is fully transferred?
+3. Should example packages (e.g. `iln-react-example`) also be moved to the
+   `@iln/*` scope, or are they fine as unscoped reference code?
+4. Who owns the `@iln` npm scope and can publish under it?
