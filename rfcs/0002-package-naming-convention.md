@@ -76,3 +76,29 @@ This inconsistency creates real friction:
 | 17 | `notifications/` | `iln-notifications` | `@iln/notifications` | yes |
 | 18 | `sdk/` | `@iln/sdk` | `@iln/sdk-legacy` | yes |
 | 19 | `tests/sdk-integration/` | `@iln/sdk-integration-tests` | `@iln/sdk-integration-tests` | no |
+
+### Migration strategy
+
+The rename is split into **10 follow-up issues** to avoid a single massive PR:
+
+1. **Phase 1 — Non-breaking renames** (safe, no downstream consumers):
+   `packages/docs`, `docs/`, `cli/`, `indexer/`, `notifications/`, `sdk/`
+
+2. **Phase 2 — The `@iln/sdk-next` → `@iln/sdk` rename** requires careful
+   coordination. A deprecation window of one release cycle is recommended:
+   - Publish `@iln/sdk` v0.x under the new name while keeping `@iln/sdk-next`
+     as an alias (re-export).
+   - Update all internal imports.
+   - Remove the `sdk-next` alias in a subsequent release.
+
+3. **Each PR** updates exactly one `package.json` `name` field and all
+   internal references (imports, `turbo.json` pipeline names, CI workflow
+   workspace filters, `package.json` dependency specifiers).
+
+4. **CONTRIBUTING.md** is updated with the naming convention (this RFC).
+
+### Security considerations
+
+- npm scope ownership: the `@iln` scope must be verified as registered and
+  accessible to all maintainers before renames land.
+- No secret or credential changes are required for name renames.
