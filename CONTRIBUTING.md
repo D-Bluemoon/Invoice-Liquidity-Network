@@ -13,6 +13,7 @@ Thank you for your interest in contributing. Invoice Liquidity Network (ILN) is 
 - [CI/CD pipeline reference](#cicd-pipeline-reference)
 - [Submitting a pull request](#submitting-a-pull-request)
 - [Branch protection](#branch-protection)
+- [Package naming convention](#package-naming-convention)
 - [Code standards](#code-standards)
 - [Automated dependency updates](#automated-dependency-updates)
 - [Getting help](#getting-help)
@@ -112,6 +113,21 @@ This repository uses a shared root Prettier configuration to keep formatting con
 - Run `pnpm format` to apply formatting.
 - Run `pnpm format:check` to verify formatting without changing files.
 - Generated outputs and Markdown files are excluded by the root `.prettierignore`.
+
+### Package naming convention
+
+All workspace packages **must** use the `@iln/*` scope. This is defined in
+[RFC 0002](./rfcs/0002-package-naming-convention.md).
+
+**Rules for new packages:**
+
+- Scope: `@iln/`
+- Name: lowercase, matches the directory name (e.g. `packages/foo` → `@iln/foo`)
+- No dots in package names
+- Root package (`invoice-liquidity-network`) is exempt (private, never published)
+- Example packages use unscoped names with an `iln-` prefix (e.g. `iln-react-example`)
+
+**Do not** use `@invoice-liquidity/*` or bare unscoped names for new packages.
 
 ---
 
