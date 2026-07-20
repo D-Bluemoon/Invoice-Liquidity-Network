@@ -99,6 +99,11 @@ iln status --id 1
 
 See [`cli/README.md`](./cli/README.md) for setup and usage.
 
+This is the canonical CLI. `packages/cli` (`@iln/cli`) is a separate,
+experimental package with a smaller command set — see
+[`docs/cli-vs-cli-next.md`](./docs/cli-vs-cli-next.md) for the full
+comparison and which one to use.
+
 ### Indexer (`indexer/`)
 
 A Node.js service that indexes contract events and exposes a REST API for the frontend.
