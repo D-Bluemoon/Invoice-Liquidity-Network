@@ -87,6 +87,20 @@ git submodule update --init --recursive
 pnpm install
 ```
 
+### Package manager policy
+
+This repository is a single **pnpm workspace** (see `pnpm-workspace.yaml`). The
+root `pnpm-lock.yaml` is the only lockfile that should ever exist in this repo.
+
+- Always use `pnpm install` / `pnpm add` — never `npm install` or `yarn add`,
+  even inside an individual package such as `cli/`, `sdk/`, or `indexer/`.
+  Running npm or yarn there will generate a stray `package-lock.json` or
+  `yarn.lock` that can silently diverge from what CI resolves via pnpm.
+- CI runs `pnpm run validate:lockfiles` (`scripts/check-no-foreign-lockfiles.mjs`)
+  on every PR and fails the build if any `package-lock.json` or `yarn.lock`
+  is found anywhere in the repo. If you hit this, delete the stray lockfile
+  and re-run `pnpm install` from the repo root.
+
 ### Start local development
 
 - Use `README.md` and `docs/local-development.md` in this repo for the root development setup.
