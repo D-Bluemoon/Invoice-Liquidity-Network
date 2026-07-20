@@ -1,5 +1,11 @@
 # `@iln/sdk`
 
+> This is the **stable, recommended SDK** for integrators. `packages/sdk`
+> (`@iln/sdk-next`) is an experimental, modular/browser-first rewrite that
+> hasn't reached feature parity yet — see
+> [`docs/sdk-next-migration.md`](../docs/sdk-next-migration.md) for the full
+> comparison and current status.
+
 [![npm version](https://img.shields.io/npm/v/@iln/sdk)](https://www.npmjs.com/package/@iln/sdk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network/actions/workflows/ci.yml/badge.svg)](https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network/actions/workflows/ci.yml)

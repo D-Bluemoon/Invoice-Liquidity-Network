@@ -1,4 +1,11 @@
-# @iln/sdk
+# @iln/sdk-next
+
+> This is an **experimental, modular/browser-first rewrite** of the SDK and
+> has not reached feature parity with `@iln/sdk` (`sdk/`) — it is missing
+> governance, analytics, offline, plugins, and React/React Native support.
+> Use [`@iln/sdk`](../../sdk) for integrations today. See
+> [`docs/sdk-next-migration.md`](../../docs/sdk-next-migration.md) for the
+> full comparison and current status.
 
 Typed TypeScript SDK for the Invoice Liquidity Network — works in Node.js and modern browsers.
 
