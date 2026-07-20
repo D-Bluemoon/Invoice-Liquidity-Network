@@ -35,7 +35,8 @@
     "security:scan": "node scripts/dependency-audit.js scan",
     "security:report": "node scripts/dependency-audit.js report",
     "syncpack:check": "syncpack list-mismatches",
-    "validate:packages": "node scripts/validate-packages.mjs"
+    "validate:packages": "node scripts/validate-packages.mjs",
+    "validate:lockfiles": "node scripts/check-no-foreign-lockfiles.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "2.31.0",

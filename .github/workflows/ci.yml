@@ -323,6 +323,28 @@ jobs:
               body: '🚨 **Package.json validation failed!** Run `node scripts/validate-packages.mjs` locally and fix violations before merging.'
             })
 
+  no-foreign-lockfiles:
+    name: Guard against non-pnpm lockfiles
+    runs-on: namespace-profile-nursca
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for stray package-lock.json / yarn.lock files
+        run: node scripts/check-no-foreign-lockfiles.mjs
+
+      - name: Comment PR on failure
+        if: failure() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🚨 **Foreign lockfile detected!** This is a pnpm-only workspace. Remove any `package-lock.json`/`yarn.lock` and run `pnpm install` instead.'
+            })
+
   node-tests:
     name: Run Node.js tests
     needs: pnpm-cache
