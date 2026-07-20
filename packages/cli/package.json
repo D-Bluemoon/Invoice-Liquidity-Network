@@ -1,7 +1,7 @@
 {
   "name": "@iln/cli",
   "version": "0.1.0",
-  "description": "Command-line interface for the Invoice Liquidity Network.",
+  "description": "[Experimental, not yet documented] Command-line interface for the Invoice Liquidity Network. See cli/ (@invoice-liquidity/cli) for the canonical, documented CLI.",
   "license": "MIT",
   "type": "module",
   "bin": {
