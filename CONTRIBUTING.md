@@ -127,6 +127,28 @@ This repository uses a shared root Prettier configuration to keep formatting con
 - Run `pnpm format:check` to verify formatting without changing files.
 - Generated outputs and Markdown files are excluded by the root `.prettierignore`.
 
+### Test conventions
+
+Tests are colocated with source files in `src/` using the `*.test.ts` naming convention. All SDK tests live in `sdk/src/` alongside the modules they test.
+
+- Write tests in the same directory as the source file: `sdk/src/client.test.ts` tests `sdk/src/client.ts`.
+- Run the SDK test suite with `pnpm test` from the `sdk/` directory.
+- Integration tests against testnet: `pnpm test:integration` and `pnpm test:integration:testnet`.
+- E2E tests against a local Stellar node: `pnpm test:e2e-local`.
+- The `sdk/vitest.config.ts` test-match glob covers `src/**/*.test.ts` only.
+
+### Bundle-size budgets
+
+The `@iln/sdk` bundle size is checked in CI via `scripts/check-bundle-size.js` and the `sdk-bundle-size.yml` workflow. Size limits are defined in `sdk/.bundle-size.json`.
+
+If your change intentionally increases the bundle size (e.g. adding a new feature):
+1. Update the limit values in `sdk/.bundle-size.json`.
+2. Explain the size increase in your PR description.
+
+### i18n / internationalisation
+
+A `sdk/locales/` directory was removed in #694 after an audit confirmed it was not wired into the built SDK. If SDK-level string localisation is prioritised in the future, file an RFC in `Invoice-Liquidity-Network` to design the locale-loading mechanism before adding translation files.
+
 ---
 
 ## Issue process
