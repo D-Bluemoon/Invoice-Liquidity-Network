@@ -1,0 +1,8 @@
+{
+  "budgets": [
+    { "path": "dist/index.mjs", "limit": "30 KB" },
+    { "path": "dist/index.cjs", "limit": "40 KB" },
+    { "path": "dist/index.d.ts", "limit": "20 KB" }
+  ],
+  "notes": "Budgets measured against minified tsup output. To update, adjust limits here and in the CI workflow comment."
+}
