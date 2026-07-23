@@ -91,22 +91,33 @@ export class LocalDevEnvironment {
     await this.start();
   }
 
-  async status(): Promise<void> {
+  async status(options?: { json?: boolean }): Promise<void> {
     const running = await this.containerRunning();
+    const contractId = this.readFile(".local-contract-id") || null;
+    const tokenId = this.readFile(".local-usdc-id") || null;
+    const indexerRunning = await this.isPortInUse(INDEXER_PORT);
+    const notificationsRunning = await this.isPortInUse(NOTIFICATIONS_PORT);
+
+    if (options?.json) {
+      this.ui.info(JSON.stringify({
+        success: true,
+        data: {
+          node: { running, rpc: RPC_URL, network: NETWORK_NAME },
+          contract: { contractId, tokenId },
+          services: { indexer: { running: indexerRunning, port: INDEXER_PORT }, notifications: { running: notificationsRunning, port: NOTIFICATIONS_PORT } }
+        }
+      }, null, 2));
+      return;
+    }
+
     this.ui.info(`Node: ${running ? "running" : "stopped"}`);
     this.ui.info(`RPC: ${RPC_URL}`);
     this.ui.info(`Network: ${NETWORK_NAME}`);
 
-    const contractId = this.readFile(".local-contract-id");
     this.ui.info(`Contract: ${contractId || "not deployed"}`);
-
-    const tokenId = this.readFile(".local-usdc-id");
     this.ui.info(`Token: ${tokenId || "not deployed"}`);
 
-    const indexerRunning = await this.isPortInUse(INDEXER_PORT);
     this.ui.info(`Indexer: ${indexerRunning ? "running" : "stopped"} (port ${INDEXER_PORT})`);
-
-    const notificationsRunning = await this.isPortInUse(NOTIFICATIONS_PORT);
     this.ui.info(`Notifications: ${notificationsRunning ? "running" : "stopped"} (port ${NOTIFICATIONS_PORT})`);
   }
 
