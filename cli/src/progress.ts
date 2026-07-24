@@ -10,7 +10,7 @@ import pc from "picocolors";
 export interface ProgressOptions {
   /** Output stream (defaults to process.stdout). */
   output?: NodeJS.WritableStream;
-  /** When false, skip animation and emit a single status line. */
+  /** When false, suppress progress output entirely. */
   enabled?: boolean;
 }
 
@@ -70,6 +70,7 @@ function formatBar(current: number, total: number): string {
  */
 export function createSpinner(message: string, options?: ProgressOptions): Spinner {
   const output = options?.output ?? process.stdout;
+  const silent = options?.enabled === false;
   const animated = resolveEnabled(options);
   let messageText = message;
   let frame = 0;
@@ -95,7 +96,7 @@ export function createSpinner(message: string, options?: ProgressOptions): Spinn
       frame = (frame + 1) % SPINNER_FRAMES.length;
       renderLine();
     }, SPINNER_INTERVAL_MS);
-  } else {
+  } else if (!silent) {
     emitStatic();
   }
 
@@ -106,7 +107,7 @@ export function createSpinner(message: string, options?: ProgressOptions): Spinn
     if (animated) {
       clearLine(output, messageText.length + 6);
     }
-    if (line) writeLine(output, line);
+    if (line && !silent) writeLine(output, line);
   };
 
   return {
@@ -115,7 +116,7 @@ export function createSpinner(message: string, options?: ProgressOptions): Spinn
       if (!active) return;
       if (animated) {
         renderLine();
-      } else {
+      } else if (!silent) {
         writeLine(output, `${pc.cyan("→")} ${nextMessage}`);
       }
     },
@@ -140,6 +141,7 @@ export function createProgressBar(
   options?: ProgressOptions,
 ): ProgressBar {
   const output = options?.output ?? process.stdout;
+  const silent = options?.enabled === false;
   const animated = resolveEnabled(options);
   let messageText = message;
   let current = 0;
@@ -156,7 +158,7 @@ export function createProgressBar(
 
   if (animated) {
     paint();
-  } else {
+  } else if (!silent) {
     writeLine(output, render());
   }
 
@@ -166,7 +168,7 @@ export function createProgressBar(
     if (animated) {
       clearLine(output, messageText.length + BAR_WIDTH + 24);
     }
-    if (line) writeLine(output, line);
+    if (line && !silent) writeLine(output, line);
   };
 
   const setProgress = (next: number, nextMessage?: string): void => {
@@ -175,7 +177,7 @@ export function createProgressBar(
     if (!active) return;
     if (animated) {
       paint();
-    } else {
+    } else if (!silent) {
       writeLine(output, render());
     }
   };

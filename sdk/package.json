@@ -43,12 +43,13 @@
     "test:e2e-local": "vitest run src/e2e/*.test.ts",
     "test:coverage": "vitest run --coverage",
     "check": "tsc --noEmit",
-    "docs:generate": "typedoc --out ../docs/sdk-api src/index.ts",
+    "docs:generate": "typedoc --out ../docs/sdk-api src/index.ts"
   },
   "dependencies": {
     "@iln/shared": "workspace:*",
     "@stellar/freighter-api": "^6.0.1",
     "@stellar/stellar-sdk": "^15.0.1",
+    "axios": "^1.16.0",
     "debug": "^4.3.4"
   },
   "devDependencies": {
