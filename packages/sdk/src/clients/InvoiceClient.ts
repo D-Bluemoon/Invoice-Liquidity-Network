@@ -5,7 +5,7 @@ import {
   Horizon,
   Networks,
   Operation,
-  SorobanRpc,
+  rpc as SorobanRpc,
   TransactionBuilder,
   nativeToScVal,
   scValToNative,
