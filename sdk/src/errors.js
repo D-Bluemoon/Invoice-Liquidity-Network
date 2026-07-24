@@ -1,33 +1,8 @@
 /**
  * Base error class for all ILN SDK errors.
- *
- * Provides structured error codes, remediation guidance, documentation links, and context.
  */
 export class ILNError extends Error {
-  /** Machine-readable error code (e.g. "INSUFFICIENT_BALANCE"). */
-  public code: string;
-  /** Human-readable suggestion for resolving the error. */
-  public remediation: string;
-  /** Optional documentation URL for this error code. */
-  public docsUrl?: string;
-  /** Optional structured debugging context (never include secrets). */
-  public context?: Record<string, unknown>;
-  /** Whether the operation is likely retryable. */
-  public retryable?: boolean;
-  /** Preserve original error for debugging. */
-  public cause?: unknown;
-
-  constructor(
-    message: string,
-    code: string,
-    remediation: string,
-    options?: {
-      docsUrl?: string;
-      context?: Record<string, unknown>;
-      retryable?: boolean;
-      cause?: unknown;
-    },
-  ) {
+  constructor(message, code, remediation, options) {
     super(message);
     Object.setPrototypeOf(this, new.target.prototype);
     this.name = this.constructor.name;
@@ -44,16 +19,12 @@ export class ILNError extends Error {
 const DEFAULT_DOCS_BASE_URL =
   'https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network/blob/main/docs/errors.md';
 
-function withDocs(code: string): string {
-  // Link to an anchor on docs/errors.md for programmatic navigation.
+function withDocs(code) {
   return `${DEFAULT_DOCS_BASE_URL}#${code.toLowerCase()}`;
 }
 
-/**
- * Thrown when the provided discount rate exceeds protocol limits.
- */
 export class InvalidDiscountRateError extends ILNError {
-  constructor(context?: Record<string, unknown>) {
+  constructor(context) {
     super(
       'Invalid discount rate.',
       'INVALID_DISCOUNT_RATE',
@@ -68,11 +39,8 @@ export class InvalidDiscountRateError extends ILNError {
   }
 }
 
-/**
- * Thrown when a token mismatch occurs in a transaction.
- */
 export class TokenMismatchError extends ILNError {
-  constructor(context?: Record<string, unknown>) {
+  constructor(context) {
     super(
       'Token mismatch in transaction.',
       'TOKEN_MISMATCH',
@@ -87,11 +55,8 @@ export class TokenMismatchError extends ILNError {
   }
 }
 
-/**
- * Thrown when the payer\'s reputation score is below the protocol minimum.
- */
 export class PayerReputationTooLowError extends ILNError {
-  constructor(context?: Record<string, unknown>) {
+  constructor(context) {
     super(
       'Payer reputation is too low.',
       'PAYER_REPUTATION_TOO_LOW',
@@ -106,14 +71,11 @@ export class PayerReputationTooLowError extends ILNError {
   }
 }
 
-/**
- * Thrown when the account has insufficient balance for a transaction.
- */
 export class InsufficientBalanceError extends ILNError {
   constructor(
     message = 'Insufficient balance to complete the transaction.',
     remediation = 'Ensure the account has enough funds (including transaction fees) before retrying. If you are on testnet, fund the account and re-submit.',
-    context?: Record<string, unknown>,
+    context,
   ) {
     super(message, 'INSUFFICIENT_BALANCE', remediation, {
       docsUrl: withDocs('INSUFFICIENT_BALANCE'),
@@ -124,14 +86,11 @@ export class InsufficientBalanceError extends ILNError {
   }
 }
 
-/**
- * Thrown when a network request to the RPC server fails.
- */
 export class NetworkError extends ILNError {
   constructor(
     message = 'Network request failed.',
     remediation = 'Failed to reach the configured Stellar RPC endpoint. Verify your `rpcUrl`, check connectivity, and ensure the RPC server is healthy.',
-    context?: Record<string, unknown>,
+    context,
   ) {
     super(message, 'NETWORK_ERROR', remediation, {
       docsUrl: withDocs('NETWORK_ERROR'),
@@ -142,14 +101,11 @@ export class NetworkError extends ILNError {
   }
 }
 
-/**
- * Thrown when a transaction fails to execute on-chain.
- */
 export class TransactionFailedError extends ILNError {
   constructor(
     message = 'Transaction execution failed on-chain.',
     remediation = 'The contract rejected the transaction. Review simulation/tx failure reason, verify invoice state, and confirm fee/resource settings.',
-    context?: Record<string, unknown>,
+    context,
   ) {
     super(message, 'TRANSACTION_FAILED', remediation, {
       docsUrl: withDocs('TRANSACTION_FAILED'),
@@ -160,14 +116,11 @@ export class TransactionFailedError extends ILNError {
   }
 }
 
-/**
- * Thrown when input validation fails.
- */
 export class ValidationError extends ILNError {
   constructor(
     message = 'Validation failed.',
     remediation = 'Check provided input parameters. Use `Validators` to validate fields and inspect which constraint failed.',
-    context?: Record<string, unknown>,
+    context,
   ) {
     super(message, 'VALIDATION_ERROR', remediation, {
       docsUrl: withDocs('VALIDATION_ERROR'),
@@ -178,14 +131,11 @@ export class ValidationError extends ILNError {
   }
 }
 
-/**
- * Thrown when a wallet is required but not connected.
- */
 export class WalletNotConnectedError extends ILNError {
   constructor(
     message = 'Wallet is not connected.',
     remediation = 'A transaction signer is required for this state-changing operation. Provide a `signer` in the `ILNSdk` configuration or ensure wallet is connected.',
-    context?: Record<string, unknown>,
+    context,
   ) {
     super(message, 'WALLET_NOT_CONNECTED', remediation, {
       docsUrl: withDocs('WALLET_NOT_CONNECTED'),
@@ -196,11 +146,8 @@ export class WalletNotConnectedError extends ILNError {
   }
 }
 
-/**
- * Thrown for generic contract errors that don\'t match specific error types.
- */
 export class GenericContractError extends ILNError {
-  constructor(rawError: string, context?: Record<string, unknown>) {
+  constructor(rawError, context) {
     super(
       `Contract error: ${rawError}`,
       'CONTRACT_ERROR',
@@ -218,14 +165,11 @@ export class GenericContractError extends ILNError {
   }
 }
 
-/**
- * Thrown when transaction simulation fails.
- */
 export class SimulationError extends ILNError {
   constructor(
     message = 'Transaction simulation failed.',
     remediation = 'The SDK could not simulate the transaction successfully. Review transaction parameters and ensure contract state is consistent before retrying.',
-    context?: Record<string, unknown>,
+    context,
   ) {
     super(message, 'SIMULATION_FAILED', remediation, {
       docsUrl: withDocs('SIMULATION_FAILED'),
@@ -236,17 +180,10 @@ export class SimulationError extends ILNError {
   }
 }
 
-/**
- * Parse a raw contract error into a typed ILNError with detailed debugging context.
- *
- * @param xdrError - The raw error value from the contract.
- * @param signature - Optional function signature or operation name.
- * @returns A typed ILNError instance.
- */
-export function parseContractError(xdrError: unknown, signature?: string): ILNError {
+export function parseContractError(xdrError, signature) {
   const errorStr = typeof xdrError === 'string' ? xdrError : JSON.stringify(xdrError);
 
-  const baseContext: Record<string, unknown> = {
+  const baseContext = {
     rawError: xdrError,
     rawErrorString: errorStr,
   };
@@ -270,19 +207,11 @@ export function parseContractError(xdrError: unknown, signature?: string): ILNEr
   });
 }
 
-/**
- * Normalizes any caught error or unknown object into a consistent, structured ILNError.
- *
- * @param err - The unknown error thrown by a function or network call.
- * @param fallbackCode - Optional fallback code if err cannot be classified (default: 'UNKNOWN_ERROR').
- * @param fallbackMessage - Optional fallback message if err has no message.
- * @returns A guaranteed ILNError instance with structured code, remediation, and optional context.
- */
 export function normalizeError(
-  err: unknown,
+  err,
   fallbackCode = 'UNKNOWN_ERROR',
   fallbackMessage = 'An unexpected error occurred.'
-): ILNError {
+) {
   if (err instanceof ILNError) {
     return err;
   }
@@ -319,5 +248,4 @@ export function normalizeError(
   );
 }
 
-/** Alias for normalizeError */
 export const toILNError = normalizeError;
