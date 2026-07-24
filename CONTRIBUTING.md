@@ -299,6 +299,11 @@ pnpm run gitleaks:baseline
 
 4. Document any baseline or allowlist updates in your PR so reviewers can verify the change.
 
+### Security and Trust Models
+
+Before contributing to the SDK or making changes to transaction signing behavior, review the [SDK Trust Model](./docs/sdk-trust-model.md). This document explains the assumptions and validation boundaries for operations.
+
+
 ---
 
 ## Getting help
