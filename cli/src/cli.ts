@@ -174,8 +174,8 @@ export async function runCli(
 
       try {
         const config = load();
-        const opts = program.opts() as { quiet?: boolean };
-        if (!opts.quiet) {
+        const opts = program.opts() as { json?: boolean; quiet?: boolean };
+        if (!opts.quiet && !opts.json) {
           ui.info(`Using ${describeConfig(config)}`);
         }
 
@@ -190,7 +190,7 @@ export async function runCli(
         }
 
         // 2. Update Check
-        if (config.autoUpdate && !opts.quiet) {
+        if (config.autoUpdate && !opts.quiet && !opts.json) {
           // Fire and forget update check to not block startup significantly
           void versionManager.notifyUpdateIfAvailable();
         }
@@ -977,7 +977,8 @@ export async function runCli(
     .argument("[version]", "version to show changelog for")
     .action(async (version?: string) => {
       await versionManager.showChangelog(version);
-  // Wallet management commands
+    });
+    // Wallet management commands
   const walletCommand = program
     .command("wallet")
     .description("Manage Stellar keypairs for use with ILN.");

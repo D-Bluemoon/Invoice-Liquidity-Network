@@ -35,6 +35,8 @@ jobs:
         uses: ./.github/actions/setup-pnpm
 
       - name: Build SDK
+        env:
+          SKIP_DTS: "true"
         run: pnpm --filter @iln/sdk build
 
       - name: Check bundle size
