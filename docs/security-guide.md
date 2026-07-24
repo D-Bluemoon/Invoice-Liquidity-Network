@@ -171,6 +171,8 @@ Audit reports are published in the repository under `contracts/audits/` when ava
 
 CI runs `pnpm audit` and license compliance checks on every pull request. The workflow enforces an 80% test-coverage floor and includes mutation testing to validate test quality.
 
+Additionally, Snyk is configured to run weekly and on pull requests via the `snyk.yml` workflow. The `--all-projects` flag ensures that all workspaces and sub-packages in the monorepo are fully scanned for vulnerabilities.
+
 ---
 
 ## Incident Response
