@@ -60,10 +60,8 @@
   "bin": {
     "iln": "packages/scripts/bin/iln.js"
   },
-  "pnpm": {
-    "overrides": {
-      "axios": ">=1.16.0"
-    }
-  },
-  "packageManager": "pnpm@9.0.0"
+  "packageManager": "pnpm@9.0.0",
+  "overrides": {
+    "axios": ">=1.16.0"
+  }
 }
