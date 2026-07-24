@@ -969,7 +969,8 @@ export async function runCli(
     .argument("[version]", "version to show changelog for")
     .action(async (version?: string) => {
       await versionManager.showChangelog(version);
-  // Wallet management commands
+    });
+    // Wallet management commands
   const walletCommand = program
     .command("wallet")
     .description("Manage Stellar keypairs for use with ILN.");

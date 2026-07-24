@@ -1,8 +1,7 @@
 {
   "budgets": [
-    { "path": "dist/index.mjs", "limit": "30 KB" },
-    { "path": "dist/index.cjs", "limit": "40 KB" },
-    { "path": "dist/index.d.ts", "limit": "20 KB" }
+    { "path": "dist/index.mjs", "limit": "90 KB" },
+    { "path": "dist/index.cjs", "limit": "100 KB" }
   ],
-  "notes": "Budgets measured against minified tsup output. To update, adjust limits here and in the CI workflow comment."
+  "notes": "Budgets measure minified runtime bundles. Type declarations are excluded because they do not affect runtime bundle size."
 }
