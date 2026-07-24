@@ -10,6 +10,7 @@
   "notifications": "Notifications",
   "sdk-api-reference": "SDK API Reference",
   "sdk-migration-guide": "SDK Migration Guide",
+  "sdk-next-migration": "SDK vs SDK-next Migration",
   "ci-cd": "CI/CD",
   "tokens": "Tokens",
   "mutation-testing": "Mutation Testing",
