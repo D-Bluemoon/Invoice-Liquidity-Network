@@ -223,12 +223,21 @@ to the `@iln` scope. Provenance additionally relies on the workflow's
 ---
 
 ## Submitting a pull request
-## Pull request process
+
+### Conventional Commits and PR Titles
+
+We enforce [Conventional Commits](https://www.conventionalcommits.org/) across the project using `commitlint` (configured in `commitlint.config.js`). This standardizes our changelog generation and commit history. 
+
+There are two enforcement mechanisms that share this configuration:
+1. **Local Commits:** A Husky `commit-msg` hook lints individual commit messages locally to catch issues early during development.
+2. **PR Titles:** A GitHub Actions workflow (`pr-title-lint.yml`) lints the PR title. This ensures that when a PR is squash-merged, the resulting single commit on `main` follows the convention, maintaining a clean project history.
+
+### Pull request process
 
 1. Fork the repository.
 2. Create a branch named for the scope of the work:
    - `fix/...`, `feat/...`, `docs/...`, `chore/...`
-3. Make focused changes with clear commit messages.
+3. Make focused changes with clear conventional commit messages.
 4. Run the relevant tests and verify the change locally.
 5. Open a PR against `main`.
 6. In the PR description, include:
