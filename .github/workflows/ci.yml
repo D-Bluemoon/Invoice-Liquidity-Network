@@ -21,6 +21,12 @@ jobs:
     runs-on: namespace-profile-nursca
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
+      shared_config: ${{ steps.filter.outputs.shared_config }}
+      notifications: ${{ steps.filter.outputs.notifications }}
+      sdk: ${{ steps.filter.outputs.sdk }}
+      cli: ${{ steps.filter.outputs.cli }}
+      indexer: ${{ steps.filter.outputs.indexer }}
+      packages: ${{ steps.filter.outputs.packages }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -30,6 +36,29 @@ jobs:
             backend:
               - 'backend/**'
               - '.gitmodules'
+            shared_config:
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+              - 'package.json'
+              - 'tsconfig.base.json'
+              - 'pnpm-lock.yaml'
+              - 'vitest.config.ts'
+              - '.nvmrc'
+            notifications:
+              - 'notifications/**'
+            sdk:
+              - 'sdk/**'
+              - 'packages/sdk/**'
+              - 'packages/shared/**'
+              - 'packages/invoice-sdk/**'
+            cli:
+              - 'cli/**'
+              - 'packages/cli/**'
+            indexer:
+              - 'indexer/**'
+              - 'packages/indexer/**'
+            packages:
+              - 'packages/**'
 
   pnpm-cache:
     uses: ./.github/workflows/reusable-cache-pnpm.yml
@@ -270,7 +299,14 @@ jobs:
 
   syncpack:
     name: Dependency version consistency
-    needs: pnpm-cache
+    needs: [pnpm-cache, changes]
+    if: >-
+      needs.changes.outputs.shared_config == 'true' ||
+      needs.changes.outputs.packages == 'true' ||
+      needs.changes.outputs.notifications == 'true' ||
+      needs.changes.outputs.sdk == 'true' ||
+      needs.changes.outputs.cli == 'true' ||
+      needs.changes.outputs.indexer == 'true'
     runs-on: namespace-profile-nursca
     steps:
       - uses: actions/checkout@v4
@@ -299,7 +335,14 @@ jobs:
 
   validate-packages:
     name: Validate package.json consistency
-    needs: pnpm-cache
+    needs: [pnpm-cache, changes]
+    if: >-
+      needs.changes.outputs.shared_config == 'true' ||
+      needs.changes.outputs.packages == 'true' ||
+      needs.changes.outputs.notifications == 'true' ||
+      needs.changes.outputs.sdk == 'true' ||
+      needs.changes.outputs.cli == 'true' ||
+      needs.changes.outputs.indexer == 'true'
     runs-on: namespace-profile-nursca
     steps:
       - uses: actions/checkout@v4
@@ -347,7 +390,10 @@ jobs:
 
   node-tests:
     name: Run Node.js tests
-    needs: pnpm-cache
+    needs: [pnpm-cache, changes]
+    if: >-
+      needs.changes.outputs.shared_config == 'true' ||
+      needs.changes.outputs.notifications == 'true'
     runs-on: namespace-profile-nursca
     steps:
       - uses: actions/checkout@v4
@@ -394,7 +440,10 @@ jobs:
 
   node-coverage:
     name: Node.js coverage (≥80%)
-    needs: pnpm-cache
+    needs: [pnpm-cache, changes]
+    if: >-
+      needs.changes.outputs.notifications == 'true' ||
+      needs.changes.outputs.shared_config == 'true'
     runs-on: namespace-profile-nursca
     steps:
       - uses: actions/checkout@v4
@@ -438,6 +487,14 @@ jobs:
 
   license-compliance:
     name: Dependency license compliance check
+    needs: changes
+    if: >-
+      needs.changes.outputs.shared_config == 'true' ||
+      needs.changes.outputs.packages == 'true' ||
+      needs.changes.outputs.notifications == 'true' ||
+      needs.changes.outputs.sdk == 'true' ||
+      needs.changes.outputs.cli == 'true' ||
+      needs.changes.outputs.indexer == 'true'
     needs: pnpm-cache
     runs-on: namespace-profile-nursca
     steps:
