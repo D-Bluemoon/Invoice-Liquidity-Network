@@ -4,6 +4,10 @@ on:
   schedule:
     - cron: '0 0 * * *'
 
+# Least-privilege: read code to run the nightly E2E suite.
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false

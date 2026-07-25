@@ -10,9 +10,9 @@ on:
       - 'cli/src/**'
       - 'cli/scripts/**'
 
+# Least-privilege: commit regenerated CLI docs back to the branch on push.
 permissions:
   contents: write
-  pull-requests: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

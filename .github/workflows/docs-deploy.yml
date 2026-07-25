@@ -9,6 +9,7 @@ on:
 
   workflow_dispatch:
 
+# Least-privilege: deploy to GitHub Pages via OIDC.
 permissions:
   contents: read
   pages: write

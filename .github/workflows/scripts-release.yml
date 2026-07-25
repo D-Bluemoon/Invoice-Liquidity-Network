@@ -24,6 +24,10 @@ on:
       - '.github/workflows/scripts-release.yml'
   workflow_dispatch:
 
+# Least-privilege default; the publish job elevates to contents + id-token.
+permissions:
+  contents: read
+
 # Never run two publishes for the same tag concurrently.
 concurrency:
   group: scripts-release-${{ github.ref }}
@@ -45,7 +49,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
         with:
           version: "9.0.0"
 
@@ -79,7 +83,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
         with:
           version: "9.0.0"
 
@@ -120,7 +124,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}

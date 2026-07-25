@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ "main" ]
 
+# Least-privilege: read code to run tests and upload coverage to Codecov.
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -20,7 +24,7 @@ jobs:
       shared_config: ${{ steps.filter.outputs.shared_config }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3.0.3
         id: filter
         with:
           filters: |
@@ -51,13 +55,16 @@ jobs:
           
       - name: Setup Rust
         if: needs.changes.outputs.backend == 'true'
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c # stable
         with:
+          toolchain: stable
           components: llvm-tools-preview
           
       - name: Install cargo-llvm-cov
         if: needs.changes.outputs.backend == 'true'
-        uses: taiki-e/install-action@cargo-llvm-cov
+        uses: taiki-e/install-action@3d7d7cd5ac7f994c1892ae0c06165095b9139094 # v2.85.1
+        with:
+          tool: cargo-llvm-cov
           
       - name: Run Rust Coverage
         if: needs.changes.outputs.backend == 'true'
@@ -88,7 +95,7 @@ jobs:
       - name: Upload coverage to Codecov
         if: always()
         continue-on-error: true
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@5975040f7f7d40edaff8d784b576fd65ae95c073 # v5.5.5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: Nursca/Invoice-Liquidity-Network

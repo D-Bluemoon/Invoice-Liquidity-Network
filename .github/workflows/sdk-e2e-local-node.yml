@@ -15,6 +15,10 @@ on:
       - 'pnpm-lock.yaml'
   workflow_dispatch:
 
+# Least-privilege: read code to run the local-node E2E suite.
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false

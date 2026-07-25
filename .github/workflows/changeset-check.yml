@@ -16,6 +16,11 @@ on:
       - 'packages/**'
       - 'sdk/**'
 
+# Least-privilege: read code and post the "changeset required" comment on PRs.
+permissions:
+  contents: read
+  pull-requests: write
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

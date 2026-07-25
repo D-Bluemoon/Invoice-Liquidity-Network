@@ -8,6 +8,10 @@ on:
   schedule:
     - cron: '0 3 * * 0' # Weekly scan at 3 AM on Sunday
 
+# Least-privilege: read code to run the Snyk vulnerability scan.
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -30,7 +34,7 @@ jobs:
 
       - name: Setup Snyk CLI
         if: env.SNYK_TOKEN != ''
-        uses: snyk/actions/setup@master
+        uses: snyk/actions/setup@8e119fbb6c251787721d34ba683ed48eba792766 # master
 
       - name: Snyk test
         if: env.SNYK_TOKEN != ''
