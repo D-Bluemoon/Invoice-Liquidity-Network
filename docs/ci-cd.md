@@ -233,6 +233,8 @@ flowchart TD
 - Several workflows share the same trigger source, especially `push` to `main`, `pull_request`, and scheduled cron runs.
 - `project-board.yml` and `sync-issues.yml` act on repository metadata rather than code changes.
 - `deploy.yml` is intentionally manual and protected by GitHub Environments.
+- `release.yml`, `sdk-release.yml`, and `scripts-release.yml` all support `workflow_dispatch` for manual re-runs after failed publishes.
+- `codeql.yml` now runs two parallel jobs: `analyze-ts` (JavaScript/TypeScript across all workspaces) and `analyze-rust` (Rust for `backend/`).
 
 ## Workflow reference
 
@@ -261,13 +263,15 @@ Reusable workflows reduce duplicated Stellar and pnpm setup across ILN repositor
 
 - Trigger: `push` to `main`, `pull_request` targeting `main`, and a weekly Sunday schedule at 02:00 UTC.
 - Jobs:
-  - `analyze`: initializes CodeQL for `javascript-typescript` and uploads the analysis results.
+  - `analyze-ts`: initializes CodeQL for `javascript-typescript` with explicit `paths` covering `sdk`, `cli`, `indexer`, `notifications`, `frontend`, `docs`, `packages`, `examples`, `scripts`, `workers`, `contract-deployer`, `account-seeder`, and `tests`. Ignores `backend/`, markdown, `node_modules`, `dist`, and `coverage` directories.
+  - `analyze-rust`: initializes CodeQL for `rust` scoped to `backend/`. Checks out with `submodules: recursive` to ensure the Rust workspace is available.
 - Required secrets: none.
-- Expected runtime: medium. Usually 10 to 20 minutes, but the weekly scan can take longer on a cold runner.
+- Expected runtime: medium. Usually 10 to 20 minutes per job (they run in parallel). The weekly scan can take longer on a cold runner.
 - Debugging tips:
   - Look for checkout or language-initialization failures first.
-  - If CodeQL reports an analysis issue, reproduce locally by focusing on the JavaScript/TypeScript package that owns the file path.
+  - If CodeQL reports an analysis issue, reproduce locally by focusing on the package that owns the file path.
   - Confirm the repository has Actions permissions to upload security events.
+  - The TypeScript scan covers all pnpm workspaces (`sdk`, `cli`, `indexer`, `notifications`, `packages/*`, `docs`, `examples/*`) plus `frontend`, `workers`, `contract-deployer`, `account-seeder`, and `tests`.
 
 ### `coverage.yml`
 
@@ -301,25 +305,45 @@ Reusable workflows reduce duplicated Stellar and pnpm setup across ILN repositor
 ### `e2e.yml`
 
 - Trigger: `push` and `pull_request`.
+- Guard: only runs when the repository variable `RUN_E2E` is set to `true` (disabled by default to save CI minutes on every push/PR).
 - Jobs:
-  - `e2e-tests`: starts a local Stellar node with Docker Compose, waits for RPC to come up, installs dependencies, and runs the end-to-end test suite.
+  - `e2e-tests`: starts a local Stellar node via `docker compose up -d`, waits 15 seconds for RPC, runs `npm install && npm run test:e2e` at the repo root.
+- Scope: **Lightweight, root-level E2E smoke tests only.** This workflow does NOT initialize git submodules, does NOT deploy contracts, does NOT install frontend dependencies or Playwright, and does NOT upload test artifacts. It is intended as a fast gate for basic integration health.
 - Required secrets: none.
-- Expected runtime: medium. Usually 10 to 20 minutes, depending on Docker startup and test length.
+- Expected runtime: short to medium. Usually 5 to 15 minutes.
 - Debugging tips:
   - Confirm Docker and Docker Compose are available on the runner or local machine.
   - If the job appears to hang, inspect the local node logs and the `sleep 15` wait window.
   - Run `docker compose up -d` and `npm run test:e2e` locally to isolate test failures.
+  - If this workflow is skipped, check that `RUN_E2E` is set to `true` in repository variables.
 
 ### `e2e-nightly.yml`
 
 - Trigger: scheduled daily at 00:00 UTC.
+- Guard: runs unconditionally (no repository variable gate).
 - Jobs:
-  - `e2e-tests`: same local node setup and end-to-end test run as `e2e.yml`.
+  - `e2e-tests`: full-stack E2E — initializes git submodules, starts a local Stellar node, waits for RPC with a health-check loop (up to 5 minutes), deploys contracts and seeds accounts, installs frontend dependencies, installs Playwright browsers, runs `npm run test:e2e` inside `frontend/` with mock API enabled, and uploads the Playwright report as an artifact.
+- Scope: **Comprehensive, frontend-integrated E2E.** Covers the full user journey including contract deployment, account seeding, and browser-based Playwright tests. This is the authoritative E2E coverage gate.
 - Required secrets: none.
-- Expected runtime: medium. Similar to `e2e.yml`.
+- Expected runtime: medium to long. Usually 15 to 30 minutes (Playwright browser install is slow).
 - Debugging tips:
-  - Treat it the same as the regular E2E workflow.
+  - Treat it the same as the regular E2E workflow but note it runs in `frontend/`, not the repo root.
   - If nightly runs fail but PR runs pass, compare environment drift, container image freshness, and Docker availability.
+  - Check the uploaded `e2e-report` artifact for Playwright traces and screenshots.
+
+### E2E Scope Split Summary
+
+| Aspect | `e2e.yml` (PR/push) | `e2e-nightly.yml` (scheduled) |
+| ------ | ------------------- | ----------------------------- |
+| Trigger | Every push and PR | Daily at 00:00 UTC |
+| Gate | Requires `RUN_E2E=true` | Always runs |
+| Submodules | Not initialized | Initialized |
+| Contract deploy | No | Yes (contract-deployer + account-seeder) |
+| Frontend tests | No (runs at repo root) | Yes (Playwright in `frontend/`) |
+| Test artifacts | None uploaded | Playwright report uploaded |
+| Purpose | Fast integration smoke test | Full user-journey regression |
+
+**Why the split exists:** PR-time E2E is gated behind `RUN_E2E=true` and runs a lightweight smoke test to catch obvious breaks without burning 20+ minutes of CI on every PR. The nightly run provides comprehensive coverage including Playwright browser tests, contract deployment, and account seeding — catching regressions that only surface in a full-stack environment.
 
 ### `pr-title-lint.yml`
 

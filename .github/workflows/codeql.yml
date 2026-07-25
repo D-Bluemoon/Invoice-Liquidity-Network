@@ -13,8 +13,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  analyze:
-    name: Analyze
+  analyze-ts:
+    name: Analyze (${{ matrix.language }})
     runs-on: namespace-profile-nursca
     permissions:
       security-events: write
@@ -34,8 +34,56 @@ jobs:
       uses: github/codeql-action/init@v3
       with:
         languages: ${{ matrix.language }}
+        config: |
+          paths:
+            - sdk
+            - cli
+            - indexer
+            - notifications
+            - frontend
+            - docs
+            - packages
+            - examples
+            - scripts
+            - workers
+            - contract-deployer
+            - account-seeder
+            - tests
+          paths-ignore:
+            - backend
+            - "**/*.md"
+            - "**/node_modules/**"
+            - "**/dist/**"
+            - "**/coverage/**"
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
       with:
         category: "/language:${{matrix.language}}"
+
+  analyze-rust:
+    name: Analyze (rust)
+    runs-on: namespace-profile-nursca
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: rust
+        config: |
+          paths:
+            - backend
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:rust"
