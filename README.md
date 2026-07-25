@@ -1,16 +1,11 @@
 # Invoice Liquidity Network
 
-[![CI](https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network/actions/workflows/ci.yml/badge.svg)](https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network/actions/workflows/ci.yml)
-[![E2E Nightly](https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network/actions/workflows/e2e-nightly.yml/badge.svg)](https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network/actions/workflows/e2e-nightly.yml)
+[![CI](https://github.com/barry01-hash/Invoice-Liquidity-Network/actions/workflows/ci.yml/badge.svg)](https://github.com/barry01-hash/Invoice-Liquidity-Network/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/Nursca/Invoice-Liquidity-Network/branch/main/graph/badge.svg?token=CODECOV_TOKEN)](https://codecov.io/gh/Nursca/Invoice-Liquidity-Network)
+[![CodeQL](https://github.com/barry01-hash/Invoice-Liquidity-Network/actions/workflows/codeql.yml/badge.svg)](https://github.com/barry01-hash/Invoice-Liquidity-Network/actions/workflows/codeql.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Status](https://img.shields.io/badge/status-status.iln.finance-brightgreen)](https://status.iln.finance)
 
 **Turn unpaid invoices into instant liquidity on-chain, on Stellar.**
-
-
-# Invoice Liquidity Network (ILN)
-
-[![codecov](https://codecov.io/gh/Nursca/Invoice-Liquidity-Network/branch/main/graph/badge.svg?token=CODECOV_TOKEN)](https://codecov.io/gh/Nursca/Invoice-Liquidity-Network)
 
 Invoice Liquidity Network (ILN) is an open-source, decentralised invoice factoring protocol built on [Stellar](https://stellar.org) using [Soroban](https://soroban.stellar.org) smart contracts. Freelancers, creators, and SMEs unlock the value of outstanding invoices immediately, while DeFi liquidity providers earn yield by funding them at a discount.
 
