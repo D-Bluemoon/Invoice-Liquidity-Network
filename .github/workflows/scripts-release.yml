@@ -22,6 +22,7 @@ on:
     paths:
       - 'packages/scripts/**'
       - '.github/workflows/scripts-release.yml'
+  workflow_dispatch:
 
 # Never run two publishes for the same tag concurrently.
 concurrency:

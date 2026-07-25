@@ -23,6 +23,7 @@ on:
     paths:
       - 'packages/sdk/**'
       - '.github/workflows/sdk-release.yml'
+  workflow_dispatch:
 
 # Never run two publishes for the same tag concurrently.
 concurrency:
