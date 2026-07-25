@@ -52,7 +52,11 @@ import { checkCompatibility } from "@invoice-liquidity/sdk";
 import { runInteractive } from "./interactive";
 import { VersionManager } from "./version";
 import { runTutorial } from "./tutorial";
-import { withSpinner, type ProgressOptions } from "./progress";
+import {
+  withSpinner,
+  createTransactionProgress,
+  type ProgressOptions,
+} from "./progress";
 
 export interface CliDependencies {
   createClient(config: ResolvedConfig): ILNClient;
@@ -284,24 +288,25 @@ export async function runCli(
       assertContractId(tokenId, "token");
 
       const progress = cliProgressOptions(program, stdout);
-      const { invoiceId, txHash } = await withSpinner(
-        "Submitting invoice…",
-        () =>
-          client.submitInvoice({
-            amount: parseDisplayAmount(amount),
-            discountRate: parseBasisPoints(rate),
-            dueDate: parseDueDate(due),
-            payer,
-            tokenId,
-          }),
-        progress,
-      );
+      const tx = createTransactionProgress("Submitting invoice", progress);
+      let submitResult: { invoiceId: bigint; txHash: string };
+      try {
+        submitResult = await client.submitInvoice({
+          amount: parseDisplayAmount(amount),
+          discountRate: parseBasisPoints(rate),
+          dueDate: parseDueDate(due),
+          payer,
+          tokenId,
+        });
+        tx.succeed(`Invoice ${submitResult.invoiceId.toString()} submitted (tx ${submitResult.txHash})`);
+      } catch (err) {
+        tx.fail("Invoice submission failed");
+        throw err;
+      }
 
       const globalOpts = program.opts() as { json?: boolean };
       if (globalOpts.json) {
-        stdout.write(formatJsonSuccess({ invoiceId: invoiceId.toString(), txHash }) + "\n");
-      } else {
-        ui.success(`Submitted invoice ${invoiceId.toString()} in transaction ${txHash}.`);
+        stdout.write(formatJsonSuccess({ invoiceId: submitResult.invoiceId.toString(), txHash: submitResult.txHash }) + "\n");
       }
     });
 
@@ -348,21 +353,22 @@ export async function runCli(
       }
       const client = createClient(load());
       const progress = cliProgressOptions(program, stdout);
-      const result = await withSpinner(
-        "Funding invoice…",
-        () =>
-          client.fundInvoice(
-            parseInvoiceId(invoiceId),
-            options.amount ? parseDisplayAmount(options.amount) : undefined,
-          ),
-        progress,
-      );
+      const tx = createTransactionProgress("Funding invoice", progress);
+      let fundResult: { hash: string };
+      try {
+        fundResult = await client.fundInvoice(
+          parseInvoiceId(invoiceId),
+          options.amount ? parseDisplayAmount(options.amount) : undefined,
+        );
+        tx.succeed(`Invoice ${invoiceId} funded (tx ${fundResult.hash})`);
+      } catch (err) {
+        tx.fail("Invoice funding failed");
+        throw err;
+      }
 
       const globalOpts = program.opts() as { json?: boolean };
       if (globalOpts.json) {
-        stdout.write(formatJsonSuccess({ invoiceId: invoiceId.toString(), txHash: result.hash }) + "\n");
-      } else {
-        ui.success(`Funded invoice ${invoiceId} in transaction ${result.hash}.`);
+        stdout.write(formatJsonSuccess({ invoiceId: invoiceId.toString(), txHash: fundResult.hash }) + "\n");
       }
     });
 
@@ -411,17 +417,19 @@ export async function runCli(
       }
       const client = createClient(load());
       const progress = cliProgressOptions(program, stdout);
-      const result = await withSpinner(
-        "Marking invoice as paid…",
-        () => client.markPaid(parseInvoiceId(invoiceId)),
-        progress,
-      );
+      const tx = createTransactionProgress("Marking invoice paid", progress);
+      let payResult: { hash: string };
+      try {
+        payResult = await client.markPaid(parseInvoiceId(invoiceId));
+        tx.succeed(`Invoice ${invoiceId} marked paid (tx ${payResult.hash})`);
+      } catch (err) {
+        tx.fail("Mark-paid failed");
+        throw err;
+      }
 
       const globalOpts = program.opts() as { json?: boolean };
       if (globalOpts.json) {
-        stdout.write(formatJsonSuccess({ invoiceId: invoiceId.toString(), txHash: result.hash }) + "\n");
-      } else {
-        ui.success(`Marked invoice ${invoiceId} as paid in transaction ${result.hash}.`);
+        stdout.write(formatJsonSuccess({ invoiceId: invoiceId.toString(), txHash: payResult.hash }) + "\n");
       }
     });
 
@@ -471,6 +479,7 @@ export async function runCli(
         "Fetching invoice…",
         () => client.getInvoice(parseInvoiceId(invoiceId)),
         progress,
+        `Fetched invoice ${invoiceId}`,
       );
       const opts = program.opts() as { json?: boolean };
       ui.info(opts.json ? formatJsonSuccess(JSON.parse(formatInvoiceDetailsJson(invoice))) : formatInvoiceDetails(invoice));
@@ -523,6 +532,7 @@ export async function runCli(
         "Fetching invoices…",
         () => client.listInvoicesByAddress(address),
         progress,
+        "Invoices loaded",
       );
       const opts = program.opts() as { json?: boolean };
       ui.info(opts.json ? formatJsonSuccess(JSON.parse(formatInvoiceListJson(invoices))) : formatInvoiceList(invoices));
@@ -607,6 +617,7 @@ export async function runCli(
           "Fetching invoice history…",
           () => client.listInvoicesByAddress(address),
           progress,
+          "History loaded",
         );
 
         if (options.id !== undefined) {
@@ -675,6 +686,7 @@ export async function runCli(
             throw new Error(`Unsupported compatibility check invoke method: ${method}`);
           }),
         progress,
+        "Compatibility check complete",
       );
 
       if (globalOpts.json) {
@@ -721,6 +733,7 @@ export async function runCli(
         "Fetching protocol configuration…",
         () => client.getProtocolConfig(),
         progress,
+        "Protocol config loaded",
       );
       const globalOpts = program.opts() as { json?: boolean };
       ui.info(globalOpts.json ? formatJsonSuccess(JSON.parse(formatProtocolConfigJson(config))) : formatProtocolConfig(config));
