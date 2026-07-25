@@ -8,6 +8,11 @@ on:
   schedule:
     - cron: '0 2 * * 0' # Weekly scan at 2 AM on Sunday
 
+# Least-privilege default; the analyze jobs additionally request
+# security-events: write to upload results.
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

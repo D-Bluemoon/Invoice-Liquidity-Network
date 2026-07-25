@@ -9,9 +9,10 @@ on:
       - docs/changelog-page
   workflow_dispatch:
 
+# Least-privilege: commit the regenerated changelog back to the branch.
+# (No pull_request trigger, so no PR-comment permission is required.)
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   aggregate-changelog:

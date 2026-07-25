@@ -51,6 +51,10 @@ on:
         description: Network alias configured for subsequent CLI commands
         value: ${{ jobs.setup.outputs.network }}
 
+# Least-privilege: only checkout/read access is needed to set up the Stellar CLI.
+permissions:
+  contents: read
+
 jobs:
   setup:
     name: Stellar CLI and testnet identity

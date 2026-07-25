@@ -24,6 +24,10 @@ on:
       - '.github/workflows/scripts-release.yml'
   workflow_dispatch:
 
+# Least-privilege default; the publish job elevates to contents + id-token.
+permissions:
+  contents: read
+
 # Never run two publishes for the same tag concurrently.
 concurrency:
   group: scripts-release-${{ github.ref }}

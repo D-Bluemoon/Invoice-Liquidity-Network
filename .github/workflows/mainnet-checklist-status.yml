@@ -5,6 +5,8 @@ on:
     types: [closed]
   workflow_dispatch:
 
+# Least-privilege: read closed issues, then open a PR (contents + pull-requests)
+# updating the checklist.
 permissions:
   contents: write
   pull-requests: write

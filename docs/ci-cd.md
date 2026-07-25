@@ -3,6 +3,45 @@
 This repository uses a small set of GitHub Actions workflows to cover code quality, security scanning, coverage, deployments, and repo automation.
 This repository uses GitHub Environments to protect deployment secrets and ensure audit control over network deployments. Shared CI steps for Stellar testnet and pnpm are provided as **reusable workflows** (`workflow_call`) so the main repo, [ILN-Smart-Contract](https://github.com/Invoice-Liquidity-Network/ILN-Smart-Contract), and [ILN-Frontend](https://github.com/Invoice-Liquidity-Network/ILN-Frontend) can reuse the same logic.
 
+## Token permissions (least privilege)
+
+Every workflow declares an explicit top-level `permissions:` block. This overrides the
+repository/organization default `GITHUB_TOKEN` scopes and grants each workflow only the
+access it actually needs, so a compromised action or dependency cannot escalate beyond the
+declared scope.
+
+**Policy**
+
+- **Every** workflow file sets a top-level `permissions:` block — there are no implicit
+  defaults. New workflows must add one.
+- Start from `contents: read` (or `permissions: {}` when the job touches no repo contents,
+  e.g. a pure HTTP probe) and add scopes only where a step demonstrably needs them.
+- Prefer a **read-only top-level default** and elevate at the **job level** for the single
+  job that needs more (release/publish jobs do this for `contents: write` /
+  `id-token: write`). This keeps the elevated scope off every other job in the file.
+- Grant `pull-requests: write` only where a bot comments on or opens PRs; `issues: write`
+  only where a bot writes issues; `security-events: write` only on the CodeQL analyze jobs;
+  `pages: write` + `id-token: write` only for the Pages deploy.
+
+**Scope-by-workflow summary**
+
+| Scope | Workflows |
+| ----- | --------- |
+| `contents: read` only | `ci` (top-level default), `codeql` (top-level), `coverage`, `e2e`, `e2e-nightly`, `knip`, `pr-title-lint`, `snyk`, `sdk-browser-tests`, `sdk-e2e-local-node`, `docs-deploy` (default), `deploy` (default), `reusable-cache-pnpm`, `reusable-stellar-setup`; read-only top-level default on `release`, `sdk-release`, `scripts-release` |
+| `permissions: {}` (none) | `reusable-testnet-health` (HTTP probe only) |
+| `contents: write` | `cli-docs`, `docs-changelog` (commit regenerated docs) |
+| `contents: write` + `pull-requests: write` | `mainnet-checklist-status` (open checklist PR) |
+| `contents: write` + `actions: write` | `coordinate-release` (tag sibling repos, trigger their workflows) |
+| `contents: read` + `pull-requests: write` | `ci`, `changeset-check` (comment status on PRs) |
+| `security-events: write` (job-level) | `codeql` analyze jobs (upload results) |
+| `pages: write` + `id-token: write` (job-level) | `docs-deploy` (OIDC Pages deploy) |
+| `contents: write` + `id-token: write` (job-level) | `release`, `sdk-release`, `scripts-release` publish jobs (GitHub Release + npm provenance) |
+| `issues: write` | `project-board` (move cards; falls back to `PROJECT_PAT`) |
+
+Reusable workflows (`workflow_call`) also declare `permissions:` — the effective token is
+still capped by whatever the **caller** grants, so the declaration documents intent and acts
+as a ceiling, never an escalation.
+
 ## Reusable workflow templates
 
 | Workflow | File | Purpose |

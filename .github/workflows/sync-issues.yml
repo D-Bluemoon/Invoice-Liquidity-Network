@@ -4,6 +4,10 @@ on:
   issues:
     types: [labeled]
 
+# Least-privilege default; the sync job requests issues + contents read explicitly.
+permissions:
+  contents: read
+
 jobs:
   sync-issues:
     runs-on: namespace-profile-nursca

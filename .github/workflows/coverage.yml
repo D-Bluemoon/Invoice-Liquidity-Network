@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ "main" ]
 
+# Least-privilege: read code to run tests and upload coverage to Codecov.
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

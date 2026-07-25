@@ -17,6 +17,7 @@ on:
         required: false
         type: string
 
+# Least-privilege: tag sibling repos (contents) and trigger their workflows (actions).
 permissions:
   contents: write
   actions: write
