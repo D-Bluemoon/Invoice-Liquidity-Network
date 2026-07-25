@@ -19,6 +19,10 @@ export default {
     title: 'Frontend Guide',
     type: 'page'
   },
+  'cli-reference': {
+    title: 'CLI Reference',
+    type: 'page'
+  },
   governance: {
     title: 'Governance',
     type: 'page'

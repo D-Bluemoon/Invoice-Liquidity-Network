@@ -26,7 +26,8 @@
     "check": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:integration": "vitest run tests/integration.test.ts"
+    "test:integration": "vitest run tests/integration.test.ts",
+    "docs:generate": "ts-node --esm scripts/generate-docs.ts"
   },
   "dependencies": {
     "@iln/sdk": "workspace:*",
