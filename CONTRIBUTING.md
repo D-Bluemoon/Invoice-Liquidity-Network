@@ -204,6 +204,49 @@ behaviour from the ref name — pin them to a SHA **and** pass the choice as an 
 The full policy and current pin table live in
 [docs/ci-cd.md](./docs/ci-cd.md#pinned-action-versions-supply-chain).
 
+### Cross-platform CLI install smoke test
+
+The `cli-smoke.yml` workflow runs on a `ubuntu-latest` / `macos-latest` / `windows-latest`
+matrix. On each OS it builds the CLI (`@iln/cli`), packs it together with its unpublished
+workspace dependencies (`@iln/sdk`, `@iln/shared`), installs the tarballs **globally** in a
+clean environment, and runs `iln --version` and `iln --help`. This catches
+platform-specific packaging breakage (shebang handling, path separators, an internal
+`workspace:*` dependency leaking into the published artifact) before a release.
+
+Because the internal packages are not published to npm, a plain `npm pack` +
+`npm install -g` of the CLI alone will fail to resolve `@iln/sdk`. Pack the whole internal
+graph and install the tarballs in one command so npm resolves the `@iln/*` versions from the
+sibling tarballs.
+
+**Manual fallback** — reproduce the smoke test locally on any OS if CI is unavailable or you
+want to debug a failure:
+
+```bash
+# From the repo root, after `pnpm install --frozen-lockfile`
+pnpm --filter "@iln/cli..." build
+
+# Pack the CLI and its unpublished workspace deps into one directory
+mkdir -p /tmp/iln-tarballs
+( cd packages/shared && pnpm pack --pack-destination /tmp/iln-tarballs )
+( cd sdk            && pnpm pack --pack-destination /tmp/iln-tarballs )
+( cd packages/cli   && pnpm pack --pack-destination /tmp/iln-tarballs )
+
+# Install all three tarballs together so the @iln/* deps resolve locally
+npm install -g /tmp/iln-tarballs/*.tgz
+
+# Smoke test
+iln --version   # expect a semver, e.g. 0.1.0
+iln --help      # expect the "Invoice Liquidity Network CLI" description
+
+# Clean up
+npm uninstall -g @iln/cli @iln/sdk @iln/shared
+```
+
+On Windows, run the same commands from **Git Bash** (bundled with Git for Windows) so the
+`( cd ... )` subshells and the `*.tgz` glob behave the same as on macOS/Linux; PowerShell
+expands globs differently. If `iln` is not found after install, confirm the npm global bin
+directory (`npm prefix -g`) is on your `PATH`.
+
 ---
 
 ## Releasing the SDK

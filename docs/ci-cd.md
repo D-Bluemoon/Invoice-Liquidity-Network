@@ -258,7 +258,7 @@ concurrency:
 
 **Workflows with `cancel-in-progress: true`** (safe to cancel — no side effects):
 
-`ci.yml`, `cli-docs.yml`, `coverage.yml`, `e2e.yml`, `codeql.yml`, `snyk.yml`, `knip.yml`, `pr-title-lint.yml`, `changeset-check.yml`, `sdk-api-docs.yml`, `sdk-browser-tests.yml`, `sdk-bundle-size.yml`
+`ci.yml`, `cli-docs.yml`, `cli-smoke.yml`, `coverage.yml`, `e2e.yml`, `codeql.yml`, `snyk.yml`, `knip.yml`, `pr-title-lint.yml`, `changeset-check.yml`, `sdk-api-docs.yml`, `sdk-browser-tests.yml`, `sdk-bundle-size.yml`
 
 **Workflows with `cancel-in-progress: false`** (should not be interrupted):
 
@@ -317,6 +317,7 @@ flowchart TD
   PushMain --> SDKBundle["sdk-bundle-size.yml"]
   PushMain --> SDKBrowser["sdk-browser-tests.yml"]
   PushMain --> E2E["e2e.yml"]
+  PushMain --> CLISmoke["cli-smoke.yml"]
 
   %% ---- push tags ----
   PushTags --> SDKRelease["sdk-release.yml"]
@@ -336,6 +337,7 @@ flowchart TD
   PR --> SDKBundle
   PR --> SDKBrowser
   PR --> E2E
+  PR --> CLISmoke
   PR --> SDKRelease
   PR --> ScriptsRelease
   PR --> ProjectBoard["project-board.yml"]
@@ -357,6 +359,7 @@ flowchart TD
   Dispatch --> DocsChangelog
   Dispatch --> DocsDeploy
   Dispatch --> Mainnet["mainnet-checklist-status.yml"]
+  Dispatch --> CLISmoke
 
   %% ---- issues / PR closed ----
   Issues --> SyncIssues["sync-issues.yml"]
@@ -420,6 +423,28 @@ flowchart TD
   - For Rust failures, reproduce with `cargo test`, `cargo clippy`, or `cargo fmt --check` in the backend submodule.
   - For SDK sync failures, run `pnpm generate:types` and compare the generated file.
   - If PR comments are missing, remember the failure-comment step only runs on pull requests.
+
+### `cli-smoke.yml`
+
+- Trigger: `push` to `main` and `pull_request` (both scoped to `packages/cli/**`, `sdk/**`,
+  `packages/shared/**`, and the workflow file), plus manual `workflow_dispatch`.
+- Runners: GitHub-hosted matrix — `ubuntu-latest`, `macos-latest`, `windows-latest` (not the
+  self-hosted `namespace-profile-nursca` profile), so the CLI is exercised on all three OSes.
+- Jobs:
+  - `cli-smoke`: builds `@iln/cli` and its workspace deps, packs the CLI together with its
+    unpublished workspace dependencies (`@iln/sdk`, `@iln/shared`), installs the tarballs
+    globally in a clean environment, and runs `iln --version` and `iln --help` as smoke
+    tests. `fail-fast: false` so one OS failing still reports the others.
+- Required secrets: none.
+- Expected runtime: short to medium. Usually 3 to 8 minutes per OS (Windows is the slowest).
+- Debugging tips:
+  - Because the internal packages are unpublished, all three tarballs must be installed in a
+    single `npm install -g` so the `@iln/*` versions resolve from the sibling tarballs rather
+    than the registry.
+  - Reproduce locally with the manual fallback procedure in
+    [CONTRIBUTING.md](../CONTRIBUTING.md#cross-platform-cli-install-smoke-test).
+  - A `workspace:*` specifier leaking into the installed package usually means the CLI's
+    packaging (or `pnpm pack` version rewriting) regressed.
 
 ### `codeql.yml`
 
