@@ -4,20 +4,19 @@ on:
   pull_request:
     types: [opened, edited, reopened, synchronize]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     runs-on: namespace-profile-nursca
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Setup pnpm with store cache
+        uses: ./.github/actions/setup-pnpm
         with:
-          node-version: 18
-      - uses: pnpm/action-setup@v4
-        with:
-          version: "9.0.0"
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile --ignore-scripts
+          install-args: --frozen-lockfile --ignore-scripts
       - name: Lint PR title
         run: |
           echo "${{ github.event.pull_request.title }}" > pr_title

@@ -8,6 +8,12 @@ on:
     - cron: "*/5 * * * *"
   workflow_dispatch:
 
+# Exclude from cancellation: scheduled uptime checks and push-triggered
+# status page updates should never be interrupted mid-run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
   issues: write

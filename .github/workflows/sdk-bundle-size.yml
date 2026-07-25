@@ -19,6 +19,10 @@ on:
 permissions:
   pull-requests: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   pnpm-cache:
     uses: ./.github/workflows/reusable-cache-pnpm.yml
