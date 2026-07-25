@@ -58,6 +58,7 @@ jobs:
           done
 
           echo "healthy=${healthy}" >> "$GITHUB_OUTPUT"
+          # Output the flag so dependent jobs can skip gracefully instead of failing
           if [ "${healthy}" = "true" ]; then
             echo "Horizon testnet is healthy"
           else
