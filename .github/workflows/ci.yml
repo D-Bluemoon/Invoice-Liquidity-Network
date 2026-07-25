@@ -30,7 +30,7 @@ jobs:
       packages: ${{ steps.filter.outputs.packages }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3.0.3
         id: filter
         with:
           filters: |
@@ -78,8 +78,9 @@ jobs:
           submodules: recursive
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c # stable
         with:
+          toolchain: stable
           targets: x86_64-unknown-linux-gnu
 
       - name: Cache Cargo registry and target
@@ -123,8 +124,9 @@ jobs:
           submodules: recursive
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c # stable
         with:
+          toolchain: stable
           targets: wasm32v1-none
 
       - name: Cache Cargo registry and target
@@ -168,8 +170,9 @@ jobs:
           submodules: recursive
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c # stable
         with:
+          toolchain: stable
           components: clippy, rustfmt
           targets: wasm32v1-none
 
@@ -224,7 +227,7 @@ jobs:
 
       - name: Publish test results to Checks
         continue-on-error: true
-        uses: dorny/test-reporter@v2
+        uses: dorny/test-reporter@0f7d1ed661203449e0ee89fa7a0a7f9c9a7d9911 # v2.7.0
         with:
           name: JUnit Test Results
           path: '**/test-results.xml'
@@ -468,7 +471,7 @@ jobs:
         working-directory: notifications
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@5975040f7f7d40edaff8d784b576fd65ae95c073 # v5.5.5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: Nursca/Invoice-Liquidity-Network
@@ -534,8 +537,9 @@ jobs:
         uses: ./.github/actions/setup-pnpm
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c # stable
         with:
+          toolchain: stable
           targets: wasm32v1-none
 
       - name: Cache Stellar CLI (cargo install)

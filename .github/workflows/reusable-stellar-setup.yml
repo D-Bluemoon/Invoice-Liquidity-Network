@@ -65,7 +65,9 @@ jobs:
       network: ${{ steps.network.outputs.network }}
     steps:
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c # stable
+        with:
+          toolchain: stable
 
       - name: Cache Stellar CLI (cargo install)
         uses: actions/cache@v4

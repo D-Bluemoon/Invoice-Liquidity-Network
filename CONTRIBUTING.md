@@ -182,6 +182,28 @@ The repository's GitHub Actions workflows are documented in [docs/ci-cd.md](./do
 
 Use it before pushing changes so you can match the relevant CI checks locally.
 
+### Pinning third-party actions
+
+When you add or edit a GitHub Actions workflow, pin every **third-party** action (anything
+not under `actions/*`) to a full commit SHA with a version comment:
+
+```yaml
+# Do this
+- uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3.0.3
+
+# Not this
+- uses: dorny/paths-filter@v3
+```
+
+Resolve a tag to its SHA with `git ls-remote https://github.com/<owner>/<repo> refs/tags/<tag>`.
+First-party `actions/*` actions may stay on major-version tags. Renovate
+(`renovate.json`, `pinDigests: true`) keeps the SHAs and comments up to date automatically,
+so let it open the bump PRs rather than editing SHAs by hand. A couple of actions read their
+behaviour from the ref name — pin them to a SHA **and** pass the choice as an input
+(`dtolnay/rust-toolchain` → `toolchain: stable`, `taiki-e/install-action` → `tool: <name>`).
+The full policy and current pin table live in
+[docs/ci-cd.md](./docs/ci-cd.md#pinned-action-versions-supply-chain).
+
 ---
 
 ## Releasing the SDK

@@ -42,6 +42,46 @@ Reusable workflows (`workflow_call`) also declare `permissions:` — the effecti
 still capped by whatever the **caller** grants, so the declaration documents intent and acts
 as a ceiling, never an escalation.
 
+## Pinned action versions (supply-chain)
+
+Every **third-party** action (anything not published by GitHub under `actions/*`) is pinned
+to a full 40-character commit SHA, with the human-readable version in a trailing comment:
+
+```yaml
+- uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3.0.3
+```
+
+**Why:** a mutable tag like `@v3` can be force-moved to point at malicious code after we
+adopt it; a commit SHA is immutable, so a review of that exact revision stays valid. First-
+party `actions/*` actions are trusted and left on major-version tags.
+
+**Currently pinned third-party actions**
+
+| Action | Pinned version |
+| ------ | -------------- |
+| `pnpm/action-setup` | v4.4.0 |
+| `dorny/paths-filter` | v3.0.3 |
+| `dorny/test-reporter` | v2.7.0 |
+| `codecov/codecov-action` | v5.5.5 |
+| `github/codeql-action` (`init` + `analyze`) | v3.37.3 |
+| `taiki-e/install-action` | v2.85.1 (with `tool: cargo-llvm-cov`) |
+| `softprops/action-gh-release` | v2.6.2 |
+| `changesets/action` | v1.9.0 |
+| `peter-evans/create-pull-request` | v6.1.0 |
+| `dtolnay/rust-toolchain` | `stable` branch @ `2c7215f` (with explicit `toolchain: stable`) |
+| `upptime/uptime-monitor` | `master` @ `c540f23` |
+| `snyk/actions/setup` | `master` @ `8e119fb` |
+
+Two actions select their behaviour from the ref name, so pinning to a SHA requires passing
+that choice as an input instead: `dtolnay/rust-toolchain` gets `toolchain: stable` and
+`taiki-e/install-action` gets `tool: cargo-llvm-cov`.
+
+**Keeping SHAs current:** Renovate manages these automatically — `renovate.json` sets
+`pinDigests: true` for the `github-actions` manager, so Renovate opens PRs that bump both the
+SHA and the version comment when a new release ships. Do not hand-edit SHAs to "latest"; let
+Renovate propose the update so the version comment stays accurate. See
+[CONTRIBUTING.md](../CONTRIBUTING.md#pinning-third-party-actions) for the contributor policy.
+
 ## Reusable workflow templates
 
 | Workflow | File | Purpose |
