@@ -4,6 +4,7 @@ export * from './ResponsiveGrid';
 export * from './InvoiceList';
 export * from './YieldDisplay';
 export * from './PortfolioChart';
+export * from './LPRiskDashboard';
 export * from './InvoiceCard';
 export * from './StatusBadge';
 export * from './AddressDisplay';
