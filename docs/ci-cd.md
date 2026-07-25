@@ -114,6 +114,22 @@ jobs:
 
 The composite action [`.github/actions/setup-pnpm`](../.github/actions/setup-pnpm/action.yml) uses the same cache keys as the reusable workflow so caller jobs stay in sync without duplicating YAML.
 
+### Reusable workflow vs composite action — which to use?
+
+This repo provides **two** shared setup mechanisms for pnpm:
+
+| Mechanism | File | Runs as | When to use |
+| --------- | ---- | ------- | ----------- |
+| Composite action | `.github/actions/setup-pnpm/action.yml` | A step inside a job | Default choice for most jobs. Use when you need pnpm + Node + store cache inside an existing job. |
+| Reusable workflow | `.github/workflows/reusable-cache-pnpm.yml` | A separate top-level job | Use when you want to pre-warm the pnpm store in an **early job** so later jobs in the same workflow hit the cache. The reusable workflow calls the composite action internally. |
+
+**Guidelines:**
+
+- Start with the **composite action** (`./.github/actions/setup-pnpm`) unless you have a specific reason to use the reusable workflow.
+- Use the **reusable workflow** only when you need a dedicated cache-warming job that runs before multiple downstream jobs.
+- Do **not** reimplement pnpm/Node setup inline — always use the shared action or workflow.
+- For Stellar CLI setup, use `reusable-stellar-setup.yml` when you need a funded testnet identity; otherwise install the CLI inline with cargo caching.
+
 ### `reusable-testnet-health.yml`
 
 Requests `/.well-known/stellar.json` from Horizon and sets `healthy` to `true` when the response contains a valid network passphrase.
@@ -150,6 +166,36 @@ jobs:
 When `healthy` is `false`, dependent jobs are skipped and the workflow logs a warning from the health job.
 
 ---
+
+## Concurrency groups
+
+Most PR/push-triggered workflows use `concurrency` groups to cancel superseded runs, saving CI minutes:
+
+```yaml
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+```
+
+**Workflows with `cancel-in-progress: true`** (safe to cancel — no side effects):
+
+`ci.yml`, `coverage.yml`, `e2e.yml`, `codeql.yml`, `snyk.yml`, `knip.yml`, `pr-title-lint.yml`, `changeset-check.yml`, `sdk-api-docs.yml`, `sdk-browser-tests.yml`, `sdk-bundle-size.yml`
+
+**Workflows with `cancel-in-progress: false`** (should not be interrupted):
+
+| Workflow | Reason |
+| -------- | ------ |
+| `release.yml` | Publishing to npm must complete |
+| `sdk-release.yml` | Publishing to npm must complete |
+| `scripts-release.yml` | Publishing to npm must complete |
+| `docs-deploy.yml` | Pages deployment must complete |
+| `e2e-nightly.yml` | Scheduled nightly run — no benefit to cancelling |
+| `sdk-e2e-local-node.yml` | Push-only on main — no concurrent runs expected |
+| `upptime.yml` | Scheduled uptime monitoring — no benefit to cancelling |
+
+**Workflows excluded from concurrency groups** (no overlapping runs):
+
+`deploy.yml`, `coordinate-release.yml`, `mainnet-checklist-status.yml`, `project-board.yml`, `sync-issues.yml`, `docs-changelog.yml` — these are `workflow_dispatch`, issue-triggered, or tag-triggered and do not produce redundant runs.
 
 ## Workflow map
 
