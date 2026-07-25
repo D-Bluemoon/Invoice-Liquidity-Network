@@ -1,9 +1,9 @@
 {
   "name": "@iln/scripts",
   "version": "0.1.0",
-  "description": "Shared developer scripts for the ILN monorepo",
+  "description": "Internal monorepo development and configuration tools (not for public installation)",
   "bin": {
-    "iln": "bin/iln.js"
+    "iln-dev": "bin/iln.js"
   },
   "publishConfig": {
     "access": "public"

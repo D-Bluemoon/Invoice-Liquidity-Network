@@ -104,6 +104,10 @@ experimental package with a smaller command set — see
 [`docs/cli-vs-cli-next.md`](./docs/cli-vs-cli-next.md) for the full
 comparison and which one to use.
 
+**Development vs Production CLI:**
+- The published CLI package (`@invoice-liquidity/cli`) installs the `iln` binary — this is the public-facing tool for interacting with the ILN contract.
+- The monorepo's development tooling includes an internal `iln-dev` binary (via `pnpm iln-dev`) — this is an internal development/configuration tool with no public API. Do not install the root package globally; use the CLI package instead.
+
 ### Indexer (`indexer/`)
 
 A Node.js service that indexes contract events and exposes a REST API for the frontend.
