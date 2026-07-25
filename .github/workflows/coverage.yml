@@ -12,6 +12,8 @@ jobs:
     runs-on: namespace-profile-nursca
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
+      notifications: ${{ steps.filter.outputs.notifications }}
+      shared_config: ${{ steps.filter.outputs.shared_config }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -21,6 +23,13 @@ jobs:
             backend:
               - 'backend/**'
               - '.gitmodules'
+            notifications:
+              - 'notifications/**'
+            shared_config:
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
 
   coverage:
     name: Run tests and collect coverage
@@ -58,10 +67,12 @@ jobs:
         run: cargo llvm-cov --all-features --workspace --fail-under-lines 80 --lcov --output-path ../rust-lcov.info
         
       - name: Install Notifications Dependencies
+        if: needs.changes.outputs.notifications == 'true' || needs.changes.outputs.shared_config == 'true'
         working-directory: notifications
         run: pnpm install --frozen-lockfile
 
       - name: Run notification template coverage
+        if: needs.changes.outputs.notifications == 'true' || needs.changes.outputs.shared_config == 'true'
         working-directory: notifications
         run: >
           pnpm exec vitest run tests/templates.test.ts
@@ -77,10 +88,9 @@ jobs:
           --coverage.thresholds.statements=80
         
       - name: Upload coverage to Codecov
+        if: always()
         continue-on-error: true
         uses: codecov/codecov-action@v5
         with:
-          files: rust-lcov.info,notifications/coverage/lcov.info
-          fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: Nursca/Invoice-Liquidity-Network
