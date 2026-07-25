@@ -61,7 +61,7 @@
   },
   "prepare": "husky install || true",
   "bin": {
-    "iln": "packages/scripts/bin/iln.js"
+    "iln-dev": "packages/scripts/bin/iln.js"
   },
   "packageManager": "pnpm@9.0.0",
   "pnpm": {
