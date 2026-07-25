@@ -258,13 +258,13 @@ concurrency:
 
 **Workflows with `cancel-in-progress: true`** (safe to cancel — no side effects):
 
-`ci.yml`, `coverage.yml`, `e2e.yml`, `codeql.yml`, `snyk.yml`, `knip.yml`, `pr-title-lint.yml`, `changeset-check.yml`, `sdk-api-docs.yml`, `sdk-browser-tests.yml`, `sdk-bundle-size.yml`
+`ci.yml`, `cli-docs.yml`, `coverage.yml`, `e2e.yml`, `codeql.yml`, `snyk.yml`, `knip.yml`, `pr-title-lint.yml`, `changeset-check.yml`, `sdk-api-docs.yml`, `sdk-browser-tests.yml`, `sdk-bundle-size.yml`
 
 **Workflows with `cancel-in-progress: false`** (should not be interrupted):
 
 | Workflow | Reason |
 | -------- | ------ |
-| `release.yml` | Publishing to npm must complete |
+| `release.yml` | Publishing to npm must complete (uses the short-form `concurrency:` string, so `cancel-in-progress` defaults to false) |
 | `sdk-release.yml` | Publishing to npm must complete |
 | `scripts-release.yml` | Publishing to npm must complete |
 | `docs-deploy.yml` | Pages deployment must complete |
@@ -276,61 +276,144 @@ concurrency:
 
 `deploy.yml`, `coordinate-release.yml`, `mainnet-checklist-status.yml`, `project-board.yml`, `sync-issues.yml`, `docs-changelog.yml` — these are `workflow_dispatch`, issue-triggered, or tag-triggered and do not produce redundant runs.
 
+The three reusable workflows (`reusable-cache-pnpm.yml`, `reusable-stellar-setup.yml`, `reusable-testnet-health.yml`) also omit `concurrency` — they run as `workflow_call` jobs inside the caller's run and inherit the caller's concurrency context.
+
 ## Workflow map
+
+The diagram below shows the full topology: every workflow, grouped by the trigger that
+fires it, plus the `workflow_call` edges into the reusable workflows (dotted lines). A
+workflow can appear under more than one trigger.
 
 ```mermaid
 flowchart TD
-  PushMain["push to `main`"] --> CI["`ci.yml`"]
-  PushMain --> Coverage["`coverage.yml`"]
-  PushMain --> CodeQL["`codeql.yml`"]
-  PushMain --> Snyk["`snyk.yml`"]
-  PushMain --> SDKE2E["`sdk-e2e-local-node.yml`"]
-  PushMain --> Upptime["`upptime.yml`"]
+  %% ---- Trigger sources ----
+  PushMain(["push → main"])
+  PushTags(["push → tags"])
+  PR(["pull_request"])
+  Sched(["schedule (cron)"])
+  Dispatch(["workflow_dispatch"])
+  Issues(["issues / PR closed"])
 
-  PullRequest["pull request events"] --> CI
-  PullRequest --> Coverage
-  PullRequest --> CodeQL
-  PullRequest --> Snyk
-  PullRequest --> PRTitle["`pr-title-lint.yml`"]
-  PullRequest --> SyncIssues["`sync-issues.yml`"]
-  PullRequest --> ProjectBoard["`project-board.yml`"]
+  %% ---- Reusable workflows (workflow_call callees) ----
+  subgraph Reusable["Reusable workflows (workflow_call)"]
+    RCache["reusable-cache-pnpm.yml"]
+    RHealth["reusable-testnet-health.yml"]
+    RStellar["reusable-stellar-setup.yml<br/>(cross-repo; unused locally)"]
+  end
 
-  IssueLabel["issue labeled"] --> ProjectBoard
-  IssueLabel --> SyncIssues
-  Schedule["scheduled run"] --> CodeQL
-  Schedule --> E2ENightly["`e2e-nightly.yml`"]
-  Schedule --> Snyk
-  Schedule --> Upptime
+  %% ---- push to main ----
+  PushMain --> CI["ci.yml"]
+  PushMain --> Coverage["coverage.yml"]
+  PushMain --> CodeQL["codeql.yml"]
+  PushMain --> Snyk["snyk.yml"]
+  PushMain --> Knip["knip.yml"]
+  PushMain --> SDKLocal["sdk-e2e-local-node.yml"]
+  PushMain --> Upptime["upptime.yml"]
+  PushMain --> Release["release.yml"]
+  PushMain --> DocsDeploy["docs-deploy.yml"]
+  PushMain --> DocsChangelog["docs-changelog.yml"]
+  PushMain --> CLIDocs["cli-docs.yml"]
+  PushMain --> SDKApiDocs["sdk-api-docs.yml"]
+  PushMain --> SDKBundle["sdk-bundle-size.yml"]
+  PushMain --> SDKBrowser["sdk-browser-tests.yml"]
+  PushMain --> E2E["e2e.yml"]
 
-  WorkflowDispatch["manual dispatch"] --> Deploy["`deploy.yml`"]
-  WorkflowDispatch --> Upptime
+  %% ---- push tags ----
+  PushTags --> SDKRelease["sdk-release.yml"]
+  PushTags --> ScriptsRelease["scripts-release.yml"]
+  PushTags --> DocsChangelog
+
+  %% ---- pull_request ----
+  PR --> CI
+  PR --> Coverage
+  PR --> CodeQL
+  PR --> Snyk
+  PR --> Knip
+  PR --> PRTitle["pr-title-lint.yml"]
+  PR --> Changeset["changeset-check.yml"]
+  PR --> CLIDocs
+  PR --> SDKApiDocs
+  PR --> SDKBundle
+  PR --> SDKBrowser
+  PR --> E2E
+  PR --> SDKRelease
+  PR --> ScriptsRelease
+  PR --> ProjectBoard["project-board.yml"]
+
+  %% ---- schedule ----
+  Sched --> CodeQL
+  Sched --> Snyk
+  Sched --> E2ENightly["e2e-nightly.yml"]
+  Sched --> Upptime
+
+  %% ---- workflow_dispatch ----
+  Dispatch --> Deploy["deploy.yml"]
+  Dispatch --> Coordinate["coordinate-release.yml"]
+  Dispatch --> Upptime
+  Dispatch --> Release
+  Dispatch --> SDKRelease
+  Dispatch --> ScriptsRelease
+  Dispatch --> SDKLocal
+  Dispatch --> DocsChangelog
+  Dispatch --> DocsDeploy
+  Dispatch --> Mainnet["mainnet-checklist-status.yml"]
+
+  %% ---- issues / PR closed ----
+  Issues --> SyncIssues["sync-issues.yml"]
+  Issues --> ProjectBoard
+  Issues --> Mainnet
+
+  %% ---- reusable-workflow call edges (workflow_call) ----
+  CI -. calls .-> RCache
+  CI -. calls .-> RHealth
+  CLIDocs -. calls .-> RCache
+  SDKApiDocs -. calls .-> RCache
+  SDKBundle -. calls .-> RCache
+  SDKLocal -. calls .-> RCache
+  Knip -. calls .-> RCache
+  Deploy -. calls .-> RHealth
 ```
 
 ### Dependency notes
 
-- There are no workflow-to-workflow `workflow_call` dependencies at the moment.
-- Several workflows share the same trigger source, especially `push` to `main`, `pull_request`, and scheduled cron runs.
+- **Workflow-to-workflow `workflow_call` dependencies do exist.** Six workflows call the
+  shared reusable workflows:
+  - `reusable-cache-pnpm.yml` is called by `ci.yml` (job `pnpm-cache`), `cli-docs.yml`,
+    `sdk-api-docs.yml`, `sdk-bundle-size.yml`, `sdk-e2e-local-node.yml`, and `knip.yml`.
+  - `reusable-testnet-health.yml` is called by `ci.yml` (job `testnet-health`) and
+    `deploy.yml` (gating the deploy on testnet health).
+  - `reusable-stellar-setup.yml` is defined for cross-repo reuse but is **not** currently
+    called by any workflow in this repository.
+- Several workflows share the same trigger source, especially `push` to `main`,
+  `pull_request`, and scheduled cron runs.
 - `project-board.yml` and `sync-issues.yml` act on repository metadata rather than code changes.
 - `deploy.yml` is intentionally manual and protected by GitHub Environments.
 - `release.yml`, `sdk-release.yml`, and `scripts-release.yml` all support `workflow_dispatch` for manual re-runs after failed publishes.
-- `codeql.yml` now runs two parallel jobs: `analyze-ts` (JavaScript/TypeScript across all workspaces) and `analyze-rust` (Rust for `backend/`).
+- `codeql.yml` runs two parallel jobs: `analyze-ts` (JavaScript/TypeScript across all workspaces) and `analyze-rust` (Rust for `backend/`).
 
 ## Workflow reference
 
 ### `ci.yml`
-Reusable workflows reduce duplicated Stellar and pnpm setup across ILN repositories and keep cache keys consistent.
-
-## Deployment workflow
 
 - Trigger: `push` to `main` and every `pull_request`.
-- Jobs:
-  - `test`: runs `cargo test` for the Rust backend.
-  - `build`: builds the contract for `wasm32v1-none`.
-  - `lint`: runs `cargo clippy` and `cargo fmt --check`.
-  - `node-tests`: runs the workspace JavaScript tests with `pnpm test`.
-  - `node-coverage`: runs the JS test suite with coverage and checks for 80 percent minimum coverage.
-  - `sdk-types-sync`: builds the contract spec and verifies `sdk/src/generated/types.ts` is up to date.
-- Required secrets: none.
+- Reusable workflows: calls `reusable-cache-pnpm.yml` (job `pnpm-cache`, warms the pnpm
+  store for later jobs) and `reusable-testnet-health.yml` (job `testnet-health`, gates the
+  SDK testnet-integration job). A `changes` job runs `dorny/paths-filter` so downstream jobs
+  only execute when the relevant paths change.
+- Jobs (grouped):
+  - Rust/contract: `test` (`cargo test`), `build` (contract for `wasm32v1-none`), `lint`
+    (`cargo clippy` + `cargo fmt --check`).
+  - Node workspace: `node-tests` (`pnpm test`), `node-coverage` (JS coverage with an 80%
+    minimum), `sdk-types-sync` (rebuilds the contract spec and verifies the generated
+    `sdk/src/generated/types.ts` is current).
+  - SDK testnet: `sdk-testnet-integration` (runs when `testnet-health` reports healthy) with
+    `sdk-testnet-skipped` as the skipped-path counterpart.
+  - Core package: `core-install` → `core-format`/`core-lint`/`core-type-check` → `core-test`
+    → `core-build`, summarized by `core-summary`.
+  - Repo hygiene: `syncpack`, `validate-packages`, `no-foreign-lockfiles`,
+    `license-compliance`.
+  - Reporting: `report-test-results` and `notify-discord` (posts on failure).
+- Required secrets: none (Discord notification uses an optional webhook).
 - Expected runtime: medium to long. The Rust and SDK type-sync jobs are the slowest parts, so a full run is usually 10 to 30 minutes depending on cache hits.
 - Debugging tips:
   - Check whether the backend submodule was checked out. This workflow uses `submodules: recursive`.
