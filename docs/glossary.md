@@ -354,7 +354,7 @@ See: [Stellar Primer](stellar-primer.md)
 
 External Data Representation, the binary serialization format used by Stellar for transactions, operations, ledger entries, and contract data. ILN SDK and CLI code must encode and decode XDR exactly to avoid signing or submission bugs.
 
-See: [`sdk/src/xdr.ts`](../sdk/src/xdr.ts)
+See: [`packages/sdk/src/xdr.ts`](../packages/sdk/src/xdr.ts)
 
 ## Yield
 

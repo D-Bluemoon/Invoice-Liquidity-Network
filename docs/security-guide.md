@@ -3,7 +3,7 @@
 This guide covers the security measures built into the Invoice Liquidity Network (ILN), how to report vulnerabilities, best practices for integrators, audit information, and the incident response process.
 
 For the protocol-level attack surface analysis, see the [Threat Model](./threat-model.md).
-For package provenance verification, see [Security](./security.md).
+For package provenance verification, see [Package provenance](#package-provenance-slsa-level-3) below.
 
 ---
 
@@ -30,44 +30,11 @@ ILN protects three classes of assets:
 
 **Do not disclose vulnerabilities publicly until a fix has been issued.**
 
-### How to report
-
-| Channel | Details |
-|---|---|
-| GitHub Security Advisory | Open a private advisory at the repository's **Security** tab → **Report a vulnerability** |
-| Email | security@invoiceliquidity.network |
-
-### What to include
-
-- A detailed description of the vulnerability.
-- Step-by-step reproduction instructions.
-- Estimated impact (funds at risk, affected users, protocol scope).
-- Any potential mitigations you have identified.
-
-### Response timeline
-
-| Stage | SLA |
-|---|---|
-| Acknowledgment | Within 48 hours |
-| Triage and severity assignment | Within 5 business days |
-| Fix for Critical severity | Within 14 days |
-| Fix for High severity | Within 30 days |
-| Fix for Medium/Low severity | Best effort in the next release cycle |
-
-### Severity classification
-
-| Severity | Definition |
-|---|---|
-| Critical | Fund drainage from smart contracts, authentication bypass, total system compromise |
-| High | Significant data breach, unauthorized state manipulation with limited financial impact |
-| Medium | Denial of service, localized data leaks |
-| Low | UI spoofing, minor bugs with no direct financial or data impact |
-
-### Bug bounty
-
-Valid Critical vulnerabilities reported privately that result in a patch may be eligible for a bug bounty reward, determined on a case-by-case basis.
-
-Researchers who responsibly disclose vulnerabilities are acknowledged in `HALL_OF_FAME.md`.
+The disclosure policy — how to report, what to include, severity classification, response
+timelines, safe harbour, and recognition — is defined once, canonically, in the repository root
+[`SECURITY.md`](../SECURITY.md). Report through one of the channels listed there (a private
+GitHub Security Advisory or `security@invoiceliquidity.network`) rather than a public issue or
+pull request.
 
 ---
 
@@ -218,7 +185,7 @@ After the fix is deployed and downstream integrators have had time to update:
 ## Related Documents
 
 - [Threat Model](./threat-model.md) — full attack surface analysis across SDK, frontend, API, and governance
-- [Security](./security.md) — package provenance and SLSA Level 3 verification details
-- [SECURITY.md](../SECURITY.md) — root-level security policy and supported versions
+- [SECURITY.md](../SECURITY.md) — canonical root-level disclosure policy and supported versions
+- [Security](./security.md) — stub that redirects to `SECURITY.md`, kept for existing links
 - [CI/CD](./ci-cd.md) — how security checks are enforced in the pipeline
 - [Deployment Infrastructure](./deployment/infrastructure.md) — production hardening checklist

@@ -305,7 +305,7 @@ const subscription = client.on('InvoicePaid', (event) => {
 });
 ```
 
-See: [Event Documentation](../event-schema.md)
+See: [Event Documentation](#event-schema)
 
 ### Governance Workflow
 
@@ -393,12 +393,12 @@ See: [Governance Contract - Workflow Example](./governance-contract.md#workflow-
    - [Integration & SDK Usage](../integration-guide.md)
 
 3. **Monitor events** for real-time updates:
-   - [Event Schema Documentation](../event-schema.md)
+   - [Event Schema Documentation](#event-schema)
 
 4. **Review examples** in the repository:
-   - TypeScript SDK: [`sdk/src/`](../../../sdk/src/)
-   - CLI: [`cli/src/`](../../../cli/src/)
-   - Integration tests: [`tests/`](../../../tests/)
+   - TypeScript SDK: [`sdk/src/`](../../sdk/src/)
+   - CLI: [`cli/src/`](../../cli/src/)
+   - Integration tests: [`tests/`](../../tests/)
 
 ---
 
@@ -407,7 +407,7 @@ See: [Governance Contract - Workflow Example](./governance-contract.md#workflow-
 - **GitHub Repository**: [ILN Smart Contract](https://github.com/Invoice-Liquidity-Network/ILN-Smart-Contract)
 - **Documentation**: This docs site
 - **Integration Guide**: [How to integrate](../integration-guide.md)
-- **Event Reference**: [Event schema](../event-schema.md)
+- **Event Reference**: [Event schema](#event-schema)
 - **Local Development**: [Local setup](../local-development.md)
 
 ---
