@@ -59,4 +59,4 @@ An accepted RFC becomes the source of truth for the implementation. The implemen
 
 | Number | Title | Status |
 |--------|-------|--------|
-| [0001](./0001-dutch-auction-funding.md) | Dutch Auction Funding | Draft |
+| [0001](../rfcs/0001-dutch-auction-funding.md) | Dutch Auction Funding | Draft |
