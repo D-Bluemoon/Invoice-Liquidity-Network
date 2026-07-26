@@ -43,7 +43,8 @@
     "test:e2e-local": "vitest run src/e2e/*.test.ts",
     "test:coverage": "vitest run --coverage",
     "check": "tsc --noEmit",
-    "docs:generate": "typedoc --out ../docs/sdk-api src/index.ts"
+    "docs:generate": "typedoc --out ../docs/sdk-api src/index.ts",
+    "dead-code:check": "pnpm dead-code:check --filter @iln/sdk"
   },
   "dependencies": {
     "@iln/shared": "workspace:*",
