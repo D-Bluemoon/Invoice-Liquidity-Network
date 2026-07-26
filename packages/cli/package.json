@@ -33,7 +33,7 @@
     "yaml": "^2.8.0"
   },
   "devDependencies": {
-    "@types/node": "^24.7.2",
+    "@types/node": "^20.0.0",
     "tsup": "^8.5.0",
     "typescript": "^5.9.3",
     "vitest": "^4.1.5"

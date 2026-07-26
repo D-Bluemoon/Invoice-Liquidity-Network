@@ -28,8 +28,8 @@
   },
   "peerDependencies": {
     "@iln/sdk": "workspace:*",
-    "@tanstack/react-query": "^5.0.0",
-    "react": "^18.0.0 || ^19.0.0"
+    "@tanstack/react-query": "^5.62.0",
+    "react": "^19.0.0"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^28.0.0",
@@ -48,7 +48,7 @@
     "rollup-plugin-peer-deps-external": "^2.2.4",
     "tslib": "^2.8.0",
     "typescript": "^5.7.0",
-    "vitest": "^2.1.0"
+    "vitest": "^4.1.5"
   },
   "keywords": [
     "stellar",
