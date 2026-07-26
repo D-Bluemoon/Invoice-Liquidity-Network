@@ -249,6 +249,38 @@ directory (`npm prefix -g`) is on your `PATH`.
 
 ---
 
+## Changeset workflow
+
+Any PR that touches `packages/**` or `sdk/**` must include a [changeset](https://github.com/changesets/changesets),
+enforced by [`changeset-check.yml`](./.github/workflows/changeset-check.yml). Add one with:
+
+```bash
+pnpm changeset
+```
+
+Follow the prompts to pick the changed package(s) and a semver bump, then commit the generated
+`.changeset/*.md` file alongside your change.
+
+### Shared-dependency changes need extra care
+
+`packages/shared` (`@iln/shared`) is a foundational dependency: `sdk` depends on it directly, and
+`cli`, `packages/cli`, `packages/invoice-sdk`, `packages/react`, and `packages/opentelemetry` all
+depend on `sdk` in turn. A change to `packages/shared` can therefore require a version bump in any
+of those downstream packages too, not just in `packages/shared` itself.
+
+`changeset-check.yml` runs [`scripts/check-changeset-dependents.mjs`](./scripts/check-changeset-dependents.mjs)
+on every PR to flag this: it walks the internal (`@iln/*`) dependency graph, finds every workspace
+package that transitively depends on something you changed, and lists any that aren't covered by a
+changeset yet. This is advisory, not a hard failure — use it as a reviewer checklist item and decide
+per-PR whether a listed dependent actually needs its own changeset entry.
+
+Once a changeset does target a dependent, `@changesets/cli` (`updateInternalDependencies: "patch"`
+in [`.changeset/config.json`](./.changeset/config.json)) automatically adds a patch bump for any
+other workspace package that declares that dependent as an internal dependency when versions are
+cut — you do not need to hand-write those follow-on bumps.
+
+---
+
 ## Releasing the SDK
 
 The `@iln/sdk` package (`packages/sdk`) is published to npm automatically by the
