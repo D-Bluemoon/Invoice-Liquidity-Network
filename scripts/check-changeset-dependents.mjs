@@ -15,7 +15,7 @@
  * Usage: node scripts/check-changeset-dependents.mjs [base-ref]
  */
 
-import { readFileSync, existsSync, readdirSync } from 'fs';
+import { readFileSync, existsSync, readdirSync, appendFileSync } from 'fs';
 import { resolve, dirname, relative } from 'path';
 import { fileURLToPath } from 'url';
 import { execFileSync } from 'child_process';
@@ -212,9 +212,7 @@ function main() {
       '',
       ...missing.map((name) => `- \`${name}\` (${dirOfName.get(name)})`),
     ];
-    execFileSync('tee', ['-a', process.env.GITHUB_STEP_SUMMARY], {
-      input: lines.join('\n') + '\n',
-    });
+    appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n');
   }
 }
 

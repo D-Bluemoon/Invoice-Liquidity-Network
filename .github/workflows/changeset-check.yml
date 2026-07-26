@@ -70,11 +70,14 @@ jobs:
           echo "✅ Changeset found: $CHANGESET"
 
       - name: Flag dependents of changed packages
-        # Advisory only — never fails the build. packages/shared (and other
-        # widely-depended-on internal packages) can affect several
-        # downstream workspaces; this surfaces them as an explicit
-        # reviewer checklist item instead of relying on someone remembering
-        # the dependency graph. See CONTRIBUTING.md#changeset-workflow.
+        # Advisory only — never fails the build. Runs even if the changeset
+        # requirement above failed, since that's exactly when knowing which
+        # downstream packages might also need one is most useful.
+        # packages/shared (and other widely-depended-on internal packages)
+        # can affect several downstream workspaces; this surfaces them as an
+        # explicit reviewer checklist item instead of relying on someone
+        # remembering the dependency graph. See CONTRIBUTING.md#changeset-workflow.
+        if: always()
         continue-on-error: true
         run: node scripts/check-changeset-dependents.mjs
 
