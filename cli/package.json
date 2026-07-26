@@ -23,7 +23,7 @@
     "build": "tsup src/index.ts src/bin.ts --format esm --dts --clean",
     "prepare": "husky install || true",
     "lint": "eslint src --ext .ts",
-    "check": "tsc --noEmit",
+    "type-check": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:integration": "vitest run tests/integration.test.ts",
