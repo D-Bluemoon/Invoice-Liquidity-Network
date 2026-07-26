@@ -3,7 +3,7 @@
 This guide covers the security measures built into the Invoice Liquidity Network (ILN), how to report vulnerabilities, best practices for integrators, audit information, and the incident response process.
 
 For the protocol-level attack surface analysis, see the [Threat Model](./threat-model.md).
-For package provenance verification, see [Security](./security.md).
+For package provenance verification, see [Package provenance](#package-provenance-slsa-level-3) below.
 
 ---
 
