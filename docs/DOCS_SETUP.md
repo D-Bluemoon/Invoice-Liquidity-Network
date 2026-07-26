@@ -84,6 +84,25 @@ The docs site is built with `next build` and can be deployed to:
 - [Netlify](https://netlify.com)
 - Any Node.js hosting provider
 
+For the in-repo docs, `cd packages/docs && npm ci && npm run build` produces
+the static bundle that `docs-deploy.yml` uploads to GitHub Pages.
+
+### CI / Deploy Flow
+
+`docs-deploy.yml` runs both on **push to `main`** and on **pull_request**.
+The matrix below shows what each trigger causes:
+
+| Trigger | Files changed | `build` job | `deploy` job |
+|---------|---------------|-------------|--------------|
+| `push` on `main` | `packages/docs/**` or `docs/**` or workflow file    | ✅ Runs | ✅ Runs (publishes to Pages) |
+| `pull_request` | `packages/docs/**` or `docs/**` or workflow file       | ✅ Runs | ❌ Skipped (`if:` gates it) |
+| `workflow_dispatch` | — (manual) | ✅ Runs | ✅ Runs (manual publish) |
+
+PR failures in the `build` job therefore **block merging** because they
+report a non-zero exit. This is what avoids the historical issue where a
+broken docs change could pass PR review, reach `main`, and only surface as
+a Pages deploy failure.
+
 ### Algolia Crawler
 
 After deployment, the Algolia crawler will:
