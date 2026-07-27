@@ -36,7 +36,8 @@
     "syncpack:check": "syncpack list-mismatches",
     "validate:packages": "node scripts/validate-packages.mjs",
     "validate:lockfiles": "node scripts/check-no-foreign-lockfiles.mjs",
-    "validate:meta-nav": "node scripts/check-meta-nav.mjs"
+    "validate:meta-nav": "node scripts/check-meta-nav.mjs",
+    "check-compatibility": "ts-node --esm scripts/check-compatibility.ts"
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",

@@ -34,5 +34,9 @@ export default {
   tutorials: {
     title: 'Tutorials',
     type: 'page'
+  },
+  versioning: {
+    title: 'Versioning',
+    type: 'page'
   }
 }

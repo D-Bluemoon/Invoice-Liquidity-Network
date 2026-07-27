@@ -81,6 +81,7 @@
     "type": "separator",
     "title": "Reference"
   },
+  "versioning": "Documentation Versioning",
   "glossary": "Glossary",
   "errors": "SDK Errors",
   "troubleshooting": "Troubleshooting",
