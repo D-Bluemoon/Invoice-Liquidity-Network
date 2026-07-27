@@ -365,6 +365,14 @@ There are two enforcement mechanisms that share this configuration:
 
 If the work touches more than one repo, mention the affected repos clearly in the issue and PRs. Maintain separate PRs for each repo unless instructed otherwise by a maintainer.
 
+### Scratch PR-drafting notes
+
+Notes you write while drafting a PR description (commit message ideas, screenshot
+lists, summary drafts) belong in the PR description or on your branch — not in
+`docs/`. Don't commit scratch files like `pr_description.md` or
+`pr-<n>-submission-form.md` into the permanent docs tree; paste the content into
+the PR body and delete the scratch file before opening the PR.
+
 ---
 
 ## Code review expectations
