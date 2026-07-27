@@ -153,10 +153,18 @@ location.
    NEXT_PUBLIC_ALGOLIA_API_KEY=<your_search_api_key>
    NEXT_PUBLIC_ALGOLIA_INDEX_NAME=iln-docs
    ```
-3. Port `docs/algolia-crawler-config.json` to `packages/docs/` and update
-   the start URL to match the App Router page structure.
+3. Apply `docs/algolia-crawler-config.json` in the Algolia Crawler dashboard.
+   The config was audited in July 2026 and updated for the Nextra 3 App Router
+   URL structure — selectors now target `<main>` (not `<article>`) and
+   sub-heading records are extracted for granular search results.
 4. Run the Algolia crawler after the first post-migration deploy.
 
-> The existing `docs/algolia-crawler-config.json` targets the Nextra 2 page
-> structure (`/docs/...`). The crawler config will need updating for the
-> Nextra 3 App Router URL scheme before Algolia search works on the new site.
+> **Sitemap gap:** `packages/docs` uses `output: 'export'` without a sitemap
+> plugin, so no `sitemap.xml` is generated. The crawler config uses
+> `discoveryPatterns` for URL discovery instead. Once `next-sitemap` is added
+> to `packages/docs`, restore the `sitemaps` entry in
+> `docs/algolia-crawler-config.json`.
+>
+> **Credentials:** `docs/algolia-crawler-config.json` contains placeholder
+> `appId`/`apiKey` values. Replace them with real DocSearch credentials in the
+> Algolia dashboard — do not commit real credentials to the repo.
