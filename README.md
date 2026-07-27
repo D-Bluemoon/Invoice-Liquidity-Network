@@ -149,7 +149,9 @@ Deployment and development helper scripts.
 
 ## Workspace Layout
 
-This is a **pnpm workspace** (see `pnpm-workspace.yaml`). The table below lists every workspace package, its directory, npm package name, and role. `pnpm-workspace.yaml` is the single source of truth — the `workspaces` field has been removed from `package.json` because pnpm ignores it.
+This is a **pnpm workspace** (see `pnpm-workspace.yaml`). For a complete table with status, purpose, and dependency information for every workspace, see [docs/monorepo-map.md](docs/monorepo-map.md).
+
+The table below lists every workspace package, its directory, npm package name, and role. `pnpm-workspace.yaml` is the single source of truth — the `workspaces` field has been removed from `package.json` because pnpm ignores it.
 
 ### Top-level service packages
 
