@@ -131,9 +131,10 @@ Deployment and development helper scripts.
 ```
 .
 ├── cli/                    # CLI package (@invoice-liquidity/cli)
-├── docs/                   # Shared protocol documentation
+├── docs/                   # Documentation prose source (Nextra 2 legacy — migration in progress)
 ├── indexer/                # On-chain event indexer service
 ├── notifications/          # Webhook notification service
+├── packages/docs/          # Canonical docs site (@invoice-liquidity/docs-next, deployed to docs.iln.finance)
 ├── scripts/                # Deployment & dev scripts
 ├── sdk/                    # TypeScript SDK (@invoice-liquidity/sdk)
 ├── tests/                  # E2E integration tests
@@ -146,6 +147,8 @@ Deployment and development helper scripts.
 ```
 
 > **Frontend** and **Smart Contract** source code lives in their own dedicated repositories (linked above as git submodules).
+>
+> Two docs directories exist during an in-progress migration. `packages/docs/` is the canonical site deployed to [docs.iln.finance](https://docs.iln.finance). `docs/` holds the source `.md` content files and the Nextra 2 legacy app. See [`docs/DOCS_SETUP.md`](./docs/DOCS_SETUP.md) for the migration checklist.
 
 ---
 
@@ -194,12 +197,18 @@ npm run test:e2e              # Run E2E integration tests
 
 ## Documentation
 
+> The live documentation site is **[docs.iln.finance](https://docs.iln.finance)**, built from
+> [`packages/docs/`](./packages/docs). The `docs/` directory holds source content files and a
+> legacy Nextra 2 app that is not deployed — see [`docs/DOCS_SETUP.md`](./docs/DOCS_SETUP.md)
+> for the migration status.
+
 | Doc                                                                      | Description                                                                   |
 | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| [docs.iln.finance](https://docs.iln.finance)                             | **Live documentation site** (canonical, deployed from `packages/docs/`)       |
 | [`docs/index.md`](./docs/index.md)                                       | Protocol overview                                                             |
 | [`docs/tutorials/lp-funding.md`](./docs/tutorials/lp-funding.md)         | LP funding tutorial                                                           |
-| [`docs/governance.md`](./docs/governance.md)                             | Governance guide                                                              |
-| [`docs/multi-token.md`](./docs/multi-token.md)                           | Multi-token support                                                           |
+| [`docs/governance-guide.md`](./docs/governance-guide.md)                 | Governance guide                                                              |
+| [`docs/tokens/multi-token-support.md`](./docs/tokens/multi-token-support.md) | Multi-token support                                                       |
 | [`docs/notifications.md`](./docs/notifications.md)                       | Notification system                                                           |
 | [`docs/api-collection.md`](./docs/api-collection.md)                     | Horizon and Soroban RPC API collection examples                               |
 | [`docs/local-development.md`](./docs/local-development.md)               | Local dev setup                                                               |
@@ -207,6 +216,7 @@ npm run test:e2e              # Run E2E integration tests
 | [`docs/glossary.md`](./docs/glossary.md)                                 | Protocol terminology for Stellar, invoice factoring, DeFi, and security terms |
 | [`docs/tutorials/first-invoice.md`](./docs/tutorials/first-invoice.md)   | Hands-on invoice submission tutorial                                          |
 | [`docs/ci-cd.md`](./docs/ci-cd.md)                                       | CI/CD and deployment environments                                             |
+| [`docs/DOCS_SETUP.md`](./docs/DOCS_SETUP.md)                             | Docs migration checklist and developer setup guide                            |
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md)                                   | How to contribute                                                             |
 | [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md)                             | Community standards and guidelines                                            |
 | [`SECURITY.md`](./SECURITY.md)                                           | Security policy                                                               |
@@ -239,12 +249,22 @@ Please refer to our [Security Policy](./SECURITY.md) for information on supporte
 
 ## Documentation Site
 
-The ILN documentation is built with [Nextra](https://nextra.site) and deployed to [docs.iln.finance](https://docs.iln.finance).
+The ILN documentation site is built with [Nextra 3](https://nextra.site) and deployed to
+**[docs.iln.finance](https://docs.iln.finance)** from [`packages/docs/`](./packages/docs).
 
-### Local Development
+Two documentation directories exist during an in-progress migration:
+
+- **`packages/docs/`** (`@invoice-liquidity/docs-next`) — the **canonical, deployed site** (Nextra 3, Next.js 15 App Router). This is what `docs-deploy.yml` builds and publishes to GitHub Pages.
+- **`docs/`** (`@invoice-liquidity/docs`) — the **legacy source** (Nextra 2, Next.js 14 Pages Router). Not deployed. Holds the authoritative `.md` content files while migration is ongoing. The `docs-changelog.yml` workflow writes `docs/changelog.md` here.
+
+See [`docs/DOCS_SETUP.md`](./docs/DOCS_SETUP.md) for the full migration checklist and remaining work.
+
+### Local development
 
 ```bash
-cd packages/docs
-npm install
-npm run dev
+# Canonical site (Nextra 3 — what gets deployed)
+pnpm --filter @invoice-liquidity/docs-next dev
+
+# Legacy site (Nextra 2 — content source, not deployed)
+pnpm --filter @invoice-liquidity/docs dev
 ```
