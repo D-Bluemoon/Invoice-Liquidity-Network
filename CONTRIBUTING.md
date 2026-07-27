@@ -351,6 +351,7 @@ There are two enforcement mechanisms that share this configuration:
 - [ ] Documentation is updated where needed
 - [ ] Code is easy to review and scoped to one purpose
 - [ ] The PR references the relevant issue or discussion
+- [ ] No root-level scratch files (e.g., `TODO.md`, `issue.md`) are included in the commit
 
 ### Cross-repo contributions
 
