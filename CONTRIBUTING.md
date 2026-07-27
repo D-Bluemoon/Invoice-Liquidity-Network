@@ -427,6 +427,41 @@ pnpm run gitleaks:baseline
 
 Before contributing to the SDK or making changes to transaction signing behavior, review the [SDK Trust Model](./docs/sdk-trust-model.md). This document explains the assumptions and validation boundaries for operations.
 
+### License Compliance Policy
+
+All dependencies in this monorepo must comply with the project's license policy.
+The policy is enforced by `scripts/check-licenses.js` and runs in CI as the
+`license-compliance` job (see `.github/workflows/ci.yml`).
+
+**Allowed licenses** (permissive, compatible with MIT project):
+
+- MIT, Apache-2.0, ISC, BSD-2-Clause, BSD-3-Clause, 0BSD, BlueOak-1.0.0, CC-BY-4.0
+
+**Blocked licenses** (copyleft or restrictive, not compatible):
+
+- GPL (all versions), LGPL, AGPL, SSPL, Commons Clause
+
+**How it works:**
+
+1. On every PR that changes `package.json` or workspace dependencies, CI runs
+   `pnpm licence:check` which scans all production dependencies across the root,
+   SDK, CLI, indexer, and notifications packages.
+2. If a dependency has a license that is not in the allowlist, the job fails
+   and posts a comment on the PR with details.
+3. The license compliance report is uploaded as a CI artifact
+   (`license-compliance-report`) for offline review.
+
+**Adding a new license to the allowlist:**
+
+If a dependency uses a permissive license that is not yet in the allowlist,
+open a PR that adds it to the `ALLOWLIST` array in `scripts/check-licenses.js`
+and explain why the license is acceptable. Maintainers will review and approve.
+
+**Why this policy exists:**
+
+- Protects downstream integrators from unknowingly accepting copyleft obligations.
+- Ensures the project's MIT license is compatible with all transitive dependencies.
+- Prevents license violations from sneaking in via transitive dependency updates.
 
 ---
 

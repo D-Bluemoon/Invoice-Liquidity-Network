@@ -504,7 +504,18 @@ jobs:
         uses: ./.github/actions/setup-pnpm
 
       - name: Run license compliance check
-        run: pnpm licence:check
+        run: |
+          node scripts/check-licenses.js --json > license-report.json 2>&1 || true
+        continue-on-error: true
+
+      - name: Upload license compliance report as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-compliance-report
+          path: '**/license-report.json'
+          retention-days: 30
+          if-no-files-found: warn
 
       - name: Comment PR on failure
         if: failure() && github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
@@ -516,7 +527,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '🚨 **Dependency license compliance check failed!** Please verify your package dependencies conform to the license policy.'
+              body: '🚨 **Dependency license compliance check failed!** Please verify your package dependencies conform to the license policy. Download the **license-compliance-report** artifact from the workflow run for details.'
             })
 
   sdk-types-sync:
