@@ -181,6 +181,26 @@ end-of-life axios 0.x releases.
 **Follow-up:** A tracking issue should remain open to revisit this override on
 every major dependency update sweep until it is confirmed unnecessary.
 
+### Software Bill of Materials (SBOM)
+
+Each SDK release publishes a CycloneDX SBOM as a GitHub Release asset. The SBOM
+is generated automatically by `CycloneDX/gh-node-module-generatebom` during the
+release workflow (`.github/workflows/sdk-release.yml`) and attached to the same
+GitHub Release as the npm tarball.
+
+**Format:** CycloneDX JSON (`sbom.json`), version `1.4`.
+
+**How to consume it:**
+1. Download `sbom.json` from the GitHub Release assets page.
+2. Use any CycloneDX-compatible tool to inspect it:
+   - [`cyclonedx-cli`](https://github.com/CycloneDX/cyclonedx-cli): `cyclonedx-cli view --input sbom.json`
+   - [Dependency-Track](https://dependencytrack.org/): upload the JSON to monitor for newly disclosed vulnerabilities.
+   - [OWASP Dependency-Check](https://owasp.org/www-project-dependency-check/): convert to XML if needed.
+
+**Why this matters:** For a financial protocol handling real value, integrators and
+auditors need an authoritative, reproducible artifact listing exactly what's shipped
+in each release, without needing to reconstruct the dependency tree themselves.
+
 ---
 
 ## Incident Response
