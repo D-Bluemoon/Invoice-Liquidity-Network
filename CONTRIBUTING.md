@@ -280,6 +280,13 @@ in [`.changeset/config.json`](./.changeset/config.json)) automatically adds a pa
 other workspace package that declares that dependent as an internal dependency when versions are
 cut — you do not need to hand-write those follow-on bumps.
 
+### GraphQL schema changes
+
+Any PR that modifies the GraphQL schema (`indexer/src/graphql.ts` or `indexer/src/graphql/schema.ts`)
+**must** include a changeset entry, since schema changes are effectively public API changes. Update the
+snapshot test (`indexer/tests/graphql-schema.test.ts`) by running `pnpm vitest run -u` in the `indexer/`
+directory and committing the updated snapshot alongside your schema change.
+
 ---
 
 ## Releasing the SDK
