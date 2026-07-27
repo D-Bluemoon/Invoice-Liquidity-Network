@@ -77,8 +77,8 @@ jobs:
         run: tar -tzf "$RUNNER_TEMP"/*.tgz
 
   # ----------------------------------------------------------------------------
-  # Publish on `v*` tags: build, test, publish to npm with provenance, then
-  # create a GitHub Release with the changelog for this version.
+  # Publish on `v*` tags: build, test, generate SBOM, publish to npm with
+  # provenance, then create a GitHub Release with the changelog and SBOM asset.
   # ----------------------------------------------------------------------------
   publish:
     name: Publish to npm
@@ -111,6 +111,12 @@ jobs:
       - name: Run tests
         run: pnpm test
 
+      - name: Generate SBOM
+        uses: CycloneDX/gh-node-module-generatebom@1.4.0
+        with:
+          output: "${{ runner.temp }}/sbom.json"
+          format: "json"
+
       - name: Publish to npm with provenance
         run: pnpm publish --provenance --access public --no-git-checks
         env:
@@ -138,7 +144,7 @@ jobs:
             echo "__EOF__"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Create GitHub Release
+      - name: Create GitHub Release with SBOM asset
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           tag_name: ${{ github.ref_name }}
@@ -146,5 +152,6 @@ jobs:
           body: ${{ steps.changelog.outputs.notes }}
           draft: false
           prerelease: ${{ contains(github.ref_name, '-') }}
+          files: "${{ runner.temp }}/sbom.json"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
