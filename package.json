@@ -11,6 +11,7 @@
     "build": "turbo run build",
     "licence:check": "node scripts/check-licenses.js",
     "generate:types": "ts-node --esm scripts/generate-types.ts",
+    "generate:shared-types": "node --import tsx/esm scripts/generate-shared-types.mts --spec backend/target/spec.json --out packages/shared/src/types.ts",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "format": "prettier --write .",
