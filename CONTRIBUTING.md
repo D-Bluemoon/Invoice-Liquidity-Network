@@ -360,6 +360,7 @@ There are two enforcement mechanisms that share this configuration:
 - [ ] Code is easy to review and scoped to one purpose
 - [ ] The PR references the relevant issue or discussion
 - [ ] No root-level scratch files (e.g., `TODO.md`, `issue.md`) are included in the commit
+- [ ] Per-issue execution reports, deliverable manifests, and implementation indexes are kept in the PR description, not committed as root-level artifacts
 
 ### Cross-repo contributions
 
