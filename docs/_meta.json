@@ -87,5 +87,7 @@
   "threat-model": "Threat Model",
   "security": "Security",
   "security-guide": "Security Guide",
-  "privacy": "Privacy & Data Retention"
+  "privacy": "Privacy & Data Retention",
+  "next.config": "Next Config",
+  "theme.config": "Theme Config"
 }

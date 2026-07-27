@@ -26,7 +26,7 @@
   "devDependencies": {
     "@commitlint/cli": "^17.6.0",
     "@commitlint/config-conventional": "^17.6.0",
-    "@iln/eslint-config": "^1.0.0",
+    "@iln/eslint-config": "workspace:*",
     "@types/jest": "^30.0.0",
     "@types/node": "^20.0.0",
     "husky": "^8.0.0",
