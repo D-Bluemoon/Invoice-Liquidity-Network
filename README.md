@@ -147,6 +147,55 @@ Deployment and development helper scripts.
 
 ---
 
+## Workspace Layout
+
+This is a **pnpm workspace** (see `pnpm-workspace.yaml`). The table below lists every workspace package, its directory, npm package name, and role. `pnpm-workspace.yaml` is the single source of truth — the `workspaces` field has been removed from `package.json` because pnpm ignores it.
+
+### Top-level service packages
+
+| Directory | Package name | Role |
+|---|---|---|
+| `sdk/` | `@invoice-liquidity/sdk` | TypeScript SDK — browser Freighter + Node.js keypair signing |
+| `cli/` | `@invoice-liquidity/cli` | Published CLI (`iln` binary) for interacting with the contract |
+| `indexer/` | `iln-indexer` | Production event indexer service — Soroban RPC → SQLite → REST/GraphQL, deployed on Railway |
+| `notifications/` | `@invoice-liquidity/notifications` | Webhook notification service for invoice lifecycle events |
+| `docs/` | `@invoice-liquidity/docs` | Nextra 2 legacy docs source — content `.md` files; **not deployed** (migration in progress) |
+
+### Shared library packages (`packages/*`)
+
+| Directory | Package name | Role |
+|---|---|---|
+| `packages/sdk/` | `@iln/sdk` | SDK package variant (experimental / next iteration) |
+| `packages/cli/` | `@iln/cli` | CLI package variant (experimental) — see [`docs/cli-vs-cli-next.md`](./docs/cli-vs-cli-next.md) |
+| `packages/docs/` | `@invoice-liquidity/docs-next` | **Canonical deployed docs site** (Nextra 3, Next.js 15 App Router) — [docs.iln.finance](https://docs.iln.finance) |
+| `packages/shared/` | `@iln/shared` | Shared utilities consumed by SDK, CLI, and other packages |
+| `packages/indexer/` | `@iln/indexer` | Horizon-based event indexer utility library (stateless, publishable) |
+| `packages/invoice-sdk/` | `@iln/invoice-sdk` | Invoice SDK variant |
+| `packages/react/` | `@iln/react` | React component library for ILN protocol interactions |
+| `packages/opentelemetry/` | `@iln/opentelemetry` | OpenTelemetry instrumentation helpers |
+| `packages/mock-backend/` | `@iln/mock-backend` | Mock backend for local testing without a live Stellar node |
+| `packages/eslint-config/` | `@iln/eslint-config` | Shared ESLint configuration used across all workspaces |
+| `packages/test-utils/` | `@iln/test-utils` | Test helper utilities shared across packages |
+| `packages/upgrade-tests/` | `@iln/upgrade-tests` | Upgrade compatibility test suite |
+| `packages/scripts/` | *(internal)* | Internal dev scripts and the `iln-dev` binary |
+
+### Example applications (`examples/*`)
+
+| Directory | Role |
+|---|---|
+| `examples/analytics-plugin/` | Analytics plugin integration example |
+| `examples/governance-monitor/` | On-chain governance monitoring example |
+| `examples/javascript-example/` | Plain JavaScript SDK usage example |
+| `examples/lp-automation/` | Automated LP funding bot example |
+| `examples/portfolio-report/` | LP/freelancer portfolio report script |
+| `examples/react-example/` | React app SDK integration example |
+| `examples/submit-invoice/` | Invoice submission walkthrough example |
+| `examples/typescript-example/` | TypeScript SDK usage example |
+
+> Directories without a `package.json` (`backend/`, `frontend/`, `tests/`, `workers/`, etc.) are **not** pnpm workspaces — they are submodules, supporting scripts, or non-JS artefacts.
+
+---
+
 ## Repository Structure
 
 ```
