@@ -319,10 +319,7 @@ jobs:
         uses: ./.github/actions/setup-pnpm
 
       - name: Check for version mismatches
-        run: |
-          if ! pnpm syncpack:check; then
-            echo "::warning::Dependency version mismatches were found; see output above."
-          fi
+        run: pnpm syncpack:check
 
       - name: Comment PR on failure
         if: failure() && github.event_name == 'pull_request'

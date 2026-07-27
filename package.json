@@ -41,7 +41,7 @@
     "validate:lockfiles": "node scripts/check-no-foreign-lockfiles.mjs"
   },
   "devDependencies": {
-    "@changesets/cli": "2.31.0",
+    "@changesets/cli": "^2.31.0",
     "@commitlint/cli": "^17.6.0",
     "@commitlint/config-conventional": "^17.6.0",
     "@vitest/coverage-v8": "^4.1.5",

@@ -100,6 +100,7 @@ root `pnpm-lock.yaml` is the only lockfile that should ever exist in this repo.
   on every PR and fails the build if any `package-lock.json` or `yarn.lock`
   is found anywhere in the repo. If you hit this, delete the stray lockfile
   and re-run `pnpm install` from the repo root.
+- CI runs `pnpm syncpack:check` on every PR to enforce consistent dependency version ranges across all workspaces. This ensures we avoid dependency version drift. If this check fails, run `pnpm syncpack:fix` locally to align versions.
 
 ### Start local development
 
