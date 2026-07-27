@@ -111,7 +111,7 @@ function runMigrations(db: SQLiteDatabase): void {
 
     -- Issue #741 compliance: ensure one-click unsubscribe tokens are
     -- single-use. The nonce is recorded here on successful verify; a
-    -- replay attempts an INSERT OR IGNORE that returns `changes = 0`
+    -- replay attempts an INSERT OR IGNORE that returns changes = 0
     -- and is rejected with HTTP 409.
     CREATE TABLE IF NOT EXISTS redeemed_unsubscribe_tokens (
       nonce       TEXT    PRIMARY KEY,
