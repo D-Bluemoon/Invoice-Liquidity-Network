@@ -23,10 +23,12 @@ on:
   workflow_dispatch:
 
 # Least-privilege: deploy to GitHub Pages via OIDC.
+# issues: write needed for PR failure comments (see Comment PR on build failure step).
 permissions:
   contents: read
   pages: write
   id-token: write
+  issues: write
 
 concurrency:
   group: 'pages'
