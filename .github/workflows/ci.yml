@@ -488,7 +488,7 @@ jobs:
 
   license-compliance:
     name: Dependency license compliance check
-    needs: changes
+    needs: [changes, pnpm-cache]
     if: >-
       needs.changes.outputs.shared_config == 'true' ||
       needs.changes.outputs.packages == 'true' ||
@@ -496,7 +496,6 @@ jobs:
       needs.changes.outputs.sdk == 'true' ||
       needs.changes.outputs.cli == 'true' ||
       needs.changes.outputs.indexer == 'true'
-    needs: pnpm-cache
     runs-on: namespace-profile-nursca
     steps:
       - uses: actions/checkout@v4

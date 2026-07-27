@@ -1,10 +1,6 @@
 {
   "name": "invoice-liquidity-network",
   "private": true,
-  "workspaces": [
-    "packages/*",
-    "frontend"
-  ],
   "scripts": {
     "test": "turbo run test",
     "test:coverage": "turbo run test:coverage",
