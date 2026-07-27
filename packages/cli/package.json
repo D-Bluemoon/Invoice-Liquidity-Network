@@ -21,7 +21,7 @@
   },
   "scripts": {
     "build": "tsup src/index.ts src/bin.ts --format esm --dts --clean",
-    "check": "tsc --noEmit",
+    "type-check": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
