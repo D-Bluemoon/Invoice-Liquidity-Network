@@ -103,9 +103,30 @@ comparison and which one to use.
 - The published CLI package (`@invoice-liquidity/cli`) installs the `iln` binary — this is the public-facing tool for interacting with the ILN contract.
 - The monorepo's development tooling includes an internal `iln-dev` binary (via `pnpm iln-dev`) — this is an internal development/configuration tool with no public API. Do not install the root package globally; use the CLI package instead.
 
-### Indexer (`indexer/`)
+### Indexer service (`indexer/`)
 
-A Node.js service that indexes contract events and exposes a REST API for the frontend.
+The production event indexer service — deployed to Railway, polls the Soroban
+RPC, persists to SQLite, and exposes a REST + GraphQL API for the frontend.
+
+See [`docs/indexer/`](./docs/indexer/) for architecture, API reference, and deployment guide.
+
+### Indexer client library (`packages/indexer/`)
+
+`@iln/indexer` — a publishable Horizon-based event indexer utility for
+frontend apps and external tooling. Wraps the Horizon REST API with typed
+pagination and SSE streaming.
+
+```bash
+pnpm add @iln/indexer
+```
+
+See [`packages/indexer/README.md`](./packages/indexer/README.md) for API reference and usage.
+
+> The two indexer packages are **not duplicates** — they use different data
+> sources (Soroban RPC vs Horizon) and serve different purposes. The service
+> (`indexer/`) is what the frontend queries; the library (`packages/indexer/`)
+> is for direct Horizon-based integrations. See
+> [`docs/indexer/README.md`](./docs/indexer/README.md) for a full comparison.
 
 ### Notifications (`notifications/`)
 
@@ -132,9 +153,10 @@ Deployment and development helper scripts.
 .
 ├── cli/                    # CLI package (@invoice-liquidity/cli)
 ├── docs/                   # Documentation prose source (Nextra 2 legacy — migration in progress)
-├── indexer/                # On-chain event indexer service
+├── indexer/                # Production event indexer service (Soroban RPC → SQLite → REST/GraphQL)
 ├── notifications/          # Webhook notification service
 ├── packages/docs/          # Canonical docs site (@invoice-liquidity/docs-next, deployed to docs.iln.finance)
+├── packages/indexer/       # Horizon event indexer utility (@iln/indexer, publishable library)
 ├── scripts/                # Deployment & dev scripts
 ├── sdk/                    # TypeScript SDK (@invoice-liquidity/sdk)
 ├── tests/                  # E2E integration tests
@@ -149,6 +171,8 @@ Deployment and development helper scripts.
 > **Frontend** and **Smart Contract** source code lives in their own dedicated repositories (linked above as git submodules).
 >
 > Two docs directories exist during an in-progress migration. `packages/docs/` is the canonical site deployed to [docs.iln.finance](https://docs.iln.finance). `docs/` holds the source `.md` content files and the Nextra 2 legacy app. See [`docs/DOCS_SETUP.md`](./docs/DOCS_SETUP.md) for the migration checklist.
+>
+> Two indexer packages exist with different data sources and purposes. `indexer/` is the production deployment service (Soroban RPC). `packages/indexer/` is a Horizon-based client library for frontend/external integrations. See [`docs/indexer/README.md`](./docs/indexer/README.md) for the full comparison.
 
 ---
 
