@@ -293,6 +293,14 @@ export interface ProtocolStats {
   defaultRate: number;
 }
 
+/**
+ * LP stats as stored in SQLite.
+ *
+ * This is a DB-specific projection of @iln/shared's LPStats. Field names
+ * differ (`deployed` vs `totalFunded`, `yield` vs `totalEarned`), types are
+ * strings (i128 stored as TEXT), and it adds `defaultRate` / `invoiceCount`
+ * which are derived metrics not present in the contract struct.
+ */
 export interface LPStats {
   deployed: string;
   yield: string;
