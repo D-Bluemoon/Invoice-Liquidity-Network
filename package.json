@@ -1,10 +1,6 @@
 {
   "name": "invoice-liquidity-network",
   "private": true,
-  "workspaces": [
-    "packages/*",
-    "frontend"
-  ],
   "scripts": {
     "test": "turbo run test",
     "test:coverage": "turbo run test:coverage",
@@ -15,14 +11,16 @@
     "build": "turbo run build",
     "licence:check": "node scripts/check-licenses.js",
     "generate:types": "ts-node --esm scripts/generate-types.ts",
+    "generate:shared-types": "node --import tsx/esm scripts/generate-shared-types.mts --spec backend/target/spec.json --out packages/shared/src/types.ts",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "type-check": "turbo run type-check",
     "docs:dev": "npm run dev -w @invoice-liquidity/docs",
-    "docs:build": "npm run docs:generate -w @iln/sdk && npm run build -w @invoice-liquidity/docs",
+    "docs:build": "npm run docs:generate -w @iln/sdk && npm run docs:generate -w @invoice-liquidity/cli && npm run build -w @invoice-liquidity/docs",
     "docs:api": "npm run docs:generate -w @iln/sdk",
+    "docs:cli": "npm run docs:generate -w @invoice-liquidity/cli",
     "react:dev": "npm run dev -w @iln/react",
     "react:build": "npm run build -w @iln/react",
     "react:test": "npm run test -w @iln/react",
@@ -37,7 +35,8 @@
     "security:report": "node scripts/dependency-audit.js report",
     "syncpack:check": "syncpack list-mismatches",
     "validate:packages": "node scripts/validate-packages.mjs",
-    "validate:lockfiles": "node scripts/check-no-foreign-lockfiles.mjs"
+    "validate:lockfiles": "node scripts/check-no-foreign-lockfiles.mjs",
+    "validate:meta-nav": "node scripts/check-meta-nav.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "2.31.0",
@@ -61,7 +60,7 @@
   },
   "prepare": "husky install || true",
   "bin": {
-    "iln": "packages/scripts/bin/iln.js"
+    "iln-dev": "packages/scripts/bin/iln.js"
   },
   "packageManager": "pnpm@9.0.0",
   "pnpm": {

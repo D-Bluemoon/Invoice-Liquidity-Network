@@ -60,12 +60,13 @@ export interface CliDependencies {
   loadConfig(options?: { cwd?: string; env?: NodeJS.ProcessEnv }): ResolvedConfig;
   stderr: NodeJS.WritableStream;
   stdout: NodeJS.WritableStream;
+  __returnProgramForDocs?: boolean;
 }
 
 export async function runCli(
   argv: string[],
   dependencies: Partial<CliDependencies> = {},
-): Promise<number> {
+): Promise<number | any> {
   const stdout = dependencies.stdout ?? process.stdout;
   const stderr = dependencies.stderr ?? process.stderr;
   const ui = createUi(stdout, stderr);
@@ -1265,6 +1266,9 @@ export async function runCli(
     });
 
   try {
+    if (dependencies.__returnProgramForDocs) {
+      return program;
+    }
     await program.parseAsync(resolvedArgv, { from: "user" });
     return 0;
   } catch (error: any) {

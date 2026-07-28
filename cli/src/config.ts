@@ -76,6 +76,8 @@ export const ConfigSchema = z.object({
   requiredVersion: z.string().optional(),
   /** Whether to automatically check for updates on startup. Defaults to true. */
   autoUpdate: z.boolean().optional().default(true),
+  /** Custom CLI aliases, e.g. { "sub": "submit" } */
+  aliases: z.record(z.string()).optional().default({}),
 });
 
 export type ILNConfigFile = z.infer<typeof ConfigSchema>;

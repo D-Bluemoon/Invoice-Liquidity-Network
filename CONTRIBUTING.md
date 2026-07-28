@@ -100,6 +100,7 @@ root `pnpm-lock.yaml` is the only lockfile that should ever exist in this repo.
   on every PR and fails the build if any `package-lock.json` or `yarn.lock`
   is found anywhere in the repo. If you hit this, delete the stray lockfile
   and re-run `pnpm install` from the repo root.
+- CI runs `pnpm syncpack:check` on every PR to enforce consistent dependency version ranges across all workspaces. This ensures we avoid dependency version drift. If this check fails, run `pnpm syncpack:fix` locally to align versions.
 
 ### Start local development
 
@@ -182,6 +183,110 @@ The repository's GitHub Actions workflows are documented in [docs/ci-cd.md](./do
 
 Use it before pushing changes so you can match the relevant CI checks locally.
 
+### Pinning third-party actions
+
+When you add or edit a GitHub Actions workflow, pin every **third-party** action (anything
+not under `actions/*`) to a full commit SHA with a version comment:
+
+```yaml
+# Do this
+- uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3.0.3
+
+# Not this
+- uses: dorny/paths-filter@v3
+```
+
+Resolve a tag to its SHA with `git ls-remote https://github.com/<owner>/<repo> refs/tags/<tag>`.
+First-party `actions/*` actions may stay on major-version tags. Renovate
+(`renovate.json`, `pinDigests: true`) keeps the SHAs and comments up to date automatically,
+so let it open the bump PRs rather than editing SHAs by hand. A couple of actions read their
+behaviour from the ref name — pin them to a SHA **and** pass the choice as an input
+(`dtolnay/rust-toolchain` → `toolchain: stable`, `taiki-e/install-action` → `tool: <name>`).
+The full policy and current pin table live in
+[docs/ci-cd.md](./docs/ci-cd.md#pinned-action-versions-supply-chain).
+
+### Cross-platform CLI install smoke test
+
+The `cli-smoke.yml` workflow runs on a `ubuntu-latest` / `macos-latest` / `windows-latest`
+matrix. On each OS it builds the CLI (`@iln/cli`), packs it together with its unpublished
+workspace dependencies (`@iln/sdk`, `@iln/shared`), installs the tarballs **globally** in a
+clean environment, and runs `iln --version` and `iln --help`. This catches
+platform-specific packaging breakage (shebang handling, path separators, an internal
+`workspace:*` dependency leaking into the published artifact) before a release.
+
+Because the internal packages are not published to npm, a plain `npm pack` +
+`npm install -g` of the CLI alone will fail to resolve `@iln/sdk`. Pack the whole internal
+graph and install the tarballs in one command so npm resolves the `@iln/*` versions from the
+sibling tarballs.
+
+**Manual fallback** — reproduce the smoke test locally on any OS if CI is unavailable or you
+want to debug a failure:
+
+```bash
+# From the repo root, after `pnpm install --frozen-lockfile`
+pnpm --filter "@iln/cli..." build
+
+# Pack the CLI and its unpublished workspace deps into one directory
+mkdir -p /tmp/iln-tarballs
+( cd packages/shared && pnpm pack --pack-destination /tmp/iln-tarballs )
+( cd sdk            && pnpm pack --pack-destination /tmp/iln-tarballs )
+( cd packages/cli   && pnpm pack --pack-destination /tmp/iln-tarballs )
+
+# Install all three tarballs together so the @iln/* deps resolve locally
+npm install -g /tmp/iln-tarballs/*.tgz
+
+# Smoke test
+iln --version   # expect a semver, e.g. 0.1.0
+iln --help      # expect the "Invoice Liquidity Network CLI" description
+
+# Clean up
+npm uninstall -g @iln/cli @iln/sdk @iln/shared
+```
+
+On Windows, run the same commands from **Git Bash** (bundled with Git for Windows) so the
+`( cd ... )` subshells and the `*.tgz` glob behave the same as on macOS/Linux; PowerShell
+expands globs differently. If `iln` is not found after install, confirm the npm global bin
+directory (`npm prefix -g`) is on your `PATH`.
+
+---
+
+## Changeset workflow
+
+Any PR that touches `packages/**` or `sdk/**` must include a [changeset](https://github.com/changesets/changesets),
+enforced by [`changeset-check.yml`](./.github/workflows/changeset-check.yml). Add one with:
+
+```bash
+pnpm changeset
+```
+
+Follow the prompts to pick the changed package(s) and a semver bump, then commit the generated
+`.changeset/*.md` file alongside your change.
+
+### Shared-dependency changes need extra care
+
+`packages/shared` (`@iln/shared`) is a foundational dependency: `sdk` depends on it directly, and
+`cli`, `packages/cli`, `packages/invoice-sdk`, `packages/react`, and `packages/opentelemetry` all
+depend on `sdk` in turn. A change to `packages/shared` can therefore require a version bump in any
+of those downstream packages too, not just in `packages/shared` itself.
+
+`changeset-check.yml` runs [`scripts/check-changeset-dependents.mjs`](./scripts/check-changeset-dependents.mjs)
+on every PR to flag this: it walks the internal (`@iln/*`) dependency graph, finds every workspace
+package that transitively depends on something you changed, and lists any that aren't covered by a
+changeset yet. This is advisory, not a hard failure — use it as a reviewer checklist item and decide
+per-PR whether a listed dependent actually needs its own changeset entry.
+
+Once a changeset does target a dependent, `@changesets/cli` (`updateInternalDependencies: "patch"`
+in [`.changeset/config.json`](./.changeset/config.json)) automatically adds a patch bump for any
+other workspace package that declares that dependent as an internal dependency when versions are
+cut — you do not need to hand-write those follow-on bumps.
+
+### GraphQL schema changes
+
+Any PR that modifies the GraphQL schema (`indexer/src/graphql.ts` or `indexer/src/graphql/schema.ts`)
+**must** include a changeset entry, since schema changes are effectively public API changes. Update the
+snapshot test (`indexer/tests/graphql-schema.test.ts`) by running `pnpm vitest run -u` in the `indexer/`
+directory and committing the updated snapshot alongside your schema change.
+
 ---
 
 ## Releasing the SDK
@@ -223,12 +328,21 @@ to the `@iln` scope. Provenance additionally relies on the workflow's
 ---
 
 ## Submitting a pull request
-## Pull request process
+
+### Conventional Commits and PR Titles
+
+We enforce [Conventional Commits](https://www.conventionalcommits.org/) across the project using `commitlint` (configured in `commitlint.config.js`). This standardizes our changelog generation and commit history. 
+
+There are two enforcement mechanisms that share this configuration:
+1. **Local Commits:** A Husky `commit-msg` hook lints individual commit messages locally to catch issues early during development.
+2. **PR Titles:** A GitHub Actions workflow (`pr-title-lint.yml`) lints the PR title. This ensures that when a PR is squash-merged, the resulting single commit on `main` follows the convention, maintaining a clean project history.
+
+### Pull request process
 
 1. Fork the repository.
 2. Create a branch named for the scope of the work:
    - `fix/...`, `feat/...`, `docs/...`, `chore/...`
-3. Make focused changes with clear commit messages.
+3. Make focused changes with clear conventional commit messages.
 4. Run the relevant tests and verify the change locally.
 5. Open a PR against `main`.
 6. In the PR description, include:
@@ -245,10 +359,20 @@ to the `@iln` scope. Provenance additionally relies on the workflow's
 - [ ] Documentation is updated where needed
 - [ ] Code is easy to review and scoped to one purpose
 - [ ] The PR references the relevant issue or discussion
+- [ ] No root-level scratch files (e.g., `TODO.md`, `issue.md`) are included in the commit
+- [ ] Per-issue execution reports, deliverable manifests, and implementation indexes are kept in the PR description, not committed as root-level artifacts
 
 ### Cross-repo contributions
 
 If the work touches more than one repo, mention the affected repos clearly in the issue and PRs. Maintain separate PRs for each repo unless instructed otherwise by a maintainer.
+
+### Scratch PR-drafting notes
+
+Notes you write while drafting a PR description (commit message ideas, screenshot
+lists, summary drafts) belong in the PR description or on your branch — not in
+`docs/`. Don't commit scratch files like `pr_description.md` or
+`pr-<n>-submission-form.md` into the permanent docs tree; paste the content into
+the PR body and delete the scratch file before opening the PR.
 
 ---
 
@@ -303,6 +427,41 @@ pnpm run gitleaks:baseline
 
 Before contributing to the SDK or making changes to transaction signing behavior, review the [SDK Trust Model](./docs/sdk-trust-model.md). This document explains the assumptions and validation boundaries for operations.
 
+### License Compliance Policy
+
+All dependencies in this monorepo must comply with the project's license policy.
+The policy is enforced by `scripts/check-licenses.js` and runs in CI as the
+`license-compliance` job (see `.github/workflows/ci.yml`).
+
+**Allowed licenses** (permissive, compatible with MIT project):
+
+- MIT, Apache-2.0, ISC, BSD-2-Clause, BSD-3-Clause, 0BSD, BlueOak-1.0.0, CC-BY-4.0
+
+**Blocked licenses** (copyleft or restrictive, not compatible):
+
+- GPL (all versions), LGPL, AGPL, SSPL, Commons Clause
+
+**How it works:**
+
+1. On every PR that changes `package.json` or workspace dependencies, CI runs
+   `pnpm licence:check` which scans all production dependencies across the root,
+   SDK, CLI, indexer, and notifications packages.
+2. If a dependency has a license that is not in the allowlist, the job fails
+   and posts a comment on the PR with details.
+3. The license compliance report is uploaded as a CI artifact
+   (`license-compliance-report`) for offline review.
+
+**Adding a new license to the allowlist:**
+
+If a dependency uses a permissive license that is not yet in the allowlist,
+open a PR that adds it to the `ALLOWLIST` array in `scripts/check-licenses.js`
+and explain why the license is acceptable. Maintainers will review and approve.
+
+**Why this policy exists:**
+
+- Protects downstream integrators from unknowingly accepting copyleft obligations.
+- Ensures the project's MIT license is compatible with all transitive dependencies.
+- Prevents license violations from sneaking in via transitive dependency updates.
 
 ---
 
