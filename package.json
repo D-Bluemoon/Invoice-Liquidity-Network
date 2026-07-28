@@ -5,6 +5,8 @@
     "test": "turbo run test",
     "test:coverage": "turbo run test:coverage",
     "test:checklist": "node --test scripts/__tests__/mainnet-checklist-parser.test.js",
+    "test:compatibility": "vitest run scripts/__tests__/check-compatibility.test.ts",
+    "test:audit": "node --test scripts/__tests__/dependency-audit.test.js",
     "test:load": "ts-node --esm scripts/load-test.ts",
     "test:load:indexer": "ts-node --esm scripts/load-test-indexer.ts",
     "test:load:notifications": "ts-node --esm scripts/load-test-notifications.ts",
@@ -39,7 +41,8 @@
     "syncpack:check": "syncpack list-mismatches",
     "validate:packages": "node scripts/validate-packages.mjs",
     "validate:lockfiles": "node scripts/check-no-foreign-lockfiles.mjs",
-    "validate:meta-nav": "node scripts/check-meta-nav.mjs"
+    "validate:meta-nav": "node scripts/check-meta-nav.mjs",
+    "check:shared-types": "node scripts/check-no-duplicate-types.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "2.31.0",
