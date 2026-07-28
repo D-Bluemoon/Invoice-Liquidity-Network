@@ -148,6 +148,7 @@ export interface RpcServerLike {
   prepareTransaction(transaction: unknown): Promise<{ toXDR(): string }>;
   sendTransaction(transaction: unknown): Promise<unknown>;
   pollTransaction(hash: string, options?: { attempts?: number }): Promise<unknown>;
+  getLatestLedger?(): Promise<unknown>;
 }
 
 /**

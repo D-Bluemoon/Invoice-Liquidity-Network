@@ -30,7 +30,7 @@ export type { UseLPRiskMetricsResult, UseLPRiskMetricsOptions } from './useLPRis
 export type { LPRiskMetrics } from './lpRiskMetrics';
 
 export { useGovernanceProposal } from './useGovernanceProposal';
-export type { UseGovernanceProposalResult } from './useGovernanceProposal';
+export type { GovernanceTimelockState, UseGovernanceProposalResult } from './useGovernanceProposal';
 
 export { useTokenBalances } from './useTokenBalances';
 export type { UseTokenBalancesResult } from './useTokenBalances';

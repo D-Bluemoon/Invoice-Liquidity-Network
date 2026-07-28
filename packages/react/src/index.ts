@@ -42,6 +42,7 @@ export type {
   UseLPRiskMetricsResult,
   UseLPRiskMetricsOptions,
   UseContractStatsResult,
+  GovernanceTimelockState,
   UseGovernanceProposalResult,
   UseTokenBalancesResult,
 } from './hooks';

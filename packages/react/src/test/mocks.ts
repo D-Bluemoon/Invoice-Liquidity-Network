@@ -76,6 +76,7 @@ export function createMockILNClient(overrides: Partial<Record<string, unknown>> 
     getLPPortfolio: vi.fn().mockResolvedValue(mockLPPortfolio),
     getContractStats: vi.fn().mockResolvedValue(mockContractStats),
     getProposal: vi.fn().mockResolvedValue(mockProposal),
+    getLatestLedger: vi.fn().mockResolvedValue(100n),
     getTokenBalances: vi.fn().mockResolvedValue(mockTokenBalances),
     submitInvoice: vi.fn().mockResolvedValue(42),
     fundInvoice: vi.fn().mockResolvedValue(undefined),
