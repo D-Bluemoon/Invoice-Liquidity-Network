@@ -25,6 +25,10 @@ export type { UseLPPortfolioResult } from './useLPPortfolio';
 export { useContractStats } from './useContractStats';
 export type { UseContractStatsResult } from './useContractStats';
 
+export { useLPRiskMetrics } from './useLPRiskMetrics';
+export type { UseLPRiskMetricsResult, UseLPRiskMetricsOptions } from './useLPRiskMetrics';
+export type { LPRiskMetrics } from './lpRiskMetrics';
+
 export { useGovernanceProposal } from './useGovernanceProposal';
 export type { UseGovernanceProposalResult } from './useGovernanceProposal';
 

@@ -19,6 +19,7 @@ export {
   useReputationScore,
   useLPPortfolio,
   useContractStats,
+  useLPRiskMetrics,
   useGovernanceProposal,
   useTokenBalances,
 } from './hooks';
@@ -38,6 +39,8 @@ export type {
   MarkPaidParams,
   UseReputationScoreResult,
   UseLPPortfolioResult,
+  UseLPRiskMetricsResult,
+  UseLPRiskMetricsOptions,
   UseContractStatsResult,
   UseGovernanceProposalResult,
   UseTokenBalancesResult,
