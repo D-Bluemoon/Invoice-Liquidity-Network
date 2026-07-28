@@ -16,6 +16,31 @@ This document describes the on-chain data model for third-party indexers (The Gr
 
 ---
 
+## Two indexer packages — data model scope
+
+This document describes the canonical on-chain data model as implemented by
+`indexer/` (`iln-indexer`), the **production deployment service** that polls
+the Soroban RPC. All field types, event names, and schema examples below
+reflect that package.
+
+A separate utility library, `packages/indexer/` (`@iln/indexer`), also exists.
+It reads from the **Horizon REST API** rather than the Soroban RPC and uses a
+different event-type vocabulary. The table below maps between the two:
+
+| On-chain action | `indexer/` (this doc) | `@iln/indexer` (`packages/indexer/`) |
+|---|---|---|
+| Invoice submitted | `submitted` | `InvoiceCreated` |
+| Invoice funded | `funded` | `InvoiceFunded` |
+| Invoice paid | `paid` | `InvoiceRepaid` |
+| Invoice defaulted | `defaulted` | `InvoiceDefaulted` |
+
+`@iln/indexer` does not persist data — it is a stateless client wrapper. The
+schema, cursor model, and worked examples below apply only to `indexer/`.
+See [`docs/indexer/README.md`](./indexer/README.md) for a full comparison of
+the two packages.
+
+---
+
 ## Field Types and Units
 
 | Field | Contract Type | Indexer Storage | Notes |
@@ -401,5 +426,12 @@ This document was derived from:
 - [`indexer/src/types.ts`](../indexer/src/types.ts) — canonical type definitions
 - [`indexer/src/db.ts`](../indexer/src/db.ts) — reference SQLite schema and query patterns
 - [`indexer/src/processor.ts`](../indexer/src/processor.ts) — event processing and deduplication logic
+
+> **Note on `packages/indexer/`:** The `@iln/indexer` utility library
+> (`packages/indexer/src/types.ts`) defines its own `ILNEventType` and
+> `ContractEvent` types that differ from the types above. Those types reflect
+> the Horizon API payload shape, not the Soroban RPC shape. Do not use
+> `packages/indexer/src/types.ts` as a reference for the on-chain data model
+> described here.
 
 Contact the smart contract team to verify any discrepancies between this document and the deployed contract.
