@@ -11,6 +11,7 @@ export * from './AddressDisplay';
 export * from './AmountDisplay';
 export * from './CheckoutWidget';
 export * from './InvoiceDashboard';
+export * from './AuctionRateTicker';
 export * from './ThemeProvider';
 export { BatchInvoiceForm } from './BatchInvoiceForm';
 export { BatchHistoryView } from './BatchHistoryView';
