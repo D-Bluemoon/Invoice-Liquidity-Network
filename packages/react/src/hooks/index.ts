@@ -13,6 +13,15 @@ export type { UseInvoiceListResult, InvoiceRole } from './useInvoiceList';
 export { useSubmitInvoice } from './useSubmitInvoice';
 export type { UseSubmitInvoiceResult, SubmitInvoiceParams } from './useSubmitInvoice';
 
+export { useBatchSubmitInvoice } from './useBatchSubmitInvoice';
+export type {
+  UseBatchSubmitInvoiceResult,
+  BatchInvoiceInput,
+  BatchProgress,
+  InvoiceProgress,
+  InvoiceStatus,
+} from './useBatchSubmitInvoice';
+
 export { useFundInvoice } from './useFundInvoice';
 export type { UseFundInvoiceResult, FundInvoiceParams } from './useFundInvoice';
 
@@ -37,3 +46,25 @@ export type { UseTokenBalancesResult } from './useTokenBalances';
 
 export { useMarkPaid } from './useMarkPaid';
 export type { UseMarkPaidResult, MarkPaidParams } from './useMarkPaid';
+
+export {
+  useLPCoverage,
+  usePoolBalance,
+  useClaim,
+  useClaimsList,
+  useEnroll,
+  useDepositPremium,
+  useSubmitClaim,
+  useReviewClaim,
+} from './useInsurance';
+export type {
+  UseLPCoverageResult,
+  UsePoolBalanceResult,
+  UseClaimResult,
+  UseClaimsListResult,
+  UseEnrollResult,
+  UseDepositPremiumResult,
+  UseSubmitClaimResult,
+  UseReviewClaimResult,
+} from './useInsurance';
+export { useFocusTrap } from './useFocusTrap';

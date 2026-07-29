@@ -34,5 +34,9 @@ export default {
   tutorials: {
     title: 'Tutorials',
     type: 'page'
+  },
+  'analytics-plugin-guide': {
+    title: 'Analytics Plugin Guide',
+    type: 'page'
   }
 }

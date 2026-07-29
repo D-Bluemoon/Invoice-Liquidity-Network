@@ -59,7 +59,7 @@ export function CheckoutWidget({
   }
 
   return (
-    <div style={styles.container}>
+    <div style={styles.container} role="region" aria-label="Checkout">
       <p style={styles.summary}>
         Pay{" "}
         <strong>
@@ -75,13 +75,14 @@ export function CheckoutWidget({
       )}
 
       {status === "success" ? (
-        <p style={styles.success}>Payment submitted ✓</p>
+        <p style={styles.success} role="status">Payment submitted ✓</p>
       ) : (
         <button
           style={styles.button}
           onClick={handlePay}
           disabled={status === "connecting" || status === "submitting"}
           aria-busy={status === "connecting" || status === "submitting"}
+          aria-label={status === "connecting" ? "Connecting wallet" : status === "submitting" ? "Submitting payment" : `Pay ${amount} ${token}`}
         >
           {status === "connecting"
             ? "Connecting wallet…"
