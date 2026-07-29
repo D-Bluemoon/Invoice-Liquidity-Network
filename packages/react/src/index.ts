@@ -14,6 +14,7 @@ export {
   useInvoices,
   useInvoiceList,
   useSubmitInvoice,
+  useBatchSubmitInvoice,
   useFundInvoice,
   useMarkPaid,
   useReputationScore,
@@ -22,6 +23,14 @@ export {
   useLPRiskMetrics,
   useGovernanceProposal,
   useTokenBalances,
+  useLPCoverage,
+  usePoolBalance,
+  useClaim,
+  useClaimsList,
+  useEnroll,
+  useDepositPremium,
+  useSubmitClaim,
+  useReviewClaim,
 } from './hooks';
 
 export type {
@@ -33,6 +42,11 @@ export type {
   InvoiceRole,
   UseSubmitInvoiceResult,
   SubmitInvoiceParams,
+  UseBatchSubmitInvoiceResult,
+  BatchInvoiceInput,
+  BatchProgress,
+  InvoiceProgress,
+  InvoiceProgress,
   UseFundInvoiceResult,
   FundInvoiceParams,
   UseMarkPaidResult,
@@ -45,6 +59,14 @@ export type {
   GovernanceTimelockState,
   UseGovernanceProposalResult,
   UseTokenBalancesResult,
+  UseLPCoverageResult,
+  UsePoolBalanceResult,
+  UseClaimResult,
+  UseClaimsListResult,
+  UseEnrollResult,
+  UseDepositPremiumResult,
+  UseSubmitClaimResult,
+  UseReviewClaimResult,
 } from './hooks';
 
 // Components

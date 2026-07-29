@@ -48,14 +48,17 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice, onClick, clas
     fontWeight: 500,
   };
 
+  const isClickable = !!onClick;
+
   return (
     <div
       className={className}
       style={cardStyle}
-      onClick={onClick ? () => onClick(invoice) : undefined}
-      role={onClick ? 'button' : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') onClick(invoice); } : undefined}
+      onClick={isClickable ? () => onClick(invoice) : undefined}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      aria-label={isClickable ? `Invoice #${String(invoice.id)} — click to view details` : undefined}
+      onKeyDown={isClickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') onClick(invoice); } : undefined}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
         <span style={{ fontSize: 16, fontWeight: 700 }}>Invoice #{String(invoice.id)}</span>
@@ -66,14 +69,14 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice, onClick, clas
         <div>
           <div style={labelStyle}>Issuer</div>
           <div style={valueStyle}>
-            <AddressDisplay address={invoice.issuer as unknown as string ?? ''} />
+            <AddressDisplay address={invoice.issuer as unknown as string ?? ''} copyable={!isClickable} />
           </div>
         </div>
 
         <div>
           <div style={labelStyle}>Payer</div>
           <div style={valueStyle}>
-            <AddressDisplay address={invoice.payer as unknown as string ?? ''} />
+            <AddressDisplay address={invoice.payer as unknown as string ?? ''} copyable={!isClickable} />
           </div>
         </div>
 

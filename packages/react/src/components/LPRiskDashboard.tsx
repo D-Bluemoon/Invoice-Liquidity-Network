@@ -30,7 +30,7 @@ const PANEL = '#FFFDF9';
 const PANEL_ALT = '#F6EFE7';
 const BORDER = '#E7DCCF';
 const TEXT = '#1F2937';
-const MUTED = '#6B7280';
+const MUTED = '#5B6370';
 const POSITIVE = '#15803D';
 const WARNING = '#B45309';
 const DANGER = '#B91C1C';
@@ -388,7 +388,7 @@ export function LPRiskDashboard({
           ))}
         </ResponsiveGrid>
       ) : error ? (
-        <div style={{
+        <div role="alert" style={{
           position: 'relative',
           zIndex: 1,
           padding: '16px 18px',
