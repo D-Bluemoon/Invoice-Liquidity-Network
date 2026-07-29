@@ -359,6 +359,7 @@ There are two enforcement mechanisms that share this configuration:
 - [ ] Documentation is updated where needed
 - [ ] Code is easy to review and scoped to one purpose
 - [ ] The PR references the relevant issue or discussion
+- [ ] Dashboard/admin responses expose only sanitized errors—never connection strings, API keys, stack traces, or filesystem paths
 - [ ] No root-level scratch files (e.g., `TODO.md`, `issue.md`) are included in the commit
 - [ ] Per-issue execution reports, deliverable manifests, and implementation indexes are kept in the PR description, not committed as root-level artifacts
 
