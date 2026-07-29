@@ -9,4 +9,6 @@ export * from './InvoiceCard';
 export * from './StatusBadge';
 export * from './AddressDisplay';
 export * from './AmountDisplay';
+export * from './CheckoutWidget';
+export * from './InvoiceDashboard';
 export * from './ThemeProvider';
