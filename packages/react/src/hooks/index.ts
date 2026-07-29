@@ -25,6 +25,14 @@ export type {
 export { useFundInvoice } from './useFundInvoice';
 export type { UseFundInvoiceResult, FundInvoiceParams } from './useFundInvoice';
 
+export { useAuctionRate, deriveAuctionRateState } from './useAuctionRate';
+export type {
+  AuctionRatePoint,
+  AuctionRateState,
+  UseAuctionRateOptions,
+  UseAuctionRateResult,
+} from './useAuctionRate';
+
 export { useReputationScore } from './useReputationScore';
 export type { UseReputationScoreResult } from './useReputationScore';
 
