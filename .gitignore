@@ -24,6 +24,15 @@ target/
 yarn.lock
 
 # =============================================================================
+# Foreign lockfiles — this is a pnpm-only workspace.
+# npm and yarn must not be used; their lockfiles must never be committed.
+# The only lockfile that belongs here is the root pnpm-lock.yaml.
+# CI also enforces this via scripts/check-no-foreign-lockfiles.mjs.
+# =============================================================================
+
+package-lock.json
+
+# =============================================================================
 # Environment & secrets
 # =============================================================================
 
@@ -87,3 +96,4 @@ tests/load/results/
 issue.md
 pr.md
 fix.md
+TODO.md

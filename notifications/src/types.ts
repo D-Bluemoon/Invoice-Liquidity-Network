@@ -1,4 +1,20 @@
-export type InvoiceStatus = "Pending" | "Funded" | "Paid" | "Defaulted";
+/**
+ * All nine on-chain invoice states.
+ *
+ * Intentionally differs from @iln/shared's InvoiceStatus only in that this is
+ * a local copy kept in sync with the contract. If a new status is added to the
+ * contract, it must be added here as well.
+ */
+export type InvoiceStatus =
+  | "Pending"
+  | "PartiallyFunded"
+  | "Funded"
+  | "Paid"
+  | "Defaulted"
+  | "Appealed"
+  | "Disputed"
+  | "Expired"
+  | "Cancelled";
 export type ILNEventType = "submitted" | "funded" | "paid" | "defaulted";
 
 export type NotificationTrigger =
@@ -54,6 +70,14 @@ export interface Subscription {
   active: boolean;
 }
 
+/**
+ * Invoice as stored in the notifications database.
+ *
+ * This is a DB-specific projection, not a duplicate of @iln/shared's Invoice.
+ * Field names use snake_case to match the SQL schema, `amount` is a string
+ * (i128 exceeds JS Number.MAX_SAFE_INTEGER), and it omits contract-only fields
+ * like `token`, `amountFunded`, `submitterReputation`, auction fields, etc.
+ */
 export interface Invoice {
   id: number;
   freelancer: string;

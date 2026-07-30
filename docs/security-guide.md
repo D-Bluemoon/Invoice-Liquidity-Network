@@ -142,6 +142,67 @@ Additionally, Snyk is configured to run weekly and on pull requests via the `sny
 
 ---
 
+## Dependency Pinning and Transitive Dependency Control
+
+### axios override (`package.json`)
+
+The root `package.json` contains a pnpm override forcing `axios` to `>=1.16.0`:
+
+```json
+"pnpm": {
+  "overrides": {
+    "axios": ">=1.16.0"
+  }
+}
+```
+
+**Why it exists:** This override was added as a prophylactic measure to ensure
+that any transitive dependency pulling in an older axios version (e.g. via
+`some-package > axios@0.x`) is resolved to a modern `>=1.16.0` release. There is
+no specific CVE attached to the override in the repository history; it was
+introduced during project setup as a guard against dependency drift into
+end-of-life axios 0.x releases.
+
+**When it can be removed safely:**
+
+1. `pnpm why axios` shows that every package depending on axios already
+   declares it directly at `>=1.16.0`.
+2. No dependency in the monorepo resolves to `<1.0.0` via a transitive path.
+3. The override has been absent from `package.json` for at least one full
+   release cycle without regressions.
+
+**Removal procedure:**
+
+- Delete the `"axios": ">=1.16.0"` line from `pnpm.overrides`.
+- Run `pnpm install` and `pnpm audit` to confirm no lockfile changes revert to
+  an older axios.
+- Add a changeset entry noting the override removal.
+
+**Follow-up:** A tracking issue should remain open to revisit this override on
+every major dependency update sweep until it is confirmed unnecessary.
+
+### Software Bill of Materials (SBOM)
+
+Each SDK release publishes a CycloneDX SBOM as a GitHub Release asset. The SBOM
+is generated automatically by `CycloneDX/gh-node-module-generatebom` during the
+release workflow (`.github/workflows/sdk-release.yml`) and attached to the same
+GitHub Release as the npm tarball.
+
+**Format:** CycloneDX JSON (`sbom.json`), version `1.4`.
+
+**How to consume it:**
+1. Download `sbom.json` from the GitHub Release assets page.
+2. Use any CycloneDX-compatible tool to inspect it:
+   - [`cyclonedx-cli`](https://github.com/CycloneDX/cyclonedx-cli): `cyclonedx-cli view --input sbom.json`
+   - [Dependency-Track](https://dependencytrack.org/): upload the JSON to monitor for newly disclosed vulnerabilities.
+   - [OWASP Dependency-Check](https://owasp.org/www-project-dependency-check/): convert to XML if needed.
+
+**Why this matters:** For a financial protocol handling real value, integrators and
+auditors need an authoritative, reproducible artifact listing exactly what's shipped
+in each release, without needing to reconstruct the dependency tree themselves.
+
+---
+
 ## Incident Response
 
 ### Step 1 — Detect

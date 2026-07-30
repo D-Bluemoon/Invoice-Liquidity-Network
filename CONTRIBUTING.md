@@ -13,6 +13,7 @@ Thank you for your interest in contributing. Invoice Liquidity Network (ILN) is 
 - [CI/CD pipeline reference](#cicd-pipeline-reference)
 - [Submitting a pull request](#submitting-a-pull-request)
 - [Branch protection](#branch-protection)
+- [Package naming convention](#package-naming-convention)
 - [Code standards](#code-standards)
 - [Automated dependency updates](#automated-dependency-updates)
 - [Getting help](#getting-help)
@@ -100,6 +101,7 @@ root `pnpm-lock.yaml` is the only lockfile that should ever exist in this repo.
   on every PR and fails the build if any `package-lock.json` or `yarn.lock`
   is found anywhere in the repo. If you hit this, delete the stray lockfile
   and re-run `pnpm install` from the repo root.
+- CI runs `pnpm syncpack:check` on every PR to enforce consistent dependency version ranges across all workspaces. This ensures we avoid dependency version drift. If this check fails, run `pnpm syncpack:fix` locally to align versions.
 
 ### Start local development
 
@@ -279,6 +281,13 @@ in [`.changeset/config.json`](./.changeset/config.json)) automatically adds a pa
 other workspace package that declares that dependent as an internal dependency when versions are
 cut — you do not need to hand-write those follow-on bumps.
 
+### GraphQL schema changes
+
+Any PR that modifies the GraphQL schema (`indexer/src/graphql.ts` or `indexer/src/graphql/schema.ts`)
+**must** include a changeset entry, since schema changes are effectively public API changes. Update the
+snapshot test (`indexer/tests/graphql-schema.test.ts`) by running `pnpm vitest run -u` in the `indexer/`
+directory and committing the updated snapshot alongside your schema change.
+
 ---
 
 ## Releasing the SDK
@@ -351,10 +360,21 @@ There are two enforcement mechanisms that share this configuration:
 - [ ] Documentation is updated where needed
 - [ ] Code is easy to review and scoped to one purpose
 - [ ] The PR references the relevant issue or discussion
+- [ ] Dashboard/admin responses expose only sanitized errors—never connection strings, API keys, stack traces, or filesystem paths
+- [ ] No root-level scratch files (e.g., `TODO.md`, `issue.md`) are included in the commit
+- [ ] Per-issue execution reports, deliverable manifests, and implementation indexes are kept in the PR description, not committed as root-level artifacts
 
 ### Cross-repo contributions
 
 If the work touches more than one repo, mention the affected repos clearly in the issue and PRs. Maintain separate PRs for each repo unless instructed otherwise by a maintainer.
+
+### Scratch PR-drafting notes
+
+Notes you write while drafting a PR description (commit message ideas, screenshot
+lists, summary drafts) belong in the PR description or on your branch — not in
+`docs/`. Don't commit scratch files like `pr_description.md` or
+`pr-<n>-submission-form.md` into the permanent docs tree; paste the content into
+the PR body and delete the scratch file before opening the PR.
 
 ---
 
@@ -409,6 +429,41 @@ pnpm run gitleaks:baseline
 
 Before contributing to the SDK or making changes to transaction signing behavior, review the [SDK Trust Model](./docs/sdk-trust-model.md). This document explains the assumptions and validation boundaries for operations.
 
+### License Compliance Policy
+
+All dependencies in this monorepo must comply with the project's license policy.
+The policy is enforced by `scripts/check-licenses.js` and runs in CI as the
+`license-compliance` job (see `.github/workflows/ci.yml`).
+
+**Allowed licenses** (permissive, compatible with MIT project):
+
+- MIT, Apache-2.0, ISC, BSD-2-Clause, BSD-3-Clause, 0BSD, BlueOak-1.0.0, CC-BY-4.0
+
+**Blocked licenses** (copyleft or restrictive, not compatible):
+
+- GPL (all versions), LGPL, AGPL, SSPL, Commons Clause
+
+**How it works:**
+
+1. On every PR that changes `package.json` or workspace dependencies, CI runs
+   `pnpm licence:check` which scans all production dependencies across the root,
+   SDK, CLI, indexer, and notifications packages.
+2. If a dependency has a license that is not in the allowlist, the job fails
+   and posts a comment on the PR with details.
+3. The license compliance report is uploaded as a CI artifact
+   (`license-compliance-report`) for offline review.
+
+**Adding a new license to the allowlist:**
+
+If a dependency uses a permissive license that is not yet in the allowlist,
+open a PR that adds it to the `ALLOWLIST` array in `scripts/check-licenses.js`
+and explain why the license is acceptable. Maintainers will review and approve.
+
+**Why this policy exists:**
+
+- Protects downstream integrators from unknowingly accepting copyleft obligations.
+- Ensures the project's MIT license is compatible with all transitive dependencies.
+- Prevents license violations from sneaking in via transitive dependency updates.
 
 ---
 

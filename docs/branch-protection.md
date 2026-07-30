@@ -3,7 +3,7 @@
 This document describes the required GitHub branch protection settings for the `main` branch.
 These settings are intended to preserve code quality, enforce review discipline, and protect the repository from unsafe history changes.
 
-> **Last reconciled:** 2026-07-25 — verified against `.github/workflows/` files and known live settings.
+> **Last reconciled:** 2026-07-27 — verified against `.github/workflows/` files and known live settings.
 
 ## Required settings for `main`
 
@@ -82,6 +82,12 @@ These run only when `backend/**` or `.gitmodules` change (path-filtered):
 |---|---|---|
 | `PR title lint / lint` | `lint` | Yes (always) |
 
+#### Dead code check (`knip.yml`)
+
+| Check name in GitHub | Job | Runs on PRs? |
+|---|---|---|
+| `Dead Code Check / knip` | `knip` | Yes (always) |
+
 #### Summary of recommended required checks
 
 ```
@@ -93,6 +99,7 @@ CI / Core · format
 Coverage / Run tests and collect coverage
 CodeQL Analysis / Analyze
 PR title lint / lint
+Dead Code Check / knip
 ```
 
 When backend files change, these additional checks should also pass:
@@ -116,7 +123,6 @@ CI / SDK types in sync
 | `CI / Dependency version consistency` | Advisory — warns but does not fail on mismatches |
 | `CI / Validate package.json consistency` | Could be required; currently not in branch protection |
 | `CI / Guard against non-pnpm lockfiles` | Could be required; currently not in branch protection |
-| `Dead Code Check / knip` | Advisory only (`continue-on-error: true`) — see note below |
 | `CI / Core · lint` | **Only runs on `push` events, not on PRs** — see gaps below |
 | `CI / Core · type-check` | **Only runs on `push` events, not on PRs** — see gaps below |
 | `CI / Core · test` | Depends on lint/type-check which are skipped on PRs |
@@ -129,15 +135,7 @@ CI / SDK types in sync
 
 ## Gaps and flags for maintainer attention
 
-### 1. `knip` (dead code check) is advisory, not required (Issue #22)
-
-The `Dead Code Check / knip` workflow runs on every PR but uses `continue-on-error: true`, so it **never blocks a merge**. If knip should be a required gate (per Issue #22):
-
-1. Remove `continue-on-error: true` from `.github/workflows/knip.yml:26`
-2. Change `run: pnpm dead-code:check || true` to `run: pnpm dead-code:check` (knip.yml:40)
-3. Add `Dead Code Check / knip` to the required status checks in the branch protection ruleset
-
-### 2. Core lint and type-check are skipped on PRs
+### 1. Core lint and type-check are skipped on PRs
 
 The `core-lint` and `core-type-check` jobs in `ci.yml` have `if: github.event_name == 'push'`, meaning they **only run on pushes to main** and are skipped on pull requests. This means:
 

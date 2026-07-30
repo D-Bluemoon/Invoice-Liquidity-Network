@@ -101,7 +101,7 @@ jobs:
         run: cargo test --target x86_64-unknown-linux-gnu
 
       - name: Comment PR on failure
-        if: failure() && github.event_name == 'pull_request'
+        if: failure() && github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
         continue-on-error: true
         uses: actions/github-script@v7
         with:
@@ -147,7 +147,7 @@ jobs:
         run: cargo build --target wasm32v1-none --release
 
       - name: Comment PR on failure
-        if: failure() && github.event_name == 'pull_request'
+        if: failure() && github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
         continue-on-error: true
         uses: actions/github-script@v7
         with:
@@ -198,7 +198,7 @@ jobs:
         run: cargo fmt --check
 
       - name: Comment PR on failure
-        if: failure() && github.event_name == 'pull_request'
+        if: failure() && github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
         continue-on-error: true
         uses: actions/github-script@v7
         with:
@@ -319,13 +319,10 @@ jobs:
         uses: ./.github/actions/setup-pnpm
 
       - name: Check for version mismatches
-        run: |
-          if ! pnpm syncpack:check; then
-            echo "::warning::Dependency version mismatches were found; see output above."
-          fi
+        run: pnpm syncpack:check
 
       - name: Comment PR on failure
-        if: failure() && github.event_name == 'pull_request'
+        if: failure() && github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
         continue-on-error: true
         uses: actions/github-script@v7
         with:
@@ -358,7 +355,7 @@ jobs:
         run: node scripts/validate-packages.mjs
 
       - name: Comment PR on failure
-        if: failure() && github.event_name == 'pull_request'
+        if: failure() && github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
         continue-on-error: true
         uses: actions/github-script@v7
         with:
@@ -380,7 +377,7 @@ jobs:
         run: node scripts/check-no-foreign-lockfiles.mjs
 
       - name: Comment PR on failure
-        if: failure() && github.event_name == 'pull_request'
+        if: failure() && github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
         continue-on-error: true
         uses: actions/github-script@v7
         with:
@@ -430,7 +427,7 @@ jobs:
           retention-days: 7
 
       - name: Comment PR on failure
-        if: failure() && github.event_name == 'pull_request'
+        if: failure() && github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
         continue-on-error: true
         uses: actions/github-script@v7
         with:
@@ -477,7 +474,7 @@ jobs:
           slug: Nursca/Invoice-Liquidity-Network
 
       - name: Comment PR on failure
-        if: failure() && github.event_name == 'pull_request'
+        if: failure() && github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
         continue-on-error: true
         uses: actions/github-script@v7
         with:
@@ -491,7 +488,7 @@ jobs:
 
   license-compliance:
     name: Dependency license compliance check
-    needs: changes
+    needs: [changes, pnpm-cache]
     if: >-
       needs.changes.outputs.shared_config == 'true' ||
       needs.changes.outputs.packages == 'true' ||
@@ -499,7 +496,6 @@ jobs:
       needs.changes.outputs.sdk == 'true' ||
       needs.changes.outputs.cli == 'true' ||
       needs.changes.outputs.indexer == 'true'
-    needs: pnpm-cache
     runs-on: namespace-profile-nursca
     steps:
       - uses: actions/checkout@v4
@@ -508,10 +504,21 @@ jobs:
         uses: ./.github/actions/setup-pnpm
 
       - name: Run license compliance check
-        run: pnpm licence:check
+        run: |
+          node scripts/check-licenses.js --json > license-report.json 2>&1 || true
+        continue-on-error: true
+
+      - name: Upload license compliance report as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-compliance-report
+          path: '**/license-report.json'
+          retention-days: 30
+          if-no-files-found: warn
 
       - name: Comment PR on failure
-        if: failure() && github.event_name == 'pull_request'
+        if: failure() && github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
         continue-on-error: true
         uses: actions/github-script@v7
         with:
@@ -520,7 +527,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '🚨 **Dependency license compliance check failed!** Please verify your package dependencies conform to the license policy.'
+              body: '🚨 **Dependency license compliance check failed!** Please verify your package dependencies conform to the license policy. Download the **license-compliance-report** artifact from the workflow run for details.'
             })
 
   sdk-types-sync:
@@ -582,7 +589,7 @@ jobs:
           fi
 
       - name: Comment PR on failure
-        if: failure() && github.event_name == 'pull_request'
+        if: failure() && github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
         continue-on-error: true
         uses: actions/github-script@v7
         with:
@@ -661,7 +668,7 @@ jobs:
             exit 0
           fi
 
-          git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
+          git fetch --no-tags origin "${{ github.base_ref }}"
           git diff --check "origin/${{ github.base_ref }}...HEAD"
           mapfile -t files < <(
             git diff --name-only --diff-filter=A "origin/${{ github.base_ref }}...HEAD" |

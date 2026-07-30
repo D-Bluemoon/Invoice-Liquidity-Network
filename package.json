@@ -1,20 +1,19 @@
 {
   "name": "invoice-liquidity-network",
   "private": true,
-  "workspaces": [
-    "packages/*",
-    "frontend"
-  ],
   "scripts": {
     "test": "turbo run test",
     "test:coverage": "turbo run test:coverage",
     "test:checklist": "node --test scripts/__tests__/mainnet-checklist-parser.test.js",
+    "test:compatibility": "vitest run scripts/__tests__/check-compatibility.test.ts",
+    "test:audit": "node --test scripts/__tests__/dependency-audit.test.js",
     "test:load": "ts-node --esm scripts/load-test.ts",
     "test:load:indexer": "ts-node --esm scripts/load-test-indexer.ts",
     "test:load:notifications": "ts-node --esm scripts/load-test-notifications.ts",
     "build": "turbo run build",
     "licence:check": "node scripts/check-licenses.js",
     "generate:types": "ts-node --esm scripts/generate-types.ts",
+    "generate:shared-types": "node --import tsx/esm scripts/generate-shared-types.mts --spec backend/target/spec.json --out packages/shared/src/types.ts",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "format": "prettier --write .",
@@ -27,6 +26,9 @@
     "react:dev": "npm run dev -w @iln/react",
     "react:build": "npm run build -w @iln/react",
     "react:test": "npm run test -w @iln/react",
+    "oracle:dev": "npm run dev -w @iln/oracle-service",
+    "oracle:build": "npm run build -w @iln/oracle-service",
+    "oracle:test": "npm run test -w @iln/oracle-service",
     "dead-code:check": "knip",
     "gitleaks:scan": "pnpm exec gitleaks detect --no-git -s . --config gitleaks.toml --baseline-path .secrets.baseline",
     "gitleaks:baseline": "pnpm exec gitleaks detect --no-git -s . --config gitleaks.toml --report-format json --report-path .secrets.baseline",
@@ -38,16 +40,23 @@
     "security:report": "node scripts/dependency-audit.js report",
     "syncpack:check": "syncpack list-mismatches",
     "validate:packages": "node scripts/validate-packages.mjs",
-    "validate:lockfiles": "node scripts/check-no-foreign-lockfiles.mjs"
+    "validate:lockfiles": "node scripts/check-no-foreign-lockfiles.mjs",
+    "validate:meta-nav": "node scripts/check-meta-nav.mjs",
+    "check:shared-types": "node scripts/check-no-duplicate-types.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "2.31.0",
     "@commitlint/cli": "^17.6.0",
     "@commitlint/config-conventional": "^17.6.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/react": "^16.3.2",
+    "@vitejs/plugin-react": "^6.0.4",
     "@vitest/coverage-v8": "^4.1.5",
     "chromatic": "^17.4.1",
     "gitleaks-secret-scanner": "^2.1.1",
     "husky": "^8.0.0",
+    "jsdom": "^29.1.1",
     "license-checker-rseidelsohn": "^5.0.1",
     "prettier": "^2.8.8",
     "syncpack": "^13.0.0",
@@ -69,5 +78,10 @@
     "overrides": {
       "axios": ">=1.16.0"
     }
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.101.4",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   }
 }
