@@ -13,6 +13,7 @@ Thank you for your interest in contributing. Invoice Liquidity Network (ILN) is 
 - [CI/CD pipeline reference](#cicd-pipeline-reference)
 - [Submitting a pull request](#submitting-a-pull-request)
 - [Branch protection](#branch-protection)
+- [Package naming convention](#package-naming-convention)
 - [Code standards](#code-standards)
 - [Automated dependency updates](#automated-dependency-updates)
 - [Getting help](#getting-help)
