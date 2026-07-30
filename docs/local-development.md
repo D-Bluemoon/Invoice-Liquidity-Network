@@ -40,6 +40,25 @@ If the repository was already cloned without submodules:
 git submodule update --init --recursive
 ```
 
+### Why `frontend/` can look empty
+
+`frontend/` is an intentional gitlink to the separate
+[`ILN-Frontend`](https://github.com/Invoice-Liquidity-Network/ILN-Frontend)
+repository, not an empty workspace package. The root `.gitmodules` file defines
+that relationship, while the `frontend` workspace entry lets pnpm include the
+application after the submodule has been initialized. A normal clone creates the
+directory without downloading its contents.
+
+Initialize only the frontend checkout with:
+
+```bash
+git submodule update --init frontend
+```
+
+Use `git submodule status frontend` to inspect the pinned revision. A leading `-`
+means the submodule has not been initialized. Frontend source changes belong in
+`ILN-Frontend`; updates here should only advance the reviewed `frontend` gitlink.
+
 ## Install Dependencies
 
 Install the root workspace first:

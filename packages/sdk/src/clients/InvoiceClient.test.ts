@@ -1,5 +1,15 @@
 import {
+  Account,
+  Keypair,
+  Networks,
+  nativeToScVal,
+} from '@stellar/stellar-sdk';
+
+import { ContractCallError } from '../errors';
+
+import {
   InvoiceClient,
+  InvoiceTransactionSigner,
   exportTransactionsToCsv,
   TransactionRecord,
 } from './InvoiceClient';
@@ -35,6 +45,32 @@ function mockServer(records: any[]) {
     call: callFn,
   };
   return { queryChain, callFn };
+}
+
+const CONTRACT_ID = 'CD3TE3IAHM737P236XZL2OYU275ZKD6MN7YH7PYYAXYIGEH55OPEWYJC';
+const TOKEN_ID = 'CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA';
+
+function makeSigner(publicKey: string): InvoiceTransactionSigner {
+  return {
+    getPublicKey: jest.fn().mockResolvedValue(publicKey),
+    signTransaction: jest.fn(async (transactionXdr: string) => transactionXdr),
+  };
+}
+
+function makeRpcServer(source: string, overrides: Partial<Record<string, any>> = {}) {
+  return {
+    getAccount: jest.fn().mockResolvedValue(new Account(source, '1')),
+    simulateTransaction: jest.fn().mockResolvedValue({
+      result: { retval: nativeToScVal(7n, { type: 'u64' }) },
+    }),
+    prepareTransaction: jest.fn(async (transaction: { toXDR(): string }) => transaction),
+    sendTransaction: jest.fn().mockResolvedValue({ hash: 'tx-hash-123', status: 'PENDING' }),
+    pollTransaction: jest.fn().mockResolvedValue({
+      status: 'SUCCESS',
+      events: [{ topic: ['InvoiceSubmitted'], value: { invoice_id: 7n } }],
+    }),
+    ...overrides,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -237,6 +273,152 @@ describe('InvoiceClient.getTransactionHistory', () => {
     expect(page.records).toHaveLength(0);
     expect(page.nextCursor).toBeUndefined();
     expect(page.count).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Invoice lifecycle writes
+// ---------------------------------------------------------------------------
+
+describe('InvoiceClient invoice lifecycle writes', () => {
+  it('submits an invoice through simulate, prepare, sign, submit, and poll', async () => {
+    const freelancer = Keypair.random().publicKey();
+    const payer = Keypair.random().publicKey();
+    const signer = makeSigner(freelancer);
+    const rpcServer = makeRpcServer(freelancer);
+    const client = new InvoiceClient({
+      contractId: CONTRACT_ID,
+      rpcUrl: 'https://soroban-testnet.stellar.org',
+      networkPassphrase: Networks.TESTNET,
+      signer,
+      rpcServer,
+    });
+
+    const result = await client.submitInvoice({
+      freelancer,
+      payer,
+      amount: 1_000_000n,
+      dueDate: 1_800_000_000n,
+      discountRate: 300,
+      token: TOKEN_ID,
+    });
+
+    expect(result).toMatchObject({
+      hash: 'tx-hash-123',
+      txHash: 'tx-hash-123',
+      invoiceId: 7n,
+    });
+    expect(result.events[0]).toMatchObject({ type: 'InvoiceSubmitted' });
+    expect(rpcServer.getAccount).toHaveBeenCalledWith(freelancer);
+    expect(rpcServer.simulateTransaction).toHaveBeenCalledTimes(1);
+    expect(rpcServer.prepareTransaction).toHaveBeenCalledTimes(1);
+    expect(signer.signTransaction).toHaveBeenCalledWith(
+      expect.any(String),
+      { address: freelancer, networkPassphrase: Networks.TESTNET },
+    );
+    expect(rpcServer.sendTransaction).toHaveBeenCalledTimes(1);
+    expect(rpcServer.pollTransaction).toHaveBeenCalledWith('tx-hash-123', { attempts: 30 });
+  });
+
+  it('funds an invoice with an explicit partial amount', async () => {
+    const funder = Keypair.random().publicKey();
+    const signer = makeSigner(funder);
+    const rpcServer = makeRpcServer(funder);
+    const client = new InvoiceClient({
+      contractId: CONTRACT_ID,
+      rpcUrl: 'https://soroban-testnet.stellar.org',
+      signer,
+      rpcServer,
+    });
+
+    const result = await client.fundInvoice(42n, 500_000n);
+
+    expect(result.hash).toBe('tx-hash-123');
+    expect(rpcServer.getAccount).toHaveBeenCalledWith(funder);
+    expect(rpcServer.simulateTransaction).toHaveBeenCalledTimes(1);
+    expect(signer.signTransaction).toHaveBeenCalledWith(
+      expect.any(String),
+      { address: funder, networkPassphrase: Networks.TESTNET },
+    );
+  });
+
+  it('reads invoice state to compute the remaining funding amount when amount is omitted', async () => {
+    const funder = Keypair.random().publicKey();
+    const signer = makeSigner(funder);
+    const invoiceRetval = nativeToScVal(
+      new Map<string, unknown>([
+        ['amount', 1_000_000n],
+        ['amount_funded', 250_000n],
+      ]),
+    );
+    const rpcServer = makeRpcServer(funder, {
+      simulateTransaction: jest
+        .fn()
+        .mockResolvedValueOnce({ result: { retval: invoiceRetval } })
+        .mockResolvedValueOnce({ result: { retval: nativeToScVal(0, { type: 'u32' }) } }),
+    });
+    const client = new InvoiceClient({
+      contractId: CONTRACT_ID,
+      rpcUrl: 'https://soroban-testnet.stellar.org',
+      signer,
+      rpcServer,
+    });
+
+    await client.fundInvoice({ invoiceId: 42n });
+
+    expect(rpcServer.simulateTransaction).toHaveBeenCalledTimes(2);
+    expect(rpcServer.prepareTransaction).toHaveBeenCalledTimes(1);
+    expect(rpcServer.sendTransaction).toHaveBeenCalledTimes(1);
+  });
+
+  it('marks an invoice as paid with the payer signer', async () => {
+    const payer = Keypair.random().publicKey();
+    const signer = makeSigner(payer);
+    const rpcServer = makeRpcServer(payer, {
+      simulateTransaction: jest.fn().mockResolvedValue({
+        result: { retval: nativeToScVal(0, { type: 'u32' }) },
+      }),
+    });
+    const client = new InvoiceClient({
+      contractId: CONTRACT_ID,
+      rpcUrl: 'https://soroban-testnet.stellar.org',
+      signer,
+      rpcServer,
+    });
+
+    await client.markPaid({ invoiceId: 42n, amount: 1_000_000n });
+
+    expect(rpcServer.getAccount).toHaveBeenCalledWith(payer);
+    expect(signer.signTransaction).toHaveBeenCalledWith(
+      expect.any(String),
+      { address: payer, networkPassphrase: Networks.TESTNET },
+    );
+  });
+
+  it('wraps Soroban simulation failures in ContractCallError', async () => {
+    const freelancer = Keypair.random().publicKey();
+    const payer = Keypair.random().publicKey();
+    const signer = makeSigner(freelancer);
+    const rpcServer = makeRpcServer(freelancer, {
+      simulateTransaction: jest.fn().mockResolvedValue({ error: 'host invocation failed' }),
+    });
+    const client = new InvoiceClient({
+      contractId: CONTRACT_ID,
+      rpcUrl: 'https://soroban-testnet.stellar.org',
+      signer,
+      rpcServer,
+    });
+
+    await expect(
+      client.submitInvoice({
+        freelancer,
+        payer,
+        amount: 1_000_000n,
+        dueDate: 1_800_000_000n,
+        discountRate: 300,
+        token: TOKEN_ID,
+      }),
+    ).rejects.toBeInstanceOf(ContractCallError);
   });
 });
 

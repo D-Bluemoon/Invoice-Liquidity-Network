@@ -3,7 +3,25 @@ name: SDK E2E (local Stellar node)
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'sdk/**'
+      - 'packages/shared/**'
+      - 'packages/sdk/**'
+      - 'packages/invoice-sdk/**'
+      - 'backend/**'
+      - 'pnpm-workspace.yaml'
+      - 'turbo.json'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
   workflow_dispatch:
+
+# Least-privilege: read code to run the local-node E2E suite.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   pnpm-cache:

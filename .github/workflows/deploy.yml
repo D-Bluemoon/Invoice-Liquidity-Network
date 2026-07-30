@@ -17,6 +17,10 @@ on:
         default: 'false'
         type: boolean
 
+# Least-privilege default; the deploy job only needs to read the checkout.
+permissions:
+  contents: read
+
 jobs:
   testnet-health:
     if: ${{ github.event.inputs.network == 'testnet' && github.event.inputs.dry_run != 'true' }}

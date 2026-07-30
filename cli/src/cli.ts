@@ -7,7 +7,7 @@ import { ILNClient } from "./client";
 import { loadConfig, initConfig, readRawConfig, writeRawConfig } from "./config";
 import { parseDueDate } from "./dates";
 import { LocalDevEnvironment } from "./dev-environment";
-import { formatUnknownError } from "./errors";
+import { formatUnknownError, formatILNError, isStructuredError } from "./errors";
 import { decodeScValXdr, formatDecodedScVal } from "./xdr";
 import {
   createUi,
@@ -22,6 +22,8 @@ import {
   formatProtocolConfigJson,
   helpExample,
   helpSection,
+  formatJsonSuccess,
+  formatJsonError,
 } from "./format";
 import { generateManPage } from "./man";
 import { registerInspectCommand } from "./inspect";
@@ -58,12 +60,13 @@ export interface CliDependencies {
   loadConfig(options?: { cwd?: string; env?: NodeJS.ProcessEnv }): ResolvedConfig;
   stderr: NodeJS.WritableStream;
   stdout: NodeJS.WritableStream;
+  __returnProgramForDocs?: boolean;
 }
 
 export async function runCli(
   argv: string[],
   dependencies: Partial<CliDependencies> = {},
-): Promise<number> {
+): Promise<number | any> {
   const stdout = dependencies.stdout ?? process.stdout;
   const stderr = dependencies.stderr ?? process.stderr;
   const ui = createUi(stdout, stderr);
@@ -172,8 +175,8 @@ export async function runCli(
 
       try {
         const config = load();
-        const opts = program.opts() as { quiet?: boolean };
-        if (!opts.quiet) {
+        const opts = program.opts() as { json?: boolean; quiet?: boolean };
+        if (!opts.quiet && !opts.json) {
           ui.info(`Using ${describeConfig(config)}`);
         }
 
@@ -188,7 +191,7 @@ export async function runCli(
         }
 
         // 2. Update Check
-        if (config.autoUpdate && !opts.quiet) {
+        if (config.autoUpdate && !opts.quiet && !opts.json) {
           // Fire and forget update check to not block startup significantly
           void versionManager.notifyUpdateIfAvailable();
         }
@@ -297,7 +300,7 @@ export async function runCli(
 
       const globalOpts = program.opts() as { json?: boolean };
       if (globalOpts.json) {
-        stdout.write(JSON.stringify({ success: true, invoiceId: invoiceId.toString(), txHash }, null, 2) + "\n");
+        stdout.write(formatJsonSuccess({ invoiceId: invoiceId.toString(), txHash }) + "\n");
       } else {
         ui.success(`Submitted invoice ${invoiceId.toString()} in transaction ${txHash}.`);
       }
@@ -358,7 +361,7 @@ export async function runCli(
 
       const globalOpts = program.opts() as { json?: boolean };
       if (globalOpts.json) {
-        stdout.write(JSON.stringify({ success: true, invoiceId: invoiceId, txHash: result.hash }, null, 2) + "\n");
+        stdout.write(formatJsonSuccess({ invoiceId: invoiceId.toString(), txHash: result.hash }) + "\n");
       } else {
         ui.success(`Funded invoice ${invoiceId} in transaction ${result.hash}.`);
       }
@@ -417,7 +420,7 @@ export async function runCli(
 
       const globalOpts = program.opts() as { json?: boolean };
       if (globalOpts.json) {
-        stdout.write(JSON.stringify({ success: true, invoiceId: invoiceId, txHash: result.hash }, null, 2) + "\n");
+        stdout.write(formatJsonSuccess({ invoiceId: invoiceId.toString(), txHash: result.hash }) + "\n");
       } else {
         ui.success(`Marked invoice ${invoiceId} as paid in transaction ${result.hash}.`);
       }
@@ -471,7 +474,7 @@ export async function runCli(
         progress,
       );
       const opts = program.opts() as { json?: boolean };
-      ui.info(opts.json ? formatInvoiceDetailsJson(invoice) : formatInvoiceDetails(invoice));
+      ui.info(opts.json ? formatJsonSuccess(JSON.parse(formatInvoiceDetailsJson(invoice))) : formatInvoiceDetails(invoice));
     });
 
   program
@@ -523,7 +526,7 @@ export async function runCli(
         progress,
       );
       const opts = program.opts() as { json?: boolean };
-      ui.info(opts.json ? formatInvoiceListJson(invoices) : formatInvoiceList(invoices));
+      ui.info(opts.json ? formatJsonSuccess(JSON.parse(formatInvoiceListJson(invoices))) : formatInvoiceList(invoices));
     });
 
   program
@@ -628,7 +631,7 @@ export async function runCli(
         const globalOpts = program.opts() as { json?: boolean };
         const output =
           options.format === "json" || globalOpts.json
-            ? formatHistoryJson(invoices)
+            ? formatJsonSuccess(JSON.parse(formatHistoryJson(invoices)))
             : formatHistoryTable(invoices);
 
         ui.info(output);
@@ -721,7 +724,7 @@ export async function runCli(
         progress,
       );
       const globalOpts = program.opts() as { json?: boolean };
-      ui.info(globalOpts.json ? formatProtocolConfigJson(config) : formatProtocolConfig(config));
+      ui.info(globalOpts.json ? formatJsonSuccess(JSON.parse(formatProtocolConfigJson(config))) : formatProtocolConfig(config));
     });
 
   // Config file management
@@ -745,10 +748,15 @@ export async function runCli(
     .description("Show the resolved configuration that would be used for the current directory.")
     .action(() => {
       const config = load();
-      ui.info(describeConfig(config));
-      ui.info(`  keypairPath  ${config.keypairPath}`);
-      if (config.tokenId) {
-        ui.info(`  tokenId      ${config.tokenId}`);
+      const globalOpts = program.opts() as { json?: boolean };
+      if (globalOpts.json) {
+        ui.info(formatJsonSuccess(config));
+      } else {
+        ui.info(describeConfig(config));
+        ui.info(`  keypairPath  ${config.keypairPath}`);
+        if (config.tokenId) {
+          ui.info(`  tokenId      ${config.tokenId}`);
+        }
       }
     });
 
@@ -917,8 +925,9 @@ export async function runCli(
   devCommand
     .command("status")
     .description("Show local node, contract, and account environment status.")
-    .action(async () => {
-      await createDevEnvironment(ui).status();
+    .option("--json", "output machine-readable JSON")
+    .action(async (options: { json?: boolean }) => {
+      await createDevEnvironment(ui).status({ json: options.json });
     });
 
   devCommand
@@ -969,7 +978,8 @@ export async function runCli(
     .argument("[version]", "version to show changelog for")
     .action(async (version?: string) => {
       await versionManager.showChangelog(version);
-  // Wallet management commands
+    });
+    // Wallet management commands
   const walletCommand = program
     .command("wallet")
     .description("Manage Stellar keypairs for use with ILN.");
@@ -1046,10 +1056,20 @@ export async function runCli(
         helpExample("iln wallet import     Import an existing secret key"),
       ].join("\n"),
     )
-    .action(() => {
+    .option("--json", "output machine-readable JSON")
+    .action((options: { json?: boolean }) => {
       const wallets = listWallets();
       if (wallets.length === 0) {
-        ui.info("No wallets found. Use 'iln wallet create' or 'iln wallet import' to add one.");
+        if (options.json) {
+          ui.info(formatJsonSuccess([]));
+        } else {
+          ui.info("No wallets found. Use 'iln wallet create' or 'iln wallet import' to add one.");
+        }
+        return;
+      }
+
+      if (options.json) {
+        ui.info(formatJsonSuccess(wallets));
         return;
       }
 
@@ -1186,7 +1206,15 @@ export async function runCli(
   aliasCommand
     .command("list")
     .description("List all configured aliases")
-    .action(() => {
+    .option("--json", "output machine-readable JSON")
+    .action((options: { json?: boolean }) => {
+      if (options.json) {
+        ui.info(formatJsonSuccess({
+          builtin: { s: "submit", f: "fund", p: "pay" },
+          custom: customAliases
+        }));
+        return;
+      }
       ui.info("Built-in aliases:");
       ui.info("  s → submit");
       ui.info("  f → fund");
@@ -1238,12 +1266,34 @@ export async function runCli(
     });
 
   try {
+    if (dependencies.__returnProgramForDocs) {
+      return program;
+    }
     await program.parseAsync(resolvedArgv, { from: "user" });
     return 0;
   } catch (error: any) {
     const isJson = program.opts().json;
     if (isJson) {
-      stdout.write(JSON.stringify({ success: false, error: formatUnknownError(error) }, null, 2) + "\n");
+      if (isStructuredError(error)) {
+        stdout.write(
+          JSON.stringify(
+            {
+              success: false,
+              error: error.message,
+              code: error.code,
+              remediation: error.remediation,
+              docsUrl: error.docsUrl,
+            },
+            null,
+            2,
+          ) + "\n",
+        );
+      } else {
+        stdout.write(JSON.stringify({ success: false, error: formatUnknownError(error) }, null, 2) + "\n");
+      }
+    } else if (isStructuredError(error)) {
+      const hyperlinks = Boolean((stderr as NodeJS.WriteStream).isTTY);
+      stderr.write(formatILNError(error, { hyperlinks }) + "\n");
     } else {
       ui.error(formatUnknownError(error));
     }

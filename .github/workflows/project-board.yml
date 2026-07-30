@@ -6,6 +6,8 @@ on:
   pull_request:
     types: [closed]
 
+# Least-privilege: move issues on the project board (falls back to PROJECT_PAT
+# when GITHUB_TOKEN lacks org-project access).
 permissions:
   issues: write
 
