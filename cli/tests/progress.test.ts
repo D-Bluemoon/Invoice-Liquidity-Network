@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createProgressBar,
   createSpinner,
+  createTransactionProgress,
   withProgressBar,
   withSpinner,
 } from "../src/progress";
@@ -123,6 +124,18 @@ describe("withSpinner", () => {
     expect(output.text()).toContain("Submitting…");
   });
 
+  it("emits a success message when successMsg is provided", async () => {
+    const output = createMemoryStream();
+    await withSpinner(
+      "Fetching…",
+      async () => 42,
+      { output, enabled: false },
+      "Done fetching",
+    );
+
+    expect(output.text()).toContain("Done fetching");
+  });
+
   it("rethrows errors after marking failure", async () => {
     const output = createMemoryStream();
 
@@ -156,5 +169,80 @@ describe("withProgressBar", () => {
 
     expect(steps).toEqual([1, 2]);
     expect(output.text()).toContain("Step B");
+  });
+});
+
+describe("createTransactionProgress", () => {
+  it("advances through build → simulate → sign → submit phases", () => {
+    const output = createMemoryStream();
+    const tx = createTransactionProgress("Deploy contract", { output, enabled: false });
+
+    // Initial render includes "Building"
+    expect(output.text()).toContain("Building");
+
+    tx.built();
+    expect(output.text()).toContain("Simulating");
+
+    tx.simulated();
+    expect(output.text()).toContain("Signing");
+
+    tx.signed();
+    expect(output.text()).toContain("Submitting");
+
+    tx.succeed("Deploy done");
+    expect(output.text()).toContain("Deploy done");
+    expect(output.text()).toContain("100%");
+  });
+
+  it("shows failure message on fail()", () => {
+    const output = createMemoryStream();
+    const tx = createTransactionProgress("Fund invoice", { output, enabled: false });
+
+    tx.built();
+    tx.fail("Network error");
+    expect(output.text()).toContain("Network error");
+  });
+
+  it("uses default fail label when no message given", () => {
+    const output = createMemoryStream();
+    const tx = createTransactionProgress("Submit invoice", { output, enabled: false });
+
+    tx.fail();
+    expect(output.text()).toContain("Submit invoice failed");
+  });
+});
+
+describe("ETA and elapsed time in createProgressBar", () => {
+  it("includes ETA string after first increment when enough time has passed", () => {
+    vi.useFakeTimers();
+    const output = createMemoryStream();
+    // Total 4 steps; advance clock by 2 seconds before first increment
+    const bar = createProgressBar(4, "Processing", { output, enabled: false });
+    vi.advanceTimersByTime(2000);
+    bar.increment(1, "Step 1 done");
+
+    const text = output.text();
+    // ETA should appear since elapsed > 0 and we have rate data
+    expect(text).toMatch(/ETA/);
+    bar.stop();
+  });
+
+  it("does not show ETA at step 0", () => {
+    const output = createMemoryStream();
+    const bar = createProgressBar(4, "Waiting", { output, enabled: false });
+    // Before any increment the bar renders at 0 steps — no ETA
+    const text = output.text();
+    expect(text).not.toMatch(/ETA/);
+    bar.stop();
+  });
+
+  it("shows elapsed time suffix after 500ms", () => {
+    vi.useFakeTimers();
+    const output = createMemoryStream();
+    const bar = createProgressBar(4, "Work", { output, enabled: false });
+    vi.advanceTimersByTime(800);
+    bar.increment(1, "Step");
+    expect(output.text()).toMatch(/\[\d+\.\d+s\]/);
+    bar.stop();
   });
 });
