@@ -332,3 +332,56 @@ Potential enhancements to the release process:
 - [ ] Release notes template population
 - [ ] Mainnet vs testnet release coordination
 - [ ] Automated frontend deploy to staging/production
+
+## NPM Scope Ownership and Publishing Policy
+
+### Registered Scopes
+
+The project publishes npm packages under two scopes:
+
+| Scope | Owner | 2FA Required |
+|---|---|---|
+| `@iln` | Invoice Liquidity Network maintainers | Yes |
+| `@invoice-liquidity` | Invoice Liquidity Network maintainers | Yes |
+
+Both scopes must be registered under the project's control. **Maintainers must
+verify scope ownership and 2FA on the publishing account before any publish
+workflow runs.** Unclaimed or poorly-controlled scopes create a
+dependency-confusion/typosquatting risk.
+
+### Unpublished-but-referenced Packages
+
+The following internal packages are referenced in the monorepo but are not yet
+published to npm. They MUST NOT be installed from npm by external consumers;
+they resolve from the workspace instead.
+
+| Local Name | Published Name | Status |
+|---|---|---|
+| `packages/cli` | `@iln/cli` | Unpublished |
+| `packages/test-utils` | `@iln/test-utils` | Unpublished |
+| `packages/scripts` | `@iln/scripts` | Unpublished |
+| `packages/sdk` | `@iln/sdk-next` | Unpublished |
+| `packages/mock-backend` | `@iln/mock-backend` | Unpublished |
+| `packages/indexer` | `@iln/indexer` | Unpublished |
+| `packages/invoice-sdk` | `@iln/invoice-sdk` | Unpublished |
+| `packages/eslint-config` | `@iln/eslint-config` | Unpublished |
+| `packages/upgrade-tests` | `@iln/upgrade-tests` | Unpublished |
+| `packages/shared` | `@iln/shared` | Unpublished |
+| `packages/react` | `@iln/react` | Unpublished |
+| `packages/opentelemetry` | `@iln/opentelemetry` | Unpublished |
+| `sdk/` | `@iln/sdk` | Published via `sdk-release.yml` |
+| `cli/` | `@invoice-liquidity/cli` | Unpublished |
+| `docs/` | `@invoice-liquidity/docs` | Unpublished |
+| `indexer/` | `iln-indexer` | Unpublished |
+| `notifications/` | `iln-notifications` | Unpublished |
+
+> **Action required:** Add a placeholders publish task to reserve these names
+> if the project's standard practice is to prevent squatting. Coordinate with a
+> maintainer who has npm registry access.
+
+### Verification Checklist (per release)
+
+1. Confirm `@iln` and `@invoice-liquidity` scopes are owned by the project org.
+2. Confirm the npm automation token used in CI has `2FA-required` publish access.
+3. Review the unpublished-but-referenced table above and reserve any new names
+   before they appear in a public release.

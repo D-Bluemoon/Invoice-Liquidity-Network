@@ -21,13 +21,17 @@ import { resolve } from "path";
 
 const ROOT = resolve(import.meta.dirname ?? __dirname, "..");
 
+type ReadFile = (fullPath: string) => string;
+
+const defaultReadFile: ReadFile = (fullPath) => readFileSync(fullPath, "utf-8");
+
 // ---------------------------------------------------------------------------
 // 1. Read current versions from source files
 // ---------------------------------------------------------------------------
 
-function readContractVersion(): string {
-  const cargoPath = resolve(ROOT, "backend/contracts/invoice_liquidity/Cargo.toml");
-  const content = readFileSync(cargoPath, "utf-8");
+export function readContractVersion(root: string = ROOT, readFile: ReadFile = defaultReadFile): string {
+  const cargoPath = resolve(root, "backend/contracts/invoice_liquidity/Cargo.toml");
+  const content = readFile(cargoPath);
   const match = content.match(/^\s*version\s*=\s*"([^"]+)"/m);
   if (!match) {
     throw new Error(`Could not find version in ${cargoPath}`);
@@ -35,9 +39,13 @@ function readContractVersion(): string {
   return match[1];
 }
 
-function readJsonVersion(relativePath: string): string {
-  const fullPath = resolve(ROOT, relativePath);
-  const content = readFileSync(fullPath, "utf-8");
+export function readJsonVersion(
+  relativePath: string,
+  root: string = ROOT,
+  readFile: ReadFile = defaultReadFile,
+): string {
+  const fullPath = resolve(root, relativePath);
+  const content = readFile(fullPath);
   const json = JSON.parse(content) as { version?: string };
   if (!json.version) {
     throw new Error(`No "version" field in ${fullPath}`);
@@ -49,15 +57,18 @@ function readJsonVersion(relativePath: string): string {
 // 2. Parse compatibility matrix from markdown
 // ---------------------------------------------------------------------------
 
-interface MatrixRow {
+export interface MatrixRow {
   contract: string;
   sdk: string;
   frontend: string;
 }
 
-function parseCompatibilityMatrix(): MatrixRow[] {
-  const docPath = resolve(ROOT, "docs/cross-repo-dependencies.md");
-  const content = readFileSync(docPath, "utf-8");
+export function parseCompatibilityMatrix(
+  root: string = ROOT,
+  readFile: ReadFile = defaultReadFile,
+): MatrixRow[] {
+  const docPath = resolve(root, "docs/cross-repo-dependencies.md");
+  const content = readFile(docPath);
 
   const startMarker = "<!-- COMPATIBILITY_MATRIX_START -->";
   const endMarker = "<!-- COMPATIBILITY_MATRIX_END -->";
@@ -250,6 +261,44 @@ function checkDocsVersionDeclaration(matrix: MatrixRow[]): string[] {
 // 4. Main validation
 // ---------------------------------------------------------------------------
 
+export function validate(
+  contractVersion: string,
+  sdkVersion: string,
+  frontendVersion: string,
+  matrix: MatrixRow[],
+): { ok: true } | { ok: false; message: string } {
+  if (matrix.length === 0) {
+    return {
+      ok: false,
+      message:
+        "❌ Compatibility matrix is empty! Add at least one row to docs/cross-repo-dependencies.md.",
+    };
+  }
+
+  const match = matrix.find(
+    (row) =>
+      row.contract === contractVersion &&
+      row.sdk === sdkVersion &&
+      row.frontend === frontendVersion,
+  );
+
+  if (match) {
+    return { ok: true };
+  }
+
+  const rows = matrix
+    .map((r) => `     Contract: ${r.contract} | SDK: ${r.sdk} | Frontend: ${r.frontend}`)
+    .join("\n");
+
+  return {
+    ok: false,
+    message:
+      `❌ Current version combination NOT found in the compatibility matrix!\n\n` +
+      `   Expected one of these rows to match:\n${rows}\n\n` +
+      `   Please update docs/cross-repo-dependencies.md with the new version combination.`,
+  };
+}
+
 function main(): void {
   console.log("🔍 Checking cross-repo version compatibility...\n");
 
@@ -286,27 +335,20 @@ function main(): void {
   console.log(`  Frontend (ILN-Frontend):      ${frontendVersion}`);
   console.log();
 
-  const match = matrix.find(
-    (row) =>
-      row.contract === contractVersion &&
-      row.sdk === sdkVersion &&
-      row.frontend === frontendVersion
-  );
+  const matrix = parseCompatibilityMatrix();
 
-  if (match) {
+  const result = validate(contractVersion, sdkVersion, frontendVersion, matrix);
+
+  if (result.ok) {
     console.log("✅ Current version combination found in the compatibility matrix.");
     process.exit(0);
   } else {
-    console.error("❌ Current version combination NOT found in the compatibility matrix!\n");
-    console.error("   Expected one of these rows to match:");
-    for (const row of matrix) {
-      console.error(`     Contract: ${row.contract} | SDK: ${row.sdk} | Frontend: ${row.frontend}`);
-    }
-    console.error(
-      "\n   Please update docs/cross-repo-dependencies.md with the new version combination."
-    );
+    console.error(result.message);
     process.exit(1);
   }
 }
 
-main();
+// Only run main() when executed directly (not when imported by tests).
+if (process.argv[1]?.includes("check-compatibility")) {
+  main();
+}

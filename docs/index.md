@@ -19,6 +19,7 @@
 - [PR Submission Form](pr-16-submission-form.md)
 - [Release Process](release-process.md)
  - [Reputation](reputation/overview.md)
+- [RFC Process](rfc-process.md)
 - [Security](security.md)
 - [Glossary](glossary.md)
 

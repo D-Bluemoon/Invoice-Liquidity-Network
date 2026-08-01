@@ -35,8 +35,8 @@ export default {
     title: 'Tutorials',
     type: 'page'
   },
-  versioning: {
-    title: 'Versioning',
+  'analytics-plugin-guide': {
+    title: 'Analytics Plugin Guide',
     type: 'page'
   }
 }

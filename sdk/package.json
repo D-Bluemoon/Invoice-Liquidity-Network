@@ -26,7 +26,7 @@
     "node": ">=20"
   },
   "peerDependencies": {
-    "react": ">=17",
+    "react": "^19.0.0",
     "react-native": ">=0.72"
   },
   "peerDependenciesMeta": {
@@ -50,21 +50,21 @@
     "docs:generate": "typedoc --out ../docs/sdk-api src/index.ts"
   },
   "dependencies": {
-    "@iln/shared": "workspace:*",
+    "@iln/shared": "^0.1.0",
     "@stellar/freighter-api": "^6.0.1",
     "@stellar/stellar-sdk": "^15.0.1",
     "axios": "^1.16.0",
     "debug": "^4.3.4"
   },
   "devDependencies": {
-    "@iln/eslint-config": "workspace:*",
+    "@iln/eslint-config": "^1.0.0",
     "@types/node": "^20.0.0",
     "@vitest/coverage-v8": "^4.1.5",
     "@commitlint/cli": "^17.6.0",
     "@commitlint/config-conventional": "^17.6.0",
     "husky": "^8.0.0",
     "tsup": "^8.5.0",
-    "typedoc": "^0.26.0",
+    "typedoc": "^0.27.0",
     "typescript": "^5.9.3",
     "vitest": "^4.1.5"
   }

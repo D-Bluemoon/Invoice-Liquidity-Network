@@ -1,5 +1,4 @@
 {
-  "$schema": "https://unpkg.com/knip@6/schema.json",
   "workspaces": {
     ".": {
       "entry": [
@@ -61,6 +60,10 @@
       ]
     },
     "notifications": {
+      "entry": [
+        "src/index.ts",
+        "src/service.ts"
+      ],
       "project": [
         "src/**/*.ts"
       ],
