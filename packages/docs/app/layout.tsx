@@ -1,6 +1,8 @@
 import { Footer, Layout, Navbar } from 'nextra-theme-docs'
 import { Banner, Head } from 'nextra/components'
 import { getPageMap } from 'nextra/page-map'
+import { VersionBanner } from '../components/VersionBanner'
+import { CONTRACT_VERSION } from '../lib/docs-version'
 import 'nextra-theme-docs/style.css'
 import './globals.css'
 
@@ -30,8 +32,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en" dir="ltr" suppressHydrationWarning>
       <Head faviconGlyph="⚡" />
       <body>
-        <Banner storageKey="iln-docs-banner">
-          🚀 ILN is currently on Stellar testnet. Mainnet coming after audit.
+        {/*
+          The storage key is bound to the documented contract version so that a
+          reader who dismissed the banner is shown it again once the docs start
+          tracking a newer release.
+        */}
+        <Banner storageKey={`iln-docs-version-${CONTRACT_VERSION}`}>
+          <VersionBanner />
         </Banner>
         <Layout
           navbar={navbar}

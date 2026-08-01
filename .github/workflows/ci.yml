@@ -486,6 +486,37 @@ jobs:
               body: '🚨 **Coverage dropped below 80%!** Please check the action logs for details.'
             })
 
+  # packages/shared is a dependency of the SDK, CLI, indexer, and notifications
+  # service, so a type-level regression there breaks type-checking for every
+  # consumer without failing a runtime test. `pnpm test` in that package runs
+  # tsc over src/ and then tsd over test-d/. This runs unconditionally rather
+  # than path-filtered so it is always present as a required status check.
+  shared-type-tests:
+    name: Shared package type tests
+    needs: pnpm-cache
+    runs-on: namespace-profile-nursca
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm with store cache
+        uses: ./.github/actions/setup-pnpm
+
+      - name: Type-check and run tsd assertions
+        run: pnpm --filter @iln/shared test
+
+      - name: Comment PR on failure
+        if: failure() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🚨 **`@iln/shared` type tests failed!** A type in `packages/shared` changed in a way its `test-d/` assertions reject. Every consumer (`sdk`, `cli`, `indexer`, `notifications`) type-checks against these types — run `pnpm --filter @iln/shared test` locally before merging.'
+            })
+
   license-compliance:
     name: Dependency license compliance check
     needs: [changes, pnpm-cache]

@@ -1,28 +1,36 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { sendSms, deliverNotification } from "../src/delivery";
 
-vi.mock("twilio", () => {
-  const mockCreate = vi.fn().mockResolvedValue({ sid: "SM123", status: "queued" });
-  return {
-    default: vi.fn(() => ({
-      messages: { create: mockCreate },
-    })),
-  };
-});
+// Hoisted so the tests can assert on the send itself. src/delivery.ts memoises
+// the client, so the factory is only invoked once for the whole file and
+// `mock.results` is empty for every test after the first.
+const { twilioCreate } = vi.hoisted(() => ({ twilioCreate: vi.fn() }));
 
-vi.mock("resend", () => ({
-  Resend: vi.fn(() => ({
-    emails: { send: vi.fn().mockResolvedValue({}) },
-  })),
+vi.mock("twilio", () => ({
+  default: vi.fn(function Twilio() {
+    return { messages: { create: twilioCreate } };
+  }),
 }));
 
-vi.mock("./config", () => ({
+// `new Resend(...)` runs at import time of src/delivery.ts, so the mock has to
+// be constructible — an arrow function is not.
+vi.mock("resend", () => ({
+  Resend: vi.fn(function Resend() {
+    return { emails: { send: vi.fn().mockResolvedValue({}) } };
+  }),
+}));
+
+// Mock paths are resolved relative to this file, so the module under test only
+// picks this up as "../src/config", not "./config".
+vi.mock("../src/config", () => ({
   CONFIG: {
     resendApiKey: "test-key",
     resendFromEmail: "test@example.com",
     twilioAccountSid: "AC123",
     twilioAuthToken: "auth-token",
     twilioFromNumber: "+15551234567",
+    maxWebhookRetry: 3,
+    webhookBackoffBaseMs: 500,
   },
 }));
 
@@ -62,6 +70,10 @@ function makePayload(overrides: Record<string, any> = {}) {
   };
 }
 
+beforeEach(() => {
+  twilioCreate.mockResolvedValue({ sid: "SM123", status: "queued" });
+});
+
 describe("sendSms", () => {
   it("sends SMS via Twilio with correct parameters", async () => {
     const Twilio = (await import("twilio")).default;
@@ -72,9 +84,9 @@ describe("sendSms", () => {
 
     await sendSms(sub, payload);
 
+    // The client is built lazily on the first send, which is this test.
     expect(mockTwilio).toHaveBeenCalledWith("AC123", "auth-token");
-    const client = mockTwilio.mock.results[0].value;
-    expect(client.messages.create).toHaveBeenCalledWith({
+    expect(twilioCreate).toHaveBeenCalledWith({
       to: "+15559876543",
       from: "+15551234567",
       body: expect.stringContaining("Invoice #42"),
@@ -82,30 +94,40 @@ describe("sendSms", () => {
   });
 
   it("throws when Twilio credentials are not configured", async () => {
-    const { CONFIG } = await import("./config");
-    const originalSid = CONFIG.twilioAccountSid;
-    (CONFIG as any).twilioAccountSid = "";
+    // src/delivery.ts memoises the Twilio client, so blanking the credentials on
+    // the shared CONFIG would be ignored once another test has built one. Load a
+    // fresh copy of the module against credential-less config instead.
+    vi.resetModules();
+    vi.doMock("../src/config", () => ({
+      CONFIG: {
+        resendApiKey: "test-key",
+        resendFromEmail: "test@example.com",
+        twilioAccountSid: "",
+        twilioAuthToken: "",
+        twilioFromNumber: "",
+        maxWebhookRetry: 3,
+        webhookBackoffBaseMs: 500,
+      },
+    }));
 
-    const sub = makeSubscription();
-    const payload = makePayload();
+    const { sendSms: sendSmsWithoutCredentials } = await import("../src/delivery");
 
-    await expect(sendSms(sub, payload)).rejects.toThrow("Twilio credentials not configured");
+    await expect(sendSmsWithoutCredentials(makeSubscription(), makePayload())).rejects.toThrow(
+      "Twilio credentials not configured",
+    );
 
-    (CONFIG as any).twilioAccountSid = originalSid;
+    vi.doUnmock("../src/config");
+    vi.resetModules();
   });
 });
 
 describe("deliverNotification SMS channel", () => {
   it("routes SMS channel to sendSms", async () => {
-    const Twilio = (await import("twilio")).default;
-    const mockTwilio = Twilio as unknown as ReturnType<typeof vi.fn>;
-
     const sub = makeSubscription({ channel: "sms" });
     const payload = makePayload();
 
     await deliverNotification(sub, payload);
 
-    const client = mockTwilio.mock.results[0].value;
-    expect(client.messages.create).toHaveBeenCalled();
+    expect(twilioCreate).toHaveBeenCalledOnce();
   });
 });

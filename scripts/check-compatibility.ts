@@ -4,8 +4,16 @@
  * CI check that validates the current contract, SDK, and frontend versions
  * are present in the compatibility matrix in docs/cross-repo-dependencies.md.
  *
+ * It also validates the documentation site's version banner. The docs site is
+ * single-track (it always describes the latest testnet build) and states which
+ * release it describes in a banner on every page. That claim is only useful if
+ * it is checked, so the banner's declared versions are asserted to match
+ * docs/version-manifest.json, the two versioning pages, and the compatibility
+ * matrix below. See docs/versioning.md.
+ *
  * Usage:
  *   npx ts-node --esm scripts/check-compatibility.ts
+ *   pnpm check-compatibility
  */
 
 import { readFileSync } from "fs";
@@ -117,7 +125,140 @@ export function parseCompatibilityMatrix(
 }
 
 // ---------------------------------------------------------------------------
-// 3. Main validation
+// 3. Docs site version banner
+// ---------------------------------------------------------------------------
+
+interface VersionManifest {
+  docsTrack: string;
+  network: string;
+  contract: { package: string; version: string; contractId: string; versionMethod: string };
+  sdk: { package: string; version: string };
+}
+
+/** The declaration the docs banner renders. Canonical copy. */
+const MANIFEST_PATH = "docs/version-manifest.json";
+
+/**
+ * Files that mirror the manifest because they are consumed by a site build that
+ * cannot reach outside its own package root. Each is scanned for the named
+ * constants, whose values must equal the manifest's.
+ */
+const MANIFEST_MIRRORS: { path: string; constants: Record<string, keyof FlatManifest> }[] = [
+  {
+    path: "packages/docs/lib/docs-version.ts",
+    constants: {
+      NETWORK: "network",
+      CONTRACT_VERSION: "contractVersion",
+      CONTRACT_ID: "contractId",
+      CONTRACT_VERSION_METHOD: "versionMethod",
+      SDK_VERSION: "sdkVersion",
+    },
+  },
+  {
+    path: "docs/theme.config.jsx",
+    constants: {
+      DOCS_CONTRACT_VERSION: "contractVersion",
+      DOCS_CONTRACT_ID: "contractId",
+      DOCS_SDK_VERSION: "sdkVersion",
+    },
+  },
+];
+
+/** Versioning pages that quote the declared values in prose readers copy from. */
+const VERSIONING_PAGES = ["docs/versioning.md", "packages/docs/content/versioning.mdx"];
+
+interface FlatManifest {
+  network: string;
+  contractVersion: string;
+  contractId: string;
+  versionMethod: string;
+  sdkVersion: string;
+}
+
+function readManifest(): { manifest: VersionManifest; flat: FlatManifest } {
+  const raw = readFileSync(resolve(ROOT, MANIFEST_PATH), "utf-8");
+  const manifest = JSON.parse(raw) as VersionManifest;
+
+  const missing = [
+    !manifest.contract?.version && "contract.version",
+    !manifest.contract?.contractId && "contract.contractId",
+    !manifest.contract?.versionMethod && "contract.versionMethod",
+    !manifest.sdk?.version && "sdk.version",
+    !manifest.network && "network",
+  ].filter(Boolean);
+
+  if (missing.length > 0) {
+    throw new Error(`${MANIFEST_PATH} is missing required field(s): ${missing.join(", ")}`);
+  }
+
+  return {
+    manifest,
+    flat: {
+      network: manifest.network,
+      contractVersion: manifest.contract.version,
+      contractId: manifest.contract.contractId,
+      versionMethod: manifest.contract.versionMethod,
+      sdkVersion: manifest.sdk.version,
+    },
+  };
+}
+
+/** Extract `const NAME = "value"` / `export const NAME = "value"` from a source file. */
+function readStringConstant(source: string, name: string): string | null {
+  const match = source.match(
+    new RegExp(`(?:export\\s+)?const\\s+${name}\\s*(?::[^=]+)?=\\s*['"\`]([^'"\`]+)['"\`]`)
+  );
+  return match ? match[1] : null;
+}
+
+/**
+ * Validate that everything claiming to know which release the docs describe
+ * agrees: the manifest, its mirrors, the versioning pages, and the matrix.
+ */
+function checkDocsVersionDeclaration(matrix: MatrixRow[]): string[] {
+  const errors: string[] = [];
+  const { flat } = readManifest();
+
+  for (const mirror of MANIFEST_MIRRORS) {
+    const source = readFileSync(resolve(ROOT, mirror.path), "utf-8");
+    for (const [constantName, manifestKey] of Object.entries(mirror.constants)) {
+      const actual = readStringConstant(source, constantName);
+      const expected = flat[manifestKey];
+      if (actual === null) {
+        errors.push(`${mirror.path}: could not find a string constant named ${constantName}`);
+      } else if (actual !== expected) {
+        errors.push(
+          `${mirror.path}: ${constantName} is "${actual}" but ${MANIFEST_PATH} declares "${expected}"`
+        );
+      }
+    }
+  }
+
+  for (const page of VERSIONING_PAGES) {
+    const content = readFileSync(resolve(ROOT, page), "utf-8");
+    if (!content.includes(flat.contractId)) {
+      errors.push(`${page}: does not mention the declared contract ID ${flat.contractId}`);
+    }
+    if (!content.includes(flat.contractVersion)) {
+      errors.push(`${page}: does not mention the declared contract version ${flat.contractVersion}`);
+    }
+  }
+
+  const matrixMatch = matrix.some(
+    (row) => row.contract === flat.contractVersion && row.sdk === flat.sdkVersion
+  );
+  if (!matrixMatch) {
+    errors.push(
+      `${MANIFEST_PATH}: contract ${flat.contractVersion} + SDK ${flat.sdkVersion} is not a row in ` +
+        `the compatibility matrix, so the docs banner advertises an untested combination`
+    );
+  }
+
+  return errors;
+}
+
+// ---------------------------------------------------------------------------
+// 4. Main validation
 // ---------------------------------------------------------------------------
 
 export function validate(
@@ -160,6 +301,30 @@ export function validate(
 
 function main(): void {
   console.log("🔍 Checking cross-repo version compatibility...\n");
+
+  const matrix = parseCompatibilityMatrix();
+
+  if (matrix.length === 0) {
+    console.error("❌ Compatibility matrix is empty! Add at least one row to docs/cross-repo-dependencies.md.");
+    process.exit(1);
+  }
+
+  // Run first: this half needs no submodules, so docs contributors get useful
+  // output even on a checkout without backend/ and frontend/.
+  const docsErrors = checkDocsVersionDeclaration(matrix);
+
+  if (docsErrors.length > 0) {
+    console.error("❌ Docs site version banner is out of sync:\n");
+    for (const error of docsErrors) {
+      console.error(`     ${error}`);
+    }
+    console.error(
+      "\n   Update docs/version-manifest.json and its mirrors together. See docs/versioning.md.\n"
+    );
+    process.exit(1);
+  }
+
+  console.log("✅ Docs version banner matches the manifest and the compatibility matrix.\n");
 
   const contractVersion = readContractVersion();
   const sdkVersion = readJsonVersion("sdk/package.json");
