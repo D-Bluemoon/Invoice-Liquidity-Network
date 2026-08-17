@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   e2e-tests:
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     if: vars.RUN_E2E == 'true'
     steps:
       - uses: actions/checkout@v4

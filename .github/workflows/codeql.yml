@@ -20,7 +20,7 @@ concurrency:
 jobs:
   analyze-ts:
     name: Analyze (${{ matrix.language }})
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     permissions:
       security-events: write
       actions: read
@@ -68,7 +68,7 @@ jobs:
 
   analyze-rust:
     name: Analyze (rust)
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     permissions:
       security-events: write
       actions: read

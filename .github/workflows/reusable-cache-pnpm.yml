@@ -47,7 +47,7 @@ permissions:
 jobs:
   cache:
     name: pnpm store cache
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     outputs:
       cache-hit: ${{ steps.setup-pnpm.outputs.cache-hit }}
     steps:

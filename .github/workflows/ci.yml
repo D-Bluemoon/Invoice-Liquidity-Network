@@ -19,7 +19,7 @@ concurrency:
 jobs:
   changes:
     name: Detect changed paths
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       shared_config: ${{ steps.filter.outputs.shared_config }}
@@ -71,7 +71,7 @@ jobs:
     name: Run tests
     needs: changes
     if: needs.changes.outputs.backend == 'true'
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -117,7 +117,7 @@ jobs:
     name: Build contract
     needs: changes
     if: needs.changes.outputs.backend == 'true'
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -163,7 +163,7 @@ jobs:
     name: Lint code
     needs: changes
     if: needs.changes.outputs.backend == 'true'
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -217,7 +217,7 @@ jobs:
     name: Test results
     needs: [node-tests, core-test]
     if: always()
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     steps:
       - name: Download JUnit reports
         uses: actions/download-artifact@v4
@@ -257,7 +257,7 @@ jobs:
       - core-test
       - core-build
     if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     steps:
       - name: Send Discord notification
         env:
@@ -311,7 +311,7 @@ jobs:
       needs.changes.outputs.sdk == 'true' ||
       needs.changes.outputs.cli == 'true' ||
       needs.changes.outputs.indexer == 'true'
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -344,7 +344,7 @@ jobs:
       needs.changes.outputs.sdk == 'true' ||
       needs.changes.outputs.cli == 'true' ||
       needs.changes.outputs.indexer == 'true'
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -369,7 +369,7 @@ jobs:
 
   no-foreign-lockfiles:
     name: Guard against non-pnpm lockfiles
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -395,7 +395,7 @@ jobs:
     if: >-
       needs.changes.outputs.shared_config == 'true' ||
       needs.changes.outputs.notifications == 'true'
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -445,7 +445,7 @@ jobs:
     if: >-
       needs.changes.outputs.notifications == 'true' ||
       needs.changes.outputs.shared_config == 'true'
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -494,7 +494,7 @@ jobs:
   shared-type-tests:
     name: Shared package type tests
     needs: pnpm-cache
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -527,7 +527,7 @@ jobs:
       needs.changes.outputs.sdk == 'true' ||
       needs.changes.outputs.cli == 'true' ||
       needs.changes.outputs.indexer == 'true'
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -565,7 +565,7 @@ jobs:
     name: SDK types in sync
     needs: [pnpm-cache, changes]
     if: needs.changes.outputs.backend == 'true'
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -636,7 +636,7 @@ jobs:
     name: SDK testnet integration tests
     needs: [pnpm-cache, testnet-health]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.testnet-health.outputs.healthy == 'true'
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -656,7 +656,7 @@ jobs:
     name: SDK testnet integration (skipped — unhealthy testnet)
     needs: [testnet-health]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.testnet-health.outputs.healthy != 'true'
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     steps:
       - name: Report skipped integration tests
         run: |
@@ -675,7 +675,7 @@ jobs:
   core-install:
     name: Core · install
     needs: pnpm-cache
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Setup pnpm with store cache
@@ -684,7 +684,7 @@ jobs:
   core-format:
     name: Core · format
     needs: core-install
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -720,7 +720,7 @@ jobs:
     name: Core · lint
     needs: core-install
     if: github.event_name == 'push'
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Setup pnpm with store cache
@@ -738,7 +738,7 @@ jobs:
     name: Core · type-check
     needs: core-install
     if: github.event_name == 'push'
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Setup pnpm with store cache
@@ -755,7 +755,7 @@ jobs:
   core-test:
     name: Core · test
     needs: [core-format, core-lint, core-type-check]
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Setup pnpm with store cache
@@ -784,7 +784,7 @@ jobs:
   core-build:
     name: Core · build
     needs: core-test
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Setup pnpm with store cache
@@ -802,7 +802,7 @@ jobs:
     name: Core · PR summary
     needs: [core-install, core-format, core-lint, core-type-check, core-test, core-build]
     if: always() && github.event_name == 'pull_request'
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     steps:
       - name: Post results summary to PR
         continue-on-error: true

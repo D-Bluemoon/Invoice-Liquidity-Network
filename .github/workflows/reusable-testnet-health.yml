@@ -30,7 +30,7 @@ permissions: {}
 jobs:
   health:
     name: Horizon testnet health
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     outputs:
       healthy: ${{ steps.check.outputs.healthy }}
     steps:

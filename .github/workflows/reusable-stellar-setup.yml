@@ -58,7 +58,7 @@ permissions:
 jobs:
   setup:
     name: Stellar CLI and testnet identity
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     outputs:
       identity-name: ${{ steps.identity.outputs.identity-name }}
       public-key: ${{ steps.identity.outputs.public-key }}

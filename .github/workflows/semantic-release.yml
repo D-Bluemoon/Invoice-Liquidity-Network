@@ -22,7 +22,7 @@ jobs:
   release:
     name: Semantic release
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     steps:
       - name: Check out the tested commit
         uses: actions/checkout@v4

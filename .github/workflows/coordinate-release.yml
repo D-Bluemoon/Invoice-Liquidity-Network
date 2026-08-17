@@ -24,7 +24,7 @@ permissions:
 
 jobs:
   coordinate-release:
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       DRY_RUN: ${{ inputs.dry_run }}

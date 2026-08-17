@@ -40,7 +40,7 @@ jobs:
   # pages) and undiscoverable pages (exist but not in the sidebar) on every PR.
   check-meta-nav:
     name: Validate docs _meta.json navigation
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -68,7 +68,7 @@ jobs:
 
   build:
     needs: check-meta-nav
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: packages/docs
@@ -127,7 +127,7 @@ jobs:
     # build step's failure-comment lives on the `build` job (above) because
     # this one is skipped on PRs.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
     needs: build
     steps:
       - name: Deploy to GitHub Pages

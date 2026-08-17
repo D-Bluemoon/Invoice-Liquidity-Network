@@ -24,7 +24,7 @@ concurrency: ${{ github.workflow }}-${{ github.ref }}
 jobs:
   release:
     name: Version Packages or Publish
-    runs-on: namespace-profile-nursca
+    runs-on: ubuntu-latest
 
     permissions:
       contents: write
