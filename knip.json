@@ -1,8 +1,42 @@
 {
+  "ignore": [
+    "frontend/**",
+    "backend/**",
+    "oracle-service/**"
+  ],
+  "ignoreBinaries": [
+    "playwright",
+    "sqlite3",
+    "sha256sum",
+    "gsutil",
+    "gitleaks",
+    "less"
+  ],
+  "rules": {
+    "optionalPeerDependencies": "off",
+    "duplicates": "off"
+  },
+  "ignoreIssues": {
+    "packages/docs/lib/docs-version.ts": ["exports"],
+    "sdk/src/logger.ts": ["enumMembers"]
+  },
   "workspaces": {
+    "sdk": {
+      "entry": [
+        "src/**/*.test.ts"
+      ],
+      "project": [
+        "src/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "@commitlint/cli",
+        "@commitlint/config-conventional"
+      ]
+    },
     ".": {
       "entry": [
-        "scripts/*.ts"
+        "scripts/*.ts",
+        "scripts/migrations/*.ts"
       ],
       "project": [
         "scripts/**/*.ts"
@@ -13,34 +47,24 @@
     },
     "packages/sdk": {
       "entry": [
-        "index.ts",
-        "__tests__/**/*.test.ts",
-        "src/index.browser.ts"
+        "src/index.ts",
+        "src/tokens.ts",
+        "src/events.ts",
+        "src/errors.ts",
+        "src/xdr.ts",
+        "src/**/*.test.ts",
+        "src/crypto-browser.ts"
       ],
       "project": [
         "src/**/*.ts",
         "*.ts"
-      ],
-      "ignoreDependencies": [
-        "@commitlint/cli",
-        "@commitlint/config-conventional",
-        "@playwright/test",
-        "jest",
-        "ts-jest",
-        "tsup",
-        "tsx",
-        "vite",
-        "vite-plugin-wasm"
-      ],
-      "ignoreExports": [
-        "src/crypto-browser.ts",
-        "src/index.browser.ts"
       ]
     },
     "cli": {
       "entry": [
         "src/bin.ts",
-        "src/cli.ts"
+        "src/cli.ts",
+        "src/index.ts"
       ],
       "project": [
         "src/**/*.ts"
@@ -61,7 +85,6 @@
     },
     "notifications": {
       "entry": [
-        "src/index.ts",
         "src/service.ts"
       ],
       "project": [
@@ -97,6 +120,22 @@
       ],
       "project": [
         "src/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "@iln/sdk"
+      ]
+    },
+    "packages/docs": {
+      "entry": [
+        "mdx-components.ts",
+        "app/**/*.{ts,tsx}",
+        "content/**/_meta.ts"
+      ],
+      "project": [
+        "**/*.{ts,tsx}"
+      ],
+      "ignoreUnresolved": [
+        "./generated/_meta"
       ]
     },
     "packages/scripts": {
@@ -105,6 +144,18 @@
       ],
       "project": [
         "**/*.{ts,js}"
+      ]
+    },
+    "packages/invoice-sdk": {
+      "ignoreDependencies": [
+        "@iln/sdk"
+      ]
+    },
+    "packages/eslint-config": {
+      "ignoreDependencies": [
+        "eslint-plugin-react",
+        "eslint-plugin-react-hooks",
+        "eslint-plugin-jsx-a11y"
       ]
     }
   },

@@ -21,7 +21,7 @@ export interface GovernanceTimelockState {
 }
 
 export interface UseGovernanceProposalResult {
-  data: import('@invoice-liquidity/sdk').Proposal | undefined;
+  data: import('@iln/sdk').Proposal | undefined;
   isLoading: boolean;
   error: Error | null;
   isPolling: boolean;

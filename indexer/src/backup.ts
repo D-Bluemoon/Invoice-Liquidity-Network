@@ -396,30 +396,3 @@ export class BackupManager {
     return backups.length > 0 ? backups[backups.length - 1] : null;
   }
 }
-
-// ─── CLI Integration ──────────────────────────────────────────────────────────
-
-/**
- * Create a BackupManager from environment variables.
- */
-export function createBackupManagerFromEnv(): BackupManager {
-  const cloudProvider = process.env.BACKUP_CLOUD_PROVIDER as
-    | "s3"
-    | "gcs"
-    | "azure"
-    | undefined;
-
-  return new BackupManager({
-    backupDir: process.env.BACKUP_DIR ?? "./backups",
-    intervalMs: Number(process.env.BACKUP_INTERVAL_MS ?? String(DEFAULT_INTERVAL_MS)),
-    maxLocalBackups: Number(process.env.BACKUP_MAX_LOCAL ?? String(DEFAULT_MAX_LOCAL_BACKUP)),
-    cloud: cloudProvider
-      ? {
-          provider: cloudProvider,
-          bucket: process.env.BACKUP_CLOUD_BUCKET ?? "",
-          prefix: process.env.BACKUP_CLOUD_PREFIX,
-          region: process.env.BACKUP_CLOUD_REGION,
-        }
-      : undefined,
-  });
-}

@@ -1,6 +1,6 @@
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import type { Invoice } from '@invoice-liquidity/sdk';
+import type { Invoice } from '@iln/sdk';
 import { ILNContext } from '../context/ILNContext';
 
 export interface AuctionRatePoint {

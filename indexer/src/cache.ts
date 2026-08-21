@@ -65,9 +65,3 @@ export async function invalidateInvoiceCache(id: number): Promise<void> {
   ]);
 }
 
-export async function disconnectCache(): Promise<void> {
-  if (_client) {
-    await _client.quit();
-    _client = null;
-  }
-}

@@ -92,16 +92,6 @@ export interface Invoice {
   updated_at: number;
 }
 
-export interface LegacySubscription {
-  id: number;
-  stellar_address: string;
-  channel: SubscriptionChannel;
-  destination: string;
-  triggers: NotificationTrigger[];
-  created_at: number;
-  webhook_secret?: string;
-}
-
 export interface WebhookDeliveryLog {
   id: number;
   subscription_id: number;
@@ -144,7 +134,3 @@ export interface WebSocketMessage {
   timestamp?: number;
 }
 
-export interface WebSocketSubscription {
-  address: string;
-  triggers?: NotificationTrigger[];
-}

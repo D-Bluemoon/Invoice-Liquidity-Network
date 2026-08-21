@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, expect, it } from 'vitest';
 import { render } from '@testing-library/react';
 import { axe, toHaveNoViolations } from 'jest-axe';
-import type { Invoice, LPPortfolio } from '@invoice-liquidity/sdk';
+import type { Invoice, LPPortfolio } from '@iln/sdk';
 import { ILNProvider } from '../context';
 import { LPRiskDashboard } from './LPRiskDashboard';
 

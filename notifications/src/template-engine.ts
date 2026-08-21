@@ -1,8 +1,3 @@
-export interface TemplateVariable {
-  name: string;
-  value: string | number | boolean;
-}
-
 export interface TemplateContext {
   invoice?: {
     id: number;

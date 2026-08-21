@@ -257,21 +257,3 @@ export class ILNTransactionBuilder {
     return this.cache.size;
   }
 }
-
-export const buildTransaction = async (
-  operations: Operation[],
-  config: TransactionConfig,
-  rpcClient: RpcClient
-) => {
-  const builder = new ILNTransactionBuilder(rpcClient);
-  return builder.buildTransaction(operations, config);
-};
-
-export const estimateTransactionCost = async (
-  operations: Operation[],
-  config: TransactionConfig,
-  rpcClient: RpcClient
-) => {
-  const builder = new ILNTransactionBuilder(rpcClient);
-  return builder.estimateCost(operations, config);
-};

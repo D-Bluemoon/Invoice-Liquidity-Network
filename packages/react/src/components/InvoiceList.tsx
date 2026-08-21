@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import type { Invoice } from '@invoice-liquidity/sdk';
+import type { Invoice } from '@iln/sdk';
 import { useInvoiceList } from '../hooks/useInvoiceList';
 
 export interface InvoiceListProps {

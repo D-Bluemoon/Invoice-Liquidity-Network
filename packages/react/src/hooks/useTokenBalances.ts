@@ -7,7 +7,7 @@ const balanceKeys = {
 };
 
 export interface UseTokenBalancesResult {
-  data: import('@invoice-liquidity/sdk').TokenBalance[] | undefined;
+  data: import('@iln/sdk').TokenBalance[] | undefined;
   isLoading: boolean;
   error: Error | null;
 }

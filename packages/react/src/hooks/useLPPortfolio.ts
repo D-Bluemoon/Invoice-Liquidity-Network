@@ -7,7 +7,7 @@ const portfolioKeys = {
 };
 
 export interface UseLPPortfolioResult {
-  data: import('@invoice-liquidity/sdk').LPPortfolio | undefined;
+  data: import('@iln/sdk').LPPortfolio | undefined;
   isLoading: boolean;
   error: Error | null;
 }

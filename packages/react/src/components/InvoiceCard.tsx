@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Invoice } from '@invoice-liquidity/sdk';
+import type { Invoice } from '@iln/sdk';
 import { StatusBadge } from './StatusBadge';
 import { AddressDisplay } from './AddressDisplay';
 import { AmountDisplay } from './AmountDisplay';

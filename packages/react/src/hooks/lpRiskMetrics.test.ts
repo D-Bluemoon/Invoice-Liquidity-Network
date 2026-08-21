@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Invoice, LPPortfolio } from '@invoice-liquidity/sdk';
+import type { Invoice, LPPortfolio } from '@iln/sdk';
 import { calculateLPRiskMetrics } from './lpRiskMetrics';
 
 const NOW = Date.UTC(2026, 0, 1);

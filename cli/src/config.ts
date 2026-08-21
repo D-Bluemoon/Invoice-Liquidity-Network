@@ -268,36 +268,6 @@ export function initConfig(cwd: string): string {
   return targetPath;
 }
 
-/**
- * Generate a `.iln.config.ts` scaffold (TypeScript format).
- *
- * Kept for backwards compatibility; prefer `initConfig` for new projects.
- *
- * @deprecated Use `initConfig` instead.
- */
-export function scaffoldConfig(cwd: string): string {
-  const tsConfigPath = path.join(cwd, ".iln.config.ts");
-  if (existsSync(tsConfigPath)) {
-    throw new Error(`${tsConfigPath} already exists.`);
-  }
-
-  const template = `export default {
-  network: "testnet",
-  horizonUrl: "https://horizon-testnet.stellar.org",
-  rpcUrl: "https://soroban-testnet.stellar.org",
-  contractIds: {
-    invoice: "",
-    token: ""
-  },
-  deployer: {
-    keypairPath: "~/.stellar/testnet.key"
-  }
-};
-`;
-  writeFileSync(tsConfigPath, template);
-  return tsConfigPath;
-}
-
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
 /** Locate and parse the first matching config file. */

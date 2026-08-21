@@ -9,7 +9,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import type { Invoice } from '@invoice-liquidity/sdk';
+import type { Invoice } from '@iln/sdk';
 import { useAuctionRate } from '../hooks/useAuctionRate';
 import { ILNContext } from '../context/ILNContext';
 

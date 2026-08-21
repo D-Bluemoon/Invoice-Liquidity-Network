@@ -1,4 +1,4 @@
-import type { Invoice, LPPortfolio } from '@invoice-liquidity/sdk';
+import type { Invoice, LPPortfolio } from '@iln/sdk';
 
 export interface LPRiskPayerExposure {
   payer: string;
@@ -449,21 +449,4 @@ export function calculateLPRiskMetrics(input: LPRiskMetricsInput): LPRiskMetrics
     expectedLoss: BigInt(Math.round(totalExpectedLoss)),
     expectedYield: BigInt(Math.round(totalExpectedYield)),
   };
-}
-
-export function formatRiskPercent(value: number): string {
-  return `${(value * 100).toFixed(1)}%`;
-}
-
-export function formatRiskScore(value: number): string {
-  return value.toFixed(2);
-}
-
-export function formatRiskBigInt(value: bigint, decimals = 7): string {
-  const scale = 10 ** decimals;
-  const numeric = Number(value) / scale;
-  return numeric.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
 }

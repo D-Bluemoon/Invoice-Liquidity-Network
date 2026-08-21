@@ -6,7 +6,7 @@ const statsKeys = {
 };
 
 export interface UseContractStatsResult {
-  data: import('@invoice-liquidity/sdk').ContractStats | undefined;
+  data: import('@iln/sdk').ContractStats | undefined;
   isLoading: boolean;
   error: Error | null;
 }

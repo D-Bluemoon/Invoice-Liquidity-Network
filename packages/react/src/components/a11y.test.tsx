@@ -19,7 +19,7 @@ import { LPRiskDashboard } from './LPRiskDashboard';
 import { StatsCard } from './StatsCard';
 import { StatusBadge } from './StatusBadge';
 import { AddressDisplay } from './AddressDisplay';
-import type { Invoice, LPPortfolio } from '@invoice-liquidity/sdk';
+import type { Invoice, LPPortfolio } from '@iln/sdk';
 
 const LP_ADDRESS = 'GLPADDR00000000000000000000000000000000000000000000000';
 

@@ -141,22 +141,6 @@ export function listWallets(): WalletInfo[] {
   return index.wallets;
 }
 
-export function getWalletSecret(name: string, password: string): string {
-  const walletFile = join(WALLET_DIR, `${name}.enc`);
-  if (!existsSync(walletFile)) {
-    throw new Error(`Wallet '${name}' not found.`);
-  }
-
-  const encryptedData = readFileSync(walletFile, "utf8");
-  const walletData = JSON.parse(decryptData(encryptedData, password));
-  return walletData.secretKey;
-}
-
-export function getWalletKeypair(name: string, password: string): Keypair {
-  const secretKey = getWalletSecret(name, password);
-  return Keypair.fromSecret(secretKey);
-}
-
 export function deleteWallet(name: string): void {
   const index = loadWalletIndex();
   const walletIndex = index.wallets.findIndex((w) => w.name === name);

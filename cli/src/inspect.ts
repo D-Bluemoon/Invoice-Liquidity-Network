@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import type { ILNClient } from "../../sdk/src/client";
+import type { ILNClient } from "./client";
 import type { ResolvedConfig } from "./config";
 import type { Ui } from "./format"; // use any if not exported
 import { formatJsonSuccess } from "./format";

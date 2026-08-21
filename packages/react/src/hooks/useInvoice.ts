@@ -11,7 +11,7 @@ const invoiceKeys = {
 
 export interface UseInvoiceResult {
   /** The invoice data, or undefined if not yet loaded */
-  data: import('@invoice-liquidity/sdk').Invoice | undefined;
+  data: import('@iln/sdk').Invoice | undefined;
   /** True during initial fetch */
   isLoading: boolean;
   /** Error if the fetch failed */

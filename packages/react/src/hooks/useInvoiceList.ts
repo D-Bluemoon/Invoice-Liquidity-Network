@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useILNClient } from '../context';
-import type { InvoiceStatus } from '@invoice-liquidity/sdk';
+import type { InvoiceStatus } from '@iln/sdk';
 
 /**
  * Role filter for invoice lists.
@@ -18,7 +18,7 @@ const invoiceListKeys = {
 
 export interface UseInvoiceListResult {
   /** Array of invoices matching the filter */
-  data: import('@invoice-liquidity/sdk').Invoice[] | undefined;
+  data: import('@iln/sdk').Invoice[] | undefined;
   isLoading: boolean;
   error: Error | null;
 }

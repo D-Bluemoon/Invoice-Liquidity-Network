@@ -1,5 +1,5 @@
 import React from 'react';
-import type { InvoiceStatus } from '../../../sdk/src/types';
+import type { InvoiceStatus } from '@iln/sdk';
 
 export interface StatusBadgeProps {
   status: InvoiceStatus;

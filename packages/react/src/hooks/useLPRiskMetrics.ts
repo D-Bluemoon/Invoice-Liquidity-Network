@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useQueries } from '@tanstack/react-query';
-import type { Invoice, LPPortfolio } from '@invoice-liquidity/sdk';
+import type { Invoice, LPPortfolio } from '@iln/sdk';
 import { useILNClient } from '../context';
 import { useInvoiceList } from './useInvoiceList';
 import { useLPPortfolio } from './useLPPortfolio';

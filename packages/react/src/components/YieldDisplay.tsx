@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { LPPortfolio } from '@invoice-liquidity/sdk';
+import type { LPPortfolio } from '@iln/sdk';
 import { useLPPortfolio } from '../hooks/useLPPortfolio';
 
 export interface YieldDisplayProps {

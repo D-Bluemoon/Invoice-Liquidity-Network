@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { ILNClient } from '@invoice-liquidity/sdk';
+import type { ILNClient } from '@iln/sdk';
 
 /**
  * Context for sharing the ILNClient instance across the React tree.

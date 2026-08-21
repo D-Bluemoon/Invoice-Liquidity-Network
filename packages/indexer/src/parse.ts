@@ -1,27 +1,5 @@
 import { ParsedHorizonEvent } from "./types";
 
-/**
- * Raw Horizon transaction operation record shape (minimal subset we need).
- */
-export interface RawHorizonOperation {
-  type: string;
-  transaction_hash: string;
-  paging_token: string;
-  created_at: string;
-  // Soroban-specific fields
-  contract_id?: string;
-  function?: string;
-  parameters?: unknown[];
-  // Events field present in some Horizon versions
-  events?: RawHorizonEvent[];
-  // The full envelope for XDR decoding
-  transaction?: {
-    result_meta_xdr?: string;
-    ledger?: number;
-    closed_at?: string;
-  };
-}
-
 export interface RawHorizonEvent {
   type: string;
   contract_id?: string;

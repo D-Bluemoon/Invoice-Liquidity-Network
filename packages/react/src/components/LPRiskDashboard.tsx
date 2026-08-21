@@ -12,7 +12,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import type { Invoice, LPPortfolio } from '@invoice-liquidity/sdk';
+import type { Invoice, LPPortfolio } from '@iln/sdk';
 import { AddressDisplay } from './AddressDisplay';
 import { ResponsiveGrid } from './ResponsiveGrid';
 import { StatsCard } from './StatsCard';

@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BatchInvoiceForm } from "./BatchInvoiceForm";
 import { ILNContext } from "../context/ILNContext";
 import { createMockILNClient } from "../test/mocks";
-import type { ILNClient } from "@invoice-liquidity/sdk";
+import type { ILNClient } from "@iln/sdk";
 
 function renderWithProviders(
   ui: React.ReactElement,

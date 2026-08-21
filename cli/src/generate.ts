@@ -67,14 +67,13 @@ const BUILTIN: TemplateDefinition[] = [
       { name: "networkPassphrase", description: "Network passphrase", default: "Test SDF Network ; September 2015" },
     ],
     render: (vars) =>
-      `import { ILNClient } from "@invoice-liquidity/sdk";
-import { createKeypairFileSigner } from "@invoice-liquidity/sdk/signers";
+      `import { ILNSdk, createKeypairSigner } from "@iln/sdk";
 
-const client = new ILNClient({
+const client = new ILNSdk({
   contractId: "${vars.contractId}",
   rpcUrl: "${vars.rpcUrl}",
   networkPassphrase: "${vars.networkPassphrase}",
-  signer: createKeypairFileSigner(process.env.ILN_KEYPAIR_PATH!),
+  signer: createKeypairSigner(process.env.ILN_SECRET_KEY!),
 });
 
 export default client;

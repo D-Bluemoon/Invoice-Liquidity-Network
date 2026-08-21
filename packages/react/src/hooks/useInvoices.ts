@@ -11,7 +11,7 @@ export interface UseInvoicesOptions {
 }
 
 export interface UseInvoicesResult {
-  data: import('@invoice-liquidity/sdk').Invoice[] | undefined;
+  data: import('@iln/sdk').Invoice[] | undefined;
   totalCount: number;
   page: number;
   pageSize: number;

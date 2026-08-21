@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { ILNClient, Invoice, Proposal, ReputationScore, LPPortfolio, ContractStats, TokenBalance } from '@invoice-liquidity/sdk';
+import type { ILNClient, Invoice, Proposal, ReputationScore, LPPortfolio, ContractStats, TokenBalance } from '@iln/sdk';
 
 export const mockInvoice: Invoice = {
   id: 42,
@@ -78,7 +78,7 @@ export const mockLPCoverage = {
   claimsApproved: 1,
   claimsRejected: 0,
   totalPayoutReceived: 5_000_000_000n,
-} as unknown as import('@invoice-liquidity/sdk').LPCoverage;
+} as unknown as import('@iln/sdk').LPCoverage;
 
 export const mockInsuranceClaim = {
   id: 1n,
@@ -92,7 +92,7 @@ export const mockInsuranceClaim = {
   reviewer: null,
   rejectionReason: null,
   payoutAmount: null,
-} as unknown as import('@invoice-liquidity/sdk').InsuranceClaim;
+} as unknown as import('@iln/sdk').InsuranceClaim;
 
 export const mockPoolBalance = {
   totalPremiums: 10_000_000_000n,
@@ -103,7 +103,7 @@ export const mockPoolBalance = {
   pendingClaims: 2,
   approvedClaims: 1,
   rejectedClaims: 0,
-} as unknown as import('@invoice-liquidity/sdk').PoolBalance;
+} as unknown as import('@iln/sdk').PoolBalance;
 
 export function createMockILNClient(overrides: Partial<Record<string, unknown>> = {}): ILNClient {
   return {

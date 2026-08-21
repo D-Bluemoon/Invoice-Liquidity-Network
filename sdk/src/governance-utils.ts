@@ -4,7 +4,6 @@ import {
   BASE_FEE,
   nativeToScVal,
   Operation,
-  scValToNative,
   TransactionBuilder,
   xdr,
 } from "@stellar/stellar-sdk";
@@ -199,8 +198,4 @@ export function extractContractCall(
   const args = invokeContractArgs.args();
 
   return { contractId, functionName, args };
-}
-
-export function scValToNativeValue(retval: xdr.ScVal): unknown {
-  return scValToNative(retval);
 }

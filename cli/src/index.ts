@@ -17,20 +17,22 @@ export {
 export { createKeypairFileSigner } from "./signer";
 export { registerEnvCommands, getCurrentEnvironment, getEnvironment } from "./env";
 export type {
-  ArgumentDefinition,
   ClientOptions,
-  ConfirmPromptOptions,
   FileConfig,
   Invoice,
   ListedInvoice,
-  PromptOptions,
-  PromptResult,
   ResolvedConfig,
   RpcServerLike,
-  SelectPromptOptions,
   SubmitInvoiceInput,
   SupportedNetwork,
   TransactionSigner,
   Environment,
   EnvironmentConfig,
-} from "./env";
+} from "./types";
+export type {
+  ArgumentDefinition,
+  ConfirmPromptOptions,
+  PromptOptions,
+  PromptResult,
+  SelectPromptOptions,
+} from "./prompts";

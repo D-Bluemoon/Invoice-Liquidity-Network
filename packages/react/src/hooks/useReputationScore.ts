@@ -7,7 +7,7 @@ const reputationKeys = {
 };
 
 export interface UseReputationScoreResult {
-  data: import('@invoice-liquidity/sdk').ReputationScore | undefined;
+  data: import('@iln/sdk').ReputationScore | undefined;
   isLoading: boolean;
   error: Error | null;
 }

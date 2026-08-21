@@ -1,21 +1,13 @@
 import Database from "better-sqlite3";
 import { dbQueryDuration, dbErrorsTotal, lastProcessedLedger, cursorUpdatedAt } from "./metrics";
 import { CONFIG } from "./config";
-import type { ILNEvent, Invoice, InvoiceStatus } from "./types";
+import type { ILNEvent, Invoice } from "./types";
 
 // ─── Query logging ────────────────────────────────────────────────────────────
 
 const SLOW_QUERY_THRESHOLD_MS = 100;
 let _queryCount = 0;
 let _totalQueryTime = 0;
-
-export function getQueryStats() {
-  return {
-    queryCount: _queryCount,
-    totalQueryTime: _totalQueryTime,
-    avgQueryTime: _queryCount > 0 ? _totalQueryTime / _queryCount : 0,
-  };
-}
 
 /** Wrap a synchronous DB operation with timing and slow-query logging. */
 function measure<T>(label: string, fn: () => T): T {
@@ -144,30 +136,6 @@ export function upsertInvoice(
       dbErrorsTotal.inc();
     } catch {}
     throw err;
-  }
-}
-
-/** Update only the status (and optionally funder/funded_at) of an existing invoice. */
-export function updateInvoiceStatus(
-  id: number,
-  status: InvoiceStatus,
-  extra?: { funder?: string; funded_at?: number }
-): void {
-  const now = Date.now();
-  if (extra?.funder !== undefined) {
-    getDb()
-      .prepare(
-        `UPDATE invoices
-         SET status = ?, funder = ?, funded_at = ?, updated_at = ?
-         WHERE id = ?`
-      )
-      .run(status, extra.funder, extra.funded_at ?? null, now, id);
-  } else {
-    getDb()
-      .prepare(
-        `UPDATE invoices SET status = ?, updated_at = ? WHERE id = ?`
-      )
-      .run(status, now, id);
   }
 }
 

@@ -36,10 +36,6 @@ export const GovernanceContractMethod = {
   GetExecutionDelay: "get_execution_delay",
 } as const;
 
-/** Type union of all governance contract method names. */
-export type GovernanceContractMethodName =
-  (typeof GovernanceContractMethod)[keyof typeof GovernanceContractMethod];
-
 /** Expected byte length for governance description/reason hashes. */
 export const HASH_BYTE_LENGTH = 32;
 

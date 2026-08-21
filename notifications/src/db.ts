@@ -285,29 +285,6 @@ export function deleteSubscriptionByAddressAndDestination(
   return result.changes > 0;
 }
 
-export function updateSubscription(
-  id: number,
-  updates: Partial<Pick<Subscription, "webhook_secret">>,
-): boolean {
-  const fields: string[] = [];
-  const params: any[] = [];
-
-  if (updates.webhook_secret !== undefined) {
-    fields.push("webhook_secret = ?");
-    params.push(updates.webhook_secret);
-  }
-
-  if (fields.length === 0) {
-    return false;
-  }
-
-  params.push(id);
-  const result = getDb()
-    .prepare(`UPDATE subscriptions SET ${fields.join(", ")} WHERE id = ?`)
-    .run(...params);
-  return result.changes > 0;
-}
-
 export function createWebhookDeliveryLog(log: {
   subscription_id: number;
   event_id: string | null;
