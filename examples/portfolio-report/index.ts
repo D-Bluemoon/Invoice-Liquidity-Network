@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { ILNEventIndexer, ContractEvent } from "@iln/indexer";
+import { ILNEventIndexer } from "@iln/indexer";
 import { parse as json2csv } from "json2csv";
 import { xdr } from "@stellar/stellar-sdk";
 

@@ -9,6 +9,7 @@ export async function generateMetadata(props: { params: Promise<{ mdxPath?: stri
   return metadata
 }
 
+// eslint-disable-next-line react-hooks/rules-of-hooks -- Nextra naming convention, not a React Hook
 const Wrapper = useMDXComponents().wrapper
 
 export default async function Page(props: { params: Promise<{ mdxPath?: string[] }> }) {

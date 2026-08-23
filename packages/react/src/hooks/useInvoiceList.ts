@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { useILNClient } from '../context';
-import type { InvoiceStatus } from '@iln/sdk';
 
 /**
  * Role filter for invoice lists.
@@ -51,10 +50,11 @@ export function useInvoiceList(address: string, role: InvoiceRole): UseInvoiceLi
           return client.getInvoicesByIssuer(address);
         case 'lp':
           return client.getInvoicesByStatus(1); // Funded — then filter by fundedBy client-side or extend SDK
-        case 'payer':
+        case 'payer': {
           // If SDK doesn't have payer filter, fetch all and filter
           const all = await client.getInvoicesByStatus(0); // Pending as proxy
           return all.filter((inv) => inv.payer === address);
+        }
         default:
           return [];
       }

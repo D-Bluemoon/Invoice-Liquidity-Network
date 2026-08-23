@@ -52,9 +52,9 @@ describe('AnalyticsSDK', () => {
   });
 
   it('should fetch LP stats', async () => {
-    mockedAxios.get.mockResolvedValueOnce({ data: { invoiceCount: 5 } });
+    mockedAxios.get.mockResolvedValueOnce({ data: { totalPositions: 5 } });
     const data = await sdk.getLPStats('G123');
-    expect(data.invoiceCount).toBe(5);
+    expect(data.totalPositions).toBe(5);
     expect(mockedAxios.get).toHaveBeenCalledWith('https://api.test/lps/G123/stats');
   });
 

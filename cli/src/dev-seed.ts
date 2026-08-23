@@ -1,5 +1,4 @@
 import {
-  Account,
   Address,
   BASE_FEE,
   Keypair,
@@ -131,13 +130,15 @@ export class TestnetAccountSeeder {
   ): Promise<void> {
     const freelancer = accounts.find((a) => a.name === "freelancer")!;
     const payer = accounts.find((a) => a.name === "payer")!;
-    const lp = accounts.find((a) => a.name === "liquidity_provider")!;
+    // Not yet wired into submit_invoice below — reserved for LP-funding and
+    // token-filtered seeding scenarios once those are implemented.
+    const _lp = accounts.find((a) => a.name === "liquidity_provider")!;
 
     const server = new rpc.Server(this.config.rpcUrl, {
       allowHttp: this.config.rpcUrl.startsWith("http://"),
     });
 
-    const tokenId = tokenFilter
+    const _tokenId = tokenFilter
       ? TESTNET_TOKENS[tokenFilter as keyof typeof TESTNET_TOKENS]?.issuer
         ? this.config.contractId
         : this.config.contractId

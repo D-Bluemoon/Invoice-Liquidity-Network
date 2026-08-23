@@ -1,6 +1,21 @@
-import type { ContractEvent } from "./types";
+/**
+ * A minimally-parsed Soroban RPC/Horizon contract event as delivered over
+ * the raw SSE stream — before any invoice-domain decoding. Distinct from
+ * `@iln/shared`'s `ContractEvent`, which is the already-decoded, invoice-
+ * domain-specific discriminated union.
+ */
+export interface RawContractEvent {
+  contractId: string;
+  type: string;
+  topics: unknown[];
+  value: unknown;
+  ledger: number;
+  ledgerClosedAt: string;
+  txHash: string;
+  pagingToken: string;
+}
 
-type OnEvent = (e: ContractEvent) => void | Promise<void>;
+type OnEvent = (e: RawContractEvent) => void | Promise<void>;
 type OnError = (err: Error) => void | undefined;
 
 /**
@@ -62,6 +77,7 @@ export class SSEStream {
         const decoder = new TextDecoder();
         let buffer = "";
 
+        // eslint-disable-next-line no-constant-condition -- reads until the stream signals done
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -76,7 +92,7 @@ export class SSEStream {
               if (data === "" || data === '"hello"') continue;
               try {
                 const raw = JSON.parse(data) as Record<string, unknown>;
-                const ev: ContractEvent = {
+                const ev: RawContractEvent = {
                   contractId: (raw.contract_id as string) ?? "",
                   type: (raw.type as string) ?? "",
                   topics: (raw.topics as unknown[]) ?? [],

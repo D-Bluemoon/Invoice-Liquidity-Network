@@ -183,7 +183,6 @@ export async function checkCompatibility(
   }
 
   const contract = parseVersion(contractVersion);
-  const minContract = parseVersion(MIN_CONTRACT_VERSION);
   const sdk = parseVersion(SDK_VERSION);
 
   if (isVersionCompatible(contractVersion, MIN_CONTRACT_VERSION) === false) {

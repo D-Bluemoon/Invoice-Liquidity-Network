@@ -12,5 +12,6 @@ const compat = new FlatCompat({
 });
 
 export default [
-  ...compat.extends("@iln/eslint-config/node"),
+  { ignores: [".next/**", "dist/**", "out/**", "node_modules/**"] },
+  ...compat.extends("@iln/eslint-config/react"),
 ];

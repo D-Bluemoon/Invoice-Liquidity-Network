@@ -14,7 +14,6 @@ export interface CsvValidationError {
 }
 
 const REQUIRED_COLUMNS = ["payer", "amount", "due_date", "discount_rate"];
-const OPTIONAL_COLUMNS = ["token"];
 
 export function parseCsvHeader(line: string): string[] {
   return line

@@ -44,7 +44,6 @@ export interface ComparisonResult {
 
 const SECONDS_PER_DAY = 86400;
 const BASIS_POINTS_DIVISOR = 10000;
-const YEARLY_SECONDS = 365.25 * SECONDS_PER_DAY;
 
 export function calculateYieldProjection(
   invoiceAmount: bigint,
@@ -116,7 +115,6 @@ export function calculatePortfolioAllocation(
   let totalDeployed = 0n;
   let totalAvailable = 0n;
   const tokenMap = new Map<string, { deployed: bigint; count: number }>();
-  let activeCount = 0;
 
   for (const invoice of invoices) {
     const token = invoice.token ?? "unknown";
@@ -128,7 +126,6 @@ export function calculatePortfolioAllocation(
         deployed: existing.deployed + invoice.amount,
         count: existing.count + 1,
       });
-      activeCount++;
     } else if (invoice.status === "Pending") {
       totalAvailable += invoice.amount;
     }
@@ -174,7 +171,7 @@ export function calculateHistoricalPerformance(
   let totalYield = 0n;
   let discountSum = 0;
   let discountCount = 0;
-  let settlementDays: number[] = [];
+  const settlementDays: number[] = [];
 
   const submitted = new Map<string, typeof events[0]>();
 

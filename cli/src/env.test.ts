@@ -1,7 +1,4 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import * as fs from "fs";
-import * as path from "path";
-import * as os from "os";
 import { registerEnvCommands, getCurrentEnvironment, getEnvironment } from "./env";
 import { Command } from "commander";
 
@@ -21,8 +18,6 @@ vi.mock("fs", () => mockFs);
 vi.mock("os", () => mockOs);
 
 describe("Environment Management", () => {
-  const ENV_CONFIG_PATH = path.join("/mock/home", ".iln", "environments.json");
-
   beforeEach(() => {
     vi.clearAllMocks();
     mockOs.homedir.mockReturnValue("/mock/home");

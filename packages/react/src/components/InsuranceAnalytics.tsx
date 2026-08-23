@@ -19,7 +19,7 @@ const DANGER = '#B91C1C';
 const ACCENT = '#8B5E34';
 
 function formatCurrency(value: bigint | undefined): string {
-  if (value == null) return '$0.00';
+  if (value === null || value === undefined) return '$0.00';
   return `$${(Number(value) / 10_000_000).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
@@ -29,7 +29,7 @@ function formatPercent(value: number): string {
 }
 
 export function InsuranceAnalytics({ className, style }: InsuranceAnalyticsProps): JSX.Element {
-  const { data: poolBalance, isLoading: poolLoading, error: poolError } = usePoolBalance();
+  const { data: poolBalance, error: poolError } = usePoolBalance();
   const { data: pendingClaims } = useClaimsList('Pending');
   const { data: approvedClaims } = useClaimsList('Approved');
   const { data: rejectedClaims } = useClaimsList('Rejected');

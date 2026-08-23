@@ -13,9 +13,7 @@ import type { Invoice } from "./types";
 import {
   NetworkError,
   SimulationError,
-  ContractCallError,
   normalizeError,
-  type ILNError,
 } from "./errors";
 
 export const server = new rpc.Server(CONFIG.rpcUrl, {

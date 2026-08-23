@@ -2,12 +2,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   checkCompatibility,
   SDK_VERSION,
-  MIN_CONTRACT_VERSION,
   parseVersion,
 } from "./compatibility";
 
 // Helper to mock invoke function
-let mockInvoke: ReturnType<typeof vi.fn>;
+let mockInvoke: ReturnType<typeof vi.fn<(method: string) => Promise<any>>>;
 
 beforeEach(() => {
   mockInvoke = vi.fn();

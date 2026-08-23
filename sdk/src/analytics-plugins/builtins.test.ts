@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { AnalyticsPluginLoader, type AnalyticsPlugin, type AnalyticsPluginContext, type WidgetRenderResult } from "../plugins";
+import { AnalyticsPluginLoader, type AnalyticsPlugin } from "../plugins";
 import { BUILTIN_ANALYTICS_PLUGINS } from "./builtins";
 
 describe("Built-in Analytics Plugins", () => {

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { Address, StrKey } from "@stellar/stellar-sdk";
 import { Command } from "commander";
+import pc from "picocolors";
 
 import { parseDisplayAmount } from "./amounts";
 import { ILNClient } from "./client";
@@ -23,7 +24,6 @@ import {
   helpExample,
   helpSection,
   formatJsonSuccess,
-  formatJsonError,
 } from "./format";
 import { generateManPage } from "./man";
 import { registerInspectCommand } from "./inspect";
@@ -47,7 +47,7 @@ import {
   fundWalletFromFriendbot,
 } from "./wallet";
 import type { Ui } from "./format";
-import type { ResolvedConfig, RpcServerLike } from "./types";
+import type { ResolvedConfig } from "./types";
 
 import { checkCompatibility } from "@iln/sdk";
 import { runInteractive } from "./interactive";
@@ -115,7 +115,6 @@ export async function runCli(
 
   program.configureHelp({
     formatHelp: (cmd, helper) => {
-      const pc = require("picocolors");
       const term = (str: string) => pc.bold(pc.cyan(str));
       const sections: string[] = [];
 
@@ -166,6 +165,7 @@ export async function runCli(
     .hook("preAction", (_thisCommand, actionCommand) => {
       registerCompletionCommand(program);
       registerEnvCommands(program);
+      registerInspectCommand(program, createClient, load, ui);
 
       const isConfiglessXdrCommand =
         actionCommand.name() === "decode" && actionCommand.parent?.name() === "xdr";
@@ -178,30 +178,26 @@ export async function runCli(
         return;
       }
 
-      try {
-        const config = load();
-        const opts = program.opts() as { json?: boolean; quiet?: boolean };
-        if (!opts.quiet && !opts.json) {
-          ui.info(`Using ${describeConfig(config)}`);
-        }
+      const config = load();
+      const opts = program.opts() as { json?: boolean; quiet?: boolean };
+      if (!opts.quiet && !opts.json) {
+        ui.info(`Using ${describeConfig(config)}`);
+      }
 
-        // --- Version Management ---
-        const currentVersion = versionManager.getCurrentVersion();
-        
-        // 1. Version Pinning
-        if (config.requiredVersion && config.requiredVersion !== currentVersion) {
-          throw new Error(
-            `Version mismatch: This project requires ILN CLI version ${config.requiredVersion}, but you are running ${currentVersion}.`,
-          );
-        }
+      // --- Version Management ---
+      const currentVersion = versionManager.getCurrentVersion();
 
-        // 2. Update Check
-        if (config.autoUpdate && !opts.quiet && !opts.json) {
-          // Fire and forget update check to not block startup significantly
-          void versionManager.notifyUpdateIfAvailable();
-        }
-      } catch (error) {
-        throw error;
+      // 1. Version Pinning
+      if (config.requiredVersion && config.requiredVersion !== currentVersion) {
+        throw new Error(
+          `Version mismatch: This project requires ILN CLI version ${config.requiredVersion}, but you are running ${currentVersion}.`,
+        );
+      }
+
+      // 2. Update Check
+      if (config.autoUpdate && !opts.quiet && !opts.json) {
+        // Fire and forget update check to not block startup significantly
+        void versionManager.notifyUpdateIfAvailable();
       }
     });
 

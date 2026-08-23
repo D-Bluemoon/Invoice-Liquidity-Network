@@ -222,11 +222,11 @@ export class ILNClient {
 
   private contractError(method: string, raw: unknown): Error {
     const code = typeof raw === "number" ? raw : typeof raw === "bigint" ? Number(raw) : null;
-    const details = code == null ? JSON.stringify(raw) : explainContractError(code);
+    const details = code === null ? JSON.stringify(raw) : explainContractError(code);
     return new Error(`Contract rejected ${method}: ${details}`);
   }
 
-  private async signAndSend(transaction: ReturnType<TransactionBuilder["build"]>, sourceAddress: string): Promise<WriteResult> {
+  private async signAndSend(transaction: ReturnType<TransactionBuilder["build"]>, _sourceAddress: string): Promise<WriteResult> {
     let prepared: { toXDR(): string };
     try {
       prepared = await this.server.prepareTransaction(transaction);
@@ -283,10 +283,11 @@ export class ILNClient {
       discountRate: this.toNumber(invoice.discount_rate ?? invoice.discountRate, "discount rate"),
       dueDate: this.toNumber(invoice.due_date ?? invoice.dueDate, "due date"),
       freelancer: this.toString(invoice.freelancer, "freelancer"),
-      fundedAt: invoice.funded_at == null && invoice.fundedAt == null
+      fundedAt: (invoice.funded_at === null || invoice.funded_at === undefined) &&
+        (invoice.fundedAt === null || invoice.fundedAt === undefined)
         ? null
         : this.toNumber(invoice.funded_at ?? invoice.fundedAt, "funded at"),
-      funder: invoice.funder == null ? null : this.toString(invoice.funder, "funder"),
+      funder: invoice.funder === null || invoice.funder === undefined ? null : this.toString(invoice.funder, "funder"),
       id: this.toBigInt(invoice.id),
       payer: this.toString(invoice.payer, "payer"),
       status: this.parseStatus(invoice.status),

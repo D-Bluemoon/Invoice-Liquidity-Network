@@ -103,6 +103,7 @@ async function askValidated(
   prompt: string,
   validate: (v: string) => string | null,
 ): Promise<string> {
+  // eslint-disable-next-line no-constant-condition -- loop exits via internal break
   while (true) {
     const value = (await ask(pc.bold(prompt))).trim();
     if (value.toLowerCase() === "skip") return "skip";

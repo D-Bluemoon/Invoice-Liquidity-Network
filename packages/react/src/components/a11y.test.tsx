@@ -6,7 +6,7 @@ import { ILNProvider } from '../context';
 
 expect.extend(toHaveNoViolations);
 import { TestWrapper } from '../test/wrapper';
-import { createMockILNClient, mockLPCoverage, mockPoolBalance, mockInsuranceClaim, mockInvoiceList } from '../test/mocks';
+import { createMockILNClient, mockLPCoverage, mockPoolBalance, mockInsuranceClaim } from '../test/mocks';
 import { InvoiceDashboard } from './InvoiceDashboard';
 import { InvoiceCard } from './InvoiceCard';
 import { BatchInvoiceForm } from './BatchInvoiceForm';

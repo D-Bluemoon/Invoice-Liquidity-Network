@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Account, Keypair, nativeToScVal, rpc } from "@stellar/stellar-sdk";
+import { Keypair, nativeToScVal } from "@stellar/stellar-sdk";
 
 describe("ILNSdk debug logging", () => {
   const originalEnv = process.env.ILN_DEBUG;

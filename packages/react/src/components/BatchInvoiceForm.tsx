@@ -254,7 +254,6 @@ export function BatchInvoiceForm({ freelancer, onComplete, maxInvoices = 10 }: B
     error,
     reset,
     retryFailed,
-    failedInvoices: failedInputs,
   } = useBatchSubmitInvoice();
 
   const [invoices, setInvoices] = useState<BatchInvoiceInput[]>(() => [

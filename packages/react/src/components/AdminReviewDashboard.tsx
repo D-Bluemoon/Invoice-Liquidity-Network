@@ -17,19 +17,18 @@ const BORDER = '#E7DCCF';
 const TEXT = '#1F2937';
 const MUTED = '#5B6370';
 const POSITIVE = '#15803D';
-const WARNING = '#B45309';
 const DANGER = '#B91C1C';
 const ACCENT = '#8B5E34';
 
 type TabFilter = 'all' | 'Pending' | 'Approved' | 'Rejected';
 
 function formatCurrency(value: bigint | undefined | null): string {
-  if (value == null) return '$0.00';
+  if (value === null || value === undefined) return '$0.00';
   return `$${(Number(value) / 10_000_000).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function formatTimestamp(ts: number | null | undefined): string {
-  if (ts == null) return '—';
+  if (ts === null || ts === undefined) return '—';
   return new Date(ts * 1000).toLocaleDateString(undefined, {
     month: 'short',
     day: 'numeric',
@@ -42,7 +41,7 @@ export function AdminReviewDashboard({ adminAddress, className, style }: AdminRe
   const [tab, setTab] = useState<TabFilter>('Pending');
   const [rejectionModal, setRejectionModal] = useState<{ claimId: bigint } | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
-  const dialogRef = useFocusTrap(rejectionModal != null);
+  const dialogRef = useFocusTrap(rejectionModal !== null && rejectionModal !== undefined);
 
   const statusFilter = tab === 'all' ? undefined : tab;
   const { data: claims, isLoading, error: listError } = useClaimsList(statusFilter);
@@ -52,7 +51,9 @@ export function AdminReviewDashboard({ adminAddress, className, style }: AdminRe
   const handleApprove = async (claimId: bigint) => {
     try {
       await reviewClaim({ reviewer: adminAddress, claimId, approve: true });
-    } catch { }
+    } catch {
+      // surfaced via useReviewClaim's own error state
+    }
   };
 
   const handleReject = async () => {
@@ -66,7 +67,9 @@ export function AdminReviewDashboard({ adminAddress, className, style }: AdminRe
       });
       setRejectionModal(null);
       setRejectionReason('');
-    } catch { }
+    } catch {
+      // surfaced via useReviewClaim's own error state
+    }
   };
 
   const tabs: { key: TabFilter; label: string; count?: number }[] = [
@@ -190,10 +193,10 @@ export function AdminReviewDashboard({ adminAddress, className, style }: AdminRe
 
             <div style={{ display: 'flex', gap: 16, fontSize: 12, color: MUTED, flexWrap: 'wrap' }}>
               <span>Amount: <strong style={{ color: TEXT }}>{formatCurrency(claim.invoiceAmount)}</strong></span>
-              {claim.payoutAmount != null && (
+              {claim.payoutAmount !== null && claim.payoutAmount !== undefined && (
                 <span>Payout: <strong style={{ color: POSITIVE }}>{formatCurrency(claim.payoutAmount)}</strong></span>
               )}
-              {claim.reviewedAt != null && (
+              {claim.reviewedAt !== null && claim.reviewedAt !== undefined && (
                 <span>Reviewed: {formatTimestamp(claim.reviewedAt)}</span>
               )}
               {claim.rejectionReason && (
@@ -242,6 +245,11 @@ export function AdminReviewDashboard({ adminAddress, className, style }: AdminRe
       </div>
 
       {rejectionModal && (
+        // Backdrop click-to-dismiss + Escape-to-dismiss on a dialog overlay is
+        // a standard modal pattern; the backdrop itself isn't a semantic
+        // interactive control, so the noninteractive-element-interactions
+        // rule doesn't apply here.
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
         <div
           ref={dialogRef}
           role="dialog"
@@ -261,6 +269,7 @@ export function AdminReviewDashboard({ adminAddress, className, style }: AdminRe
             if (e.key === 'Escape') setRejectionModal(null);
           }}
         >
+          {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- stops propagation to the backdrop's dismiss handler; real interactive elements are the inputs/buttons inside */}
           <div
             style={{
               background: PANEL,

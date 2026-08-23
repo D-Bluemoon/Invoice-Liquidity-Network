@@ -183,7 +183,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
           transition: background-color 0.2s ease, transform 0.15s ease;
         }
         .iln-invoice-row:hover {
-          background-color: ${isDark ? '#334155' : '#f8fafc'} !important;
+          background-color: ${rowHoverBg} !important;
           cursor: pointer;
         }
         .iln-tab-btn {
@@ -499,7 +499,15 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
                 <div
                   key={String(inv.id)}
                   className="iln-mobile-card"
+                  role="button"
+                  tabIndex={0}
                   onClick={() => onInvoiceClick?.(inv)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onInvoiceClick?.(inv);
+                    }
+                  }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                     <span style={{ fontWeight: 700, fontSize: '15px' }}>Invoice #{String(inv.id)}</span>
@@ -531,7 +539,10 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
                     </div>
                   </div>
 
-                  {/* Actions */}
+                  {/* Actions — onClick here only stops propagation to the card's
+                      click handler above; the real interactive elements are the
+                      <button>s inside. */}
+                  {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
                   <div style={{ display: 'flex', gap: '8px', marginTop: '12px', borderTop: `1px solid ${border}`, paddingTop: '12px' }} onClick={(e) => e.stopPropagation()}>
                     {inv.status === 'Pending' && role === 'lp' && onActionClick && (
                       <button

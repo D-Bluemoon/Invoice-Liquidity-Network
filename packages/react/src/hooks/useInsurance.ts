@@ -59,7 +59,7 @@ export function useClaim(claimId: bigint | undefined): UseClaimResult {
     queryFn: () =>
       (client as unknown as { getClaim(id: bigint): Promise<import('@iln/sdk').InsuranceClaim> })
         .getClaim(claimId!),
-    enabled: claimId != null,
+    enabled: claimId !== null && claimId !== undefined,
     staleTime: 10_000,
   });
   return { data, isLoading, error: error instanceof Error ? error : null };

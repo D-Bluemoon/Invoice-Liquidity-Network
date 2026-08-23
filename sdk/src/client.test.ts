@@ -39,6 +39,8 @@ describe("ILNSdk", () => {
         result: {
           retval: nativeToScVal({
             amount: 25000000n,
+            amount_funded: 25000000n,
+            amount_paid: 0n,
             discount_rate: 300,
             due_date: 1700000000,
             funder,
@@ -47,6 +49,15 @@ describe("ILNSdk", () => {
             id: 7n,
             payer,
             status: "Funded",
+            submitter_reputation: 0,
+            token: "CTOKEN0000000000000000000000000000000000000000000000000",
+            referral_code: null,
+            allowed_lps: null,
+            is_auction: false,
+            auction_start_rate: null,
+            auction_min_rate: null,
+            auction_rate_decay_per_hour: null,
+            auction_started_at: null,
           }),
         },
       }),
@@ -57,6 +68,8 @@ describe("ILNSdk", () => {
 
     expect(invoice).toEqual({
       amount: 25000000n,
+      amountFunded: 25000000n,
+      amountPaid: 0n,
       discountRate: 300,
       dueDate: 1700000000,
       funder,
@@ -65,6 +78,15 @@ describe("ILNSdk", () => {
       id: 7n,
       payer,
       status: "Funded",
+      submitterReputation: 0,
+      token: "CTOKEN0000000000000000000000000000000000000000000000000",
+      referralCode: null,
+      allowedLps: null,
+      isAuction: false,
+      auctionStartRate: null,
+      auctionMinRate: null,
+      auctionRateDecayPerHour: null,
+      auctionStartedAt: null,
     });
   });
 

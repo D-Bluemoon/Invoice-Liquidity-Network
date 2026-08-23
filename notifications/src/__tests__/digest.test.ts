@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
   DigestScheduler,
   type DigestEmailSender,
@@ -144,8 +144,6 @@ describe("DigestScheduler", () => {
       // lastFlushedAt = 0, so msSinceFlush is huge
       // Just need to be at UTC hour 8
       const now = new Date(Date.UTC(2025, 0, 15, 8, 0, 0));
-      const isDue = (scheduler as any)["buffers"]
-        .get("GTEST...ADDRESS") !== undefined;
 
       // Verify the tick fires at sendHour
       // We'll test this by calling flush directly and verifying it works

@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { openSSE } from "./stream";
-import type { ContractEvent } from "./types";
+import { openSSE, type RawContractEvent } from "./stream";
 
 function makeStreamFromMessages(messages: string[]) {
   const encoder = new TextEncoder();
@@ -23,12 +22,11 @@ describe("SSE stream helper", () => {
     const body = makeStreamFromMessages([`data: ${payload}`]);
 
     // mock fetch
-    // @ts-ignore
     global.fetch = vi.fn().mockResolvedValue({ ok: true, body });
 
-    const received: ContractEvent[] = [];
+    const received: RawContractEvent[] = [];
     const handle = openSSE("https://example.com/contracts/C1/events", (ev) => {
-      received.push(ev as ContractEvent);
+      received.push(ev);
     });
 
     // wait briefly for stream to be consumed

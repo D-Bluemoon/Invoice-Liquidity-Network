@@ -22,13 +22,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      # Install only what the isolated schema test imports. The root workspace
-      # lockfile currently contains unrelated unpublished workspace packages.
+      # Install only what the isolated schema test imports, in a scratch
+      # directory of its own. Running `npm install` from within `indexer/`
+      # made npm reconcile against that package.json's full dependency set
+      # (unpublished workspace packages, mismatched ranges, ...), which
+      # triggered an npm arborist crash ("Cannot read properties of null
+      # (reading 'edgesOut')"). A throwaway package.json sidesteps that.
       - name: Install migration test dependencies
-        working-directory: indexer
         run: |
-          npm pkg delete 'devDependencies.@iln/eslint-config'
+          mkdir -p "$RUNNER_TEMP/migration-schema-deps"
+          cd "$RUNNER_TEMP/migration-schema-deps"
+          npm init -y >/dev/null
           npm install --no-save --package-lock=false vitest@4.1.5 better-sqlite3@11 dotenv@16
+          echo "MIGRATION_DEPS_DIR=$RUNNER_TEMP/migration-schema-deps" >> "$GITHUB_ENV"
       - name: Verify fresh database schema
         working-directory: indexer
-        run: npx vitest run tests/migrations.test.ts
+        run: NODE_PATH="$MIGRATION_DEPS_DIR/node_modules" "$MIGRATION_DEPS_DIR/node_modules/.bin/vitest" run tests/migrations.test.ts

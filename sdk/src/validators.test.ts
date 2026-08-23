@@ -227,16 +227,16 @@ describe("Validators", () => {
   describe("validateComposite", () => {
     it("should pass when all validators pass", () => {
       const result = Validators.validateComposite("test", [
-        (val) => ({ isValid: true }),
-        (val) => ({ isValid: true }),
+        (_val) => ({ isValid: true }),
+        (_val) => ({ isValid: true }),
       ]);
       expect(result.isValid).toBe(true);
     });
 
     it("should fail on first validation error", () => {
       const result = Validators.validateComposite("test", [
-        (val) => ({ isValid: false, error: "First error" }),
-        (val) => ({ isValid: false, error: "Second error" }),
+        (_val) => ({ isValid: false, error: "First error" }),
+        (_val) => ({ isValid: false, error: "Second error" }),
       ]);
       expect(result.isValid).toBe(false);
       expect(result.error).toBe("First error");

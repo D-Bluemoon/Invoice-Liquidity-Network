@@ -1,6 +1,7 @@
 import { execSync } from "child_process";
 import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync, readFileSync } from "fs";
 import { join } from "path";
+import Database from "better-sqlite3";
 import { CONFIG } from "./config";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -238,9 +239,10 @@ export class BackupManager {
    */
   private getCurrentLedgerSequence(): number {
     try {
-      const Database = require("better-sqlite3");
       const db = new Database(CONFIG.dbPath, { readonly: true });
-      const row = db.prepare("SELECT last_ledger FROM cursor WHERE id = 1").get();
+      const row = db.prepare("SELECT last_ledger FROM cursor WHERE id = 1").get() as
+        | { last_ledger: number }
+        | undefined;
       db.close();
       return row?.last_ledger ?? 0;
     } catch {

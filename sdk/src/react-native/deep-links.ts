@@ -121,6 +121,7 @@ export function extractSignedXDRFromCallback(url: string): string | null {
     const xdr = urlObj.searchParams.get("xdr");
     if (xdr) return xdr;
   } catch {
+    // malformed URL — fall through to null
   }
 
   return null;

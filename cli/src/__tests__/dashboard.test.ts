@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { Dashboard, type DashboardConfig } from "../dashboard";
+import { Dashboard } from "../dashboard";
 
 // Mock dependencies
 vi.mock("../client", () => ({
