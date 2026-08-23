@@ -1,4 +1,5 @@
 import type { ContractEvent } from "./types";
+export type { ContractEvent };
 
 export type InvoiceEventType = "submitted" | "funded" | "paid" | "defaulted";
 export type WalletEventType = "connected" | "disconnected";
@@ -64,7 +65,7 @@ export class ILNEventEmitter {
     this.listeners.get(eventType)!.add(listener as EventListener);
 
     return () => {
-      this.off(eventType, listener);
+      this.off(eventType, listener as EventListener);
     };
   }
 
@@ -83,7 +84,7 @@ export class ILNEventEmitter {
     listener: EventListener<T>,
   ): () => void {
     const wrapper: EventListener<T> = (data) => {
-      this.off(eventType, wrapper);
+      this.off(eventType, wrapper as EventListener);
       listener(data);
     };
     return this.on(eventType, wrapper);

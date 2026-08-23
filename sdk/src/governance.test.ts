@@ -213,9 +213,7 @@ describe("GovernanceClient", () => {
   it("parses getProposal simulation into typed proposal data", async () => {
     const proposer = Keypair.random().publicKey();
     const server = createMockServer();
-    const client = createClient(server);
 
-    const transaction = client.getProposal({ proposalId: 1n });
     const simulation = {
       result: {
         retval: nativeToScVal(sampleProposalNative({ proposer })),

@@ -1,4 +1,4 @@
-import type { AnalyticsPlugin, AnalyticsPluginContext, WidgetRenderResult } from "../plugins";
+import type { AnalyticsPlugin, WidgetRenderResult } from "../plugins";
 
 const YIELD_TRACKER_PLUGIN: AnalyticsPlugin = {
   id: "iln-yield-tracker",
@@ -10,23 +10,25 @@ const YIELD_TRACKER_PLUGIN: AnalyticsPlugin = {
     {
       id: "avg-yield-bps",
       name: "Average Yield (bps)",
-      description: "Weighted average discount rate across all paid invoices",
+      description: "Weighted average discount rate across the top LPs by yield",
       type: "number",
       compute: async (ctx) => {
         const stats = await ctx.sdk.getProtocolStats();
-        return Number(stats.totalYield) > 0
-          ? Math.round((Number(stats.totalYield) / Number(stats.totalVolume)) * 10000)
+        const topLps = await ctx.sdk.getTopLPs(100, "all");
+        const totalYield = topLps.reduce((sum, lp) => sum + lp.yield, 0n);
+        return Number(totalYield) > 0 && Number(stats.totalVolume) > 0
+          ? Math.round((Number(totalYield) / Number(stats.totalVolume)) * 10000)
           : 0;
       },
     },
     {
       id: "total-yield",
       name: "Total Yield Earned",
-      description: "Cumulative yield earned by all LPs",
+      description: "Cumulative yield earned by the top 100 LPs",
       type: "currency",
       compute: async (ctx) => {
-        const stats = await ctx.sdk.getProtocolStats();
-        return stats.totalYield;
+        const topLps = await ctx.sdk.getTopLPs(100, "all");
+        return topLps.reduce((sum, lp) => sum + lp.yield, 0n);
       },
     },
     {
@@ -56,12 +58,13 @@ const YIELD_TRACKER_PLUGIN: AnalyticsPlugin = {
       render: async (ctx): Promise<WidgetRenderResult> => {
         const topLps = await ctx.sdk.getTopLPs(20, "all");
         const stats = await ctx.sdk.getProtocolStats();
-        const avgYield = Number(stats.totalYield) > 0
-          ? Math.round((Number(stats.totalYield) / Number(stats.totalVolume)) * 10000)
+        const totalYield = topLps.reduce((sum, lp) => sum + lp.yield, 0n);
+        const avgYield = Number(totalYield) > 0 && Number(stats.totalVolume) > 0
+          ? Math.round((Number(totalYield) / Number(stats.totalVolume)) * 10000)
           : 0;
         return {
           type: "chart",
-          data: { totalVolume: stats.totalVolume, totalYield: stats.totalYield, avgYieldBps: avgYield },
+          data: { totalVolume: stats.totalVolume, totalYield, avgYieldBps: avgYield },
           series: [
             { name: "Top LPs Yield", values: topLps.map((lp) => Number(lp.yield)) },
           ],
@@ -79,16 +82,20 @@ const YIELD_TRACKER_PLUGIN: AnalyticsPlugin = {
       refreshIntervalMs: 30000,
       render: async (ctx): Promise<WidgetRenderResult> => {
         const stats = await ctx.sdk.getProtocolStats();
-        const avgYield = Number(stats.totalYield) > 0
-          ? Math.round((Number(stats.totalYield) / Number(stats.totalVolume)) * 10000)
+        const topLps = await ctx.sdk.getTopLPs(100, "all");
+        const totalYield = topLps.reduce((sum, lp) => sum + lp.yield, 0n);
+        const avgYield = Number(totalYield) > 0 && Number(stats.totalVolume) > 0
+          ? Math.round((Number(totalYield) / Number(stats.totalVolume)) * 10000)
           : 0;
         return {
           type: "metric",
           data: {
-            totalYield: Number(stats.totalYield) / 10_000_000,
+            totalYield: Number(totalYield) / 10_000_000,
             avgYieldBps: avgYield,
             totalVolume: Number(stats.totalVolume) / 10_000_000,
-            yieldRate: (Number(stats.totalYield) / Number(stats.totalVolume) * 100).toFixed(2) + "%",
+            yieldRate: Number(stats.totalVolume) > 0
+              ? (Number(totalYield) / Number(stats.totalVolume) * 100).toFixed(2) + "%"
+              : "0.00%",
           },
           metadata: { unit: "USDC" },
         };
@@ -204,9 +211,12 @@ const PAYER_ANALYSIS_PLUGIN: AnalyticsPlugin = {
       name: "Protocol Default Rate",
       description: "Percentage of invoices that defaulted",
       type: "percentage",
-      compute: async (ctx) => {
-        const stats = await ctx.sdk.getProtocolStats();
-        return stats.defaultRate;
+      defaultValue: 0,
+      compute: async () => {
+        // ContractStats doesn't track a defaulted-invoice count, so this
+        // is not yet computable from protocol stats. Stubbed like
+        // reliable-payer-count below pending a dedicated contract counter.
+        return 0;
       },
     },
     {
@@ -229,14 +239,14 @@ const PAYER_ANALYSIS_PLUGIN: AnalyticsPlugin = {
       size: "medium",
       refreshIntervalMs: 60000,
       render: async (ctx): Promise<WidgetRenderResult> => {
-        const stats = await ctx.sdk.getProtocolStats();
         const topLps = await ctx.sdk.getTopLPs(5, "all");
-        const reliability = Math.max(0, Math.round((1 - stats.defaultRate) * 100));
+        // ContractStats doesn't track a defaulted-invoice count, so
+        // default rate / reliability score aren't yet computable.
         return {
           type: "metric",
           data: {
-            defaultRate: (stats.defaultRate * 100).toFixed(1) + "%",
-            reliabilityScore: reliability,
+            defaultRate: "N/A",
+            reliabilityScore: null,
             activeFunders: topLps.length,
           },
           metadata: { maxScore: 100 },

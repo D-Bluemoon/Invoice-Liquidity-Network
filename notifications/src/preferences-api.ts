@@ -462,7 +462,7 @@ export function createPreferencesRouter(): Router {
 
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename=\"iln-preferences-${address}.json\"`,
+      `attachment; filename="iln-preferences-${address}.json"`,
     );
     return res.json({
       ...payload,

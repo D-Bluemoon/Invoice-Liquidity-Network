@@ -48,6 +48,7 @@ function resolveStorage(): Storage | null {
       return storageAdapter;
     }
   } catch {
+    // localStorage unavailable — fall through to null
   }
 
   storageAdapter = null;
@@ -56,6 +57,7 @@ function resolveStorage(): Storage | null {
 
 function rnOpenURL(url: string): Promise<void> {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires -- optional peer dep, resolved dynamically
     const Linking = require("react-native").Linking;
     return Linking.openURL(url);
   } catch {
@@ -65,6 +67,7 @@ function rnOpenURL(url: string): Promise<void> {
 
 function rnGetInitialURL(): Promise<string | null> {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires -- optional peer dep, resolved dynamically
     const Linking = require("react-native").Linking;
     return Linking.getInitialURL();
   } catch {
@@ -74,6 +77,7 @@ function rnGetInitialURL(): Promise<string | null> {
 
 function rnAddURLListener(handler: (url: string) => void): () => void {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires -- optional peer dep, resolved dynamically
     const Linking = require("react-native").Linking;
     const subscription = Linking.addEventListener("url", (event: { url: string }) => {
       handler(event.url);

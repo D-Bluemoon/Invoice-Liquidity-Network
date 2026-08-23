@@ -8,7 +8,7 @@ import pc from "picocolors";
 import { formatAmount } from "./amounts";
 import { formatTimestamp } from "./dates";
 import { ILNClient } from "./client";
-import type { Invoice, ListedInvoice, ProtocolConfig, ResolvedConfig } from "./types";
+import type { ListedInvoice, ResolvedConfig } from "./types";
 
 // ---------------------------------------------------------------------------
 // Types

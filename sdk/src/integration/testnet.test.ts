@@ -18,7 +18,6 @@ import {
   Account,
   Address,
   BASE_FEE,
-  nativeToScVal,
   Operation,
   rpc,
   scValToNative,
@@ -227,7 +226,7 @@ describe.skipIf(!canRun)("SDK testnet integration (#233)", () => {
       stats["totalInvoices"] ??
       stats["invoices_submitted"] ??
       stats["total"];
-    if (total != null) {
+    if (total !== null && total !== undefined) {
       expect(Number(total)).toBeGreaterThanOrEqual(1);
     }
   }, TX_TIMEOUT_MS);
@@ -250,7 +249,7 @@ describe.skipIf(!canRun)("SDK testnet integration (#233)", () => {
       reputation["lp_score"] ??
       reputation["reputation_score"];
 
-    if (score != null) {
+    if (score !== null && score !== undefined) {
       expect(Number(score)).toBeGreaterThanOrEqual(0);
     }
 
@@ -262,7 +261,7 @@ describe.skipIf(!canRun)("SDK testnet integration (#233)", () => {
       "invoicesSubmitted",
       "invoicesPaid",
     ]) {
-      if (reputation[key] != null) {
+      if (reputation[key] !== null && reputation[key] !== undefined) {
         expect(Number(reputation[key])).toBeGreaterThanOrEqual(0);
       }
     }

@@ -4,7 +4,6 @@ import {
   hasEvent,
   insertEvent,
   upsertInvoice,
-  getInvoiceById,
   queryInvoicesByStatus,
   getSubscriptionsByAddress,
   hasSentNotification,
@@ -18,7 +17,6 @@ import type {
   Invoice,
   ILNEventType,
   NotificationTrigger,
-  Subscription,
   InvoiceEvent,
 } from "./types";
 import { CONFIG } from "./config";

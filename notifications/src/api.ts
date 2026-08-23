@@ -260,7 +260,6 @@ export function createApp() {
     }
 
     const pending = digestScheduler.pendingCount(address);
-    const items = pending > 0 ? [] : []; // full item list accessible via internal state
     const frequency = preferencesService.get(address).frequency;
     const digestEnabled = DigestScheduler.isDigestFrequency(frequency);
 

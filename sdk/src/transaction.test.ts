@@ -9,6 +9,7 @@ vi.mock("@stellar/stellar-sdk", () => {
     build = vi.fn().mockReturnValue({
       toXDR: vi.fn().mockReturnValue("mock-xdr"),
     });
+    static cloneFrom = vi.fn().mockImplementation(() => new MockTransactionBuilder());
   }
 
   return {

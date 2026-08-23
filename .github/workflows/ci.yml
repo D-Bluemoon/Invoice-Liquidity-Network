@@ -732,7 +732,7 @@ jobs:
           key: ${{ runner.os }}-turbo-lint-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-lint-
       - name: Lint
-        run: pnpm lint -- --cache-dir=.turbo
+        run: pnpm exec turbo run lint --cache-dir=.turbo
 
   core-type-check:
     name: Core · type-check
@@ -750,7 +750,7 @@ jobs:
           key: ${{ runner.os }}-turbo-typecheck-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-typecheck-
       - name: Type-check
-        run: pnpm type-check -- --cache-dir=.turbo
+        run: pnpm exec turbo run type-check --cache-dir=.turbo
 
   core-test:
     name: Core · test
@@ -767,7 +767,7 @@ jobs:
           key: ${{ runner.os }}-turbo-test-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-test-
       - name: Test
-        run: pnpm test -- --cache-dir=.turbo
+        run: pnpm exec turbo run test --cache-dir=.turbo
 
       - name: Generate JUnit reports (vitest packages)
         if: always()
@@ -796,7 +796,7 @@ jobs:
           key: ${{ runner.os }}-turbo-build-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-build-
       - name: Build
-        run: pnpm build -- --cache-dir=.turbo
+        run: pnpm exec turbo run build --cache-dir=.turbo
 
   core-summary:
     name: Core · PR summary

@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import { useLPCoverage, usePoolBalance, useEnroll, useDepositPremium } from '../hooks/useInsurance';
 import { useInvoices } from '../hooks/useInvoices';
 import { StatsCard } from './StatsCard';
-import { AddressDisplay } from './AddressDisplay';
-import { AmountDisplay } from './AmountDisplay';
 
 export interface InsurancePoolPanelProps {
   address: string;
@@ -12,12 +10,12 @@ export interface InsurancePoolPanelProps {
 }
 
 function formatCurrency(value: bigint | undefined): string {
-  if (value == null) return '$0.00';
+  if (value === null || value === undefined) return '$0.00';
   return `$${(Number(value) / 10_000_000).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function formatPercent(value: number | undefined): string {
-  if (value == null) return '0%';
+  if (value === null || value === undefined) return '0%';
   return `${(value / 100).toFixed(2)}%`;
 }
 
@@ -34,8 +32,8 @@ const ACCENT = '#8B5E34';
 
 export function InsurancePoolPanel({ address, className, style }: InsurancePoolPanelProps): JSX.Element {
   const { data: coverage, isLoading: coverageLoading, error: coverageError } = useLPCoverage(address);
-  const { data: poolBalance, isLoading: poolLoading } = usePoolBalance();
-  const { invoices, isLoading: invoicesLoading } = useInvoices(address, 'funder');
+  const { data: poolBalance } = usePoolBalance();
+  const { invoices } = useInvoices(address, 'funder');
   const { enroll, isPending: enrolling, error: enrollError, reset: resetEnroll } = useEnroll();
   const { depositPremium, isPending: depositing, error: depositError, reset: resetDeposit } = useDepositPremium();
 
@@ -58,7 +56,9 @@ export function InsurancePoolPanel({ address, className, style }: InsurancePoolP
       });
       setShowEnrollForm(false);
       resetEnroll();
-    } catch { }
+    } catch {
+      // surfaced via useEnroll's own error state
+    }
   };
 
   const handleDeposit = async (e: React.FormEvent) => {
@@ -70,7 +70,9 @@ export function InsurancePoolPanel({ address, className, style }: InsurancePoolP
       });
       setShowPremiumForm(false);
       resetDeposit();
-    } catch { }
+    } catch {
+      // surfaced via useDepositPremium's own error state
+    }
   };
 
   return (

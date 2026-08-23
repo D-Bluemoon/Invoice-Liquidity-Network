@@ -102,7 +102,7 @@ export function formatInvoiceDetails(invoice: Invoice): string {
     row("Payer", invoice.payer),
     row("Funder", invoice.funder ?? "-"),
     row("Token", invoice.token),
-    row("Funded At", invoice.fundedAt == null ? "-" : formatTimestamp(invoice.fundedAt)),
+    row("Funded At", invoice.fundedAt === null || invoice.fundedAt === undefined ? "-" : formatTimestamp(invoice.fundedAt)),
   ];
 
   return lines.join("\n");
@@ -146,13 +146,13 @@ export function formatProtocolConfig(config: ProtocolConfig): string {
     row("Fee", `${config.protocolFeeBps} bps`),
     row("Reputation", config.minPayerReputation.toString()),
     row("Decay", `${config.decayRateBps} bps`),
-    config.minInvoiceDuration == null
+    config.minInvoiceDuration === null || config.minInvoiceDuration === undefined
       ? null
       : row("Min Duration", `${config.minInvoiceDuration}s`),
-    config.maxInvoiceDuration == null
+    config.maxInvoiceDuration === null || config.maxInvoiceDuration === undefined
       ? null
       : row("Max Duration", `${config.maxInvoiceDuration}s`),
-    config.gracePeriodSeconds == null
+    config.gracePeriodSeconds === null || config.gracePeriodSeconds === undefined
       ? null
       : row("Grace", `${config.gracePeriodSeconds}s`),
   ];

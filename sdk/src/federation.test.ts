@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { FederationServer } from '@stellar/stellar-sdk';
+import { Federation } from '@stellar/stellar-sdk';
 import {
   resolveFederationAddress,
   lookupFederationAddress,
@@ -9,8 +9,10 @@ import {
 
 vi.mock('@stellar/stellar-sdk', () => {
   return {
-    FederationServer: {
-      resolve: vi.fn(),
+    Federation: {
+      Server: {
+        resolve: vi.fn(),
+      },
     },
   };
 });
@@ -22,13 +24,13 @@ describe('Federation', () => {
 
   describe('resolveFederationAddress', () => {
     it('should resolve a valid federation address', async () => {
-      vi.mocked(FederationServer.resolve).mockResolvedValueOnce({
+      vi.mocked(Federation.Server.resolve).mockResolvedValueOnce({
         account_id: 'G1234567890',
       } as any);
 
       const result = await resolveFederationAddress('alice*iln.finance');
       expect(result).toBe('G1234567890');
-      expect(FederationServer.resolve).toHaveBeenCalledWith('alice*iln.finance');
+      expect(Federation.Server.resolve).toHaveBeenCalledWith('alice*iln.finance');
     });
 
     it('should throw FederationResolutionError on invalid format', async () => {
@@ -36,14 +38,14 @@ describe('Federation', () => {
     });
 
     it('should throw FederationResolutionError if address not registered', async () => {
-      vi.mocked(FederationServer.resolve).mockResolvedValueOnce({} as any);
+      vi.mocked(Federation.Server.resolve).mockResolvedValueOnce({} as any);
       await expect(resolveFederationAddress('bob*iln.finance')).rejects.toThrow('Address not registered');
     });
   });
 
   describe('lookupFederationAddress', () => {
     it('should lookup a valid G-address', async () => {
-      vi.mocked(FederationServer.resolve).mockResolvedValueOnce({
+      vi.mocked(Federation.Server.resolve).mockResolvedValueOnce({
         stellar_address: 'alice*iln.finance',
       } as any);
 
@@ -52,7 +54,7 @@ describe('Federation', () => {
     });
 
     it('should return null if server not found', async () => {
-      vi.mocked(FederationServer.resolve).mockRejectedValueOnce(new Error('not found'));
+      vi.mocked(Federation.Server.resolve).mockRejectedValueOnce(new Error('not found'));
       const result = await lookupFederationAddress('GCHARLIE1234567890');
       expect(result).toBeNull();
     });
@@ -65,7 +67,7 @@ describe('FederationRecordManager', () => {
   beforeEach(() => {
     fetchMock = vi.fn().mockResolvedValue({ ok: true, text: async () => '' });
     vi.stubGlobal('fetch', fetchMock);
-    vi.mocked(FederationServer.resolve).mockResolvedValue({ account_id: 'GABC' } as any);
+    vi.mocked(Federation.Server.resolve).mockResolvedValue({ account_id: 'GABC' } as any);
   });
 
   afterEach(() => {
@@ -109,7 +111,7 @@ describe('FederationRecordManager', () => {
   });
 
   it('getByAddress delegates to resolveFederationAddress', async () => {
-    vi.mocked(FederationServer.resolve).mockResolvedValueOnce({ account_id: 'GRESOLVED' } as any);
+    vi.mocked(Federation.Server.resolve).mockResolvedValueOnce({ account_id: 'GRESOLVED' } as any);
     const mgr = new FederationRecordManager('https://fed.example.com');
     const result = await mgr.getByAddress('alice*iln.finance');
     expect(result).toBe('GRESOLVED');

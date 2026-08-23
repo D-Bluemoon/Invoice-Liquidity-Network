@@ -134,7 +134,7 @@ export function upsertInvoice(
   } catch (err) {
     try {
       dbErrorsTotal.inc();
-    } catch {}
+    } catch { /* metrics failure is non-fatal */ }
     throw err;
   }
 }
@@ -147,7 +147,7 @@ export function getInvoiceById(id: number): Invoice | undefined {
     end();
     return row;
   } catch (err) {
-    try { dbErrorsTotal.inc(); } catch {}
+    try { dbErrorsTotal.inc(); } catch { /* metrics failure is non-fatal */ }
     throw err;
   }
 }
@@ -492,5 +492,5 @@ export function setCursorLedger(ledger: number): void {
   try {
     lastProcessedLedger.set(ledger);
     cursorUpdatedAt.set(updatedAt);
-  } catch {}
+  } catch { /* metrics failure is non-fatal */ }
 }

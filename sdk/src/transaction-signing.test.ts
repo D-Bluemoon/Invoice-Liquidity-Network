@@ -332,7 +332,7 @@ describe("createFreighterSigner", () => {
       vi.mocked(freighterApi.signTransaction).mockResolvedValue({
         signedTxXdr: undefined,
         signerAddress: "",
-      });
+      } as any);
       const signer = createFreighterSigner();
       await expect(
         signer.signTransaction("UNSIGNED_XDR", { networkPassphrase: TESTNET_PASSPHRASE }),

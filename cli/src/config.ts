@@ -353,6 +353,7 @@ function loadYamlConfig(filePath: string, candidate: string): unknown {
   } catch {
     try {
       // Fallback: the 'yaml' package (different API)
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const yamlPkg = require("yaml") as { parse(src: string): unknown };
       const content = readFileSync(filePath, "utf8");
       return yamlPkg.parse(content);

@@ -335,7 +335,6 @@ export function calculateLPRiskMetrics(input: LPRiskMetricsInput): LPRiskMetrics
     const reputationScore = normalizeReputationScore(input.reputationByPayer?.get(position.payer) ?? 0);
     const defaultProbability = estimateDefaultProbability(reputationScore, historicalDefaultRate);
     const exposureAmount = Number(position.amount);
-    const expectedLoss = exposureAmount * defaultProbability;
 
     expectedLossEntries.push({
       amount: exposureAmount,

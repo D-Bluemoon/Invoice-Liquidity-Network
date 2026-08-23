@@ -2,6 +2,7 @@ import { Command } from "commander";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
+import * as readline from "readline";
 import type { Environment, EnvironmentConfig } from "./types";
 
 const ENV_CONFIG_PATH = path.join(os.homedir(), ".iln", "environments.json");
@@ -199,7 +200,6 @@ export function registerEnvCommands(program: Command): void {
       }
 
       // Require confirmation
-      const readline = require("readline");
       const rl = readline.createInterface({
         input: process.stdin,
         output: process.stdout,

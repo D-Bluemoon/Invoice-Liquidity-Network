@@ -1,9 +1,8 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as StellarSdk from '@stellar/stellar-sdk';
-import { ILNClient } from '../';
+import { ILNSdk } from '../';
 
 const FRIENDBOT = 'http://localhost:8000/friendbot';
-const HORIZON = 'http://localhost:8000';
 const RPC_URL = 'http://localhost:8000/soroban/rpc';
 
 describe('SDK e2e against local Stellar node', () => {
@@ -35,7 +34,7 @@ describe('SDK e2e against local Stellar node', () => {
     const lp = await createFundedAccount();
     const payer = await createFundedAccount();
 
-    const client = new ILNClient({ rpcUrl: RPC_URL, networkPassphrase: StellarSdk.Networks.STANDALONE });
+    const client = new ILNSdk({ rpcUrl: RPC_URL, networkPassphrase: StellarSdk.Networks.STANDALONE });
     
     // Simulate SDK usage:
     // 1. Submit Invoice
@@ -75,7 +74,7 @@ describe('SDK e2e against local Stellar node', () => {
   it('Dispute flow', async (ctx) => {
     if (!isNodeRunning) return ctx.skip();
     const borrower = await createFundedAccount();
-    const client = new ILNClient({ rpcUrl: RPC_URL, networkPassphrase: StellarSdk.Networks.STANDALONE });
+    const client = new ILNSdk({ rpcUrl: RPC_URL, networkPassphrase: StellarSdk.Networks.STANDALONE });
     
     const invoiceId = await client.submitInvoice({
       borrower: borrower.publicKey(),
@@ -98,7 +97,7 @@ describe('SDK e2e against local Stellar node', () => {
   it('Cancellation flow', async (ctx) => {
     if (!isNodeRunning) return ctx.skip();
     const borrower = await createFundedAccount();
-    const client = new ILNClient({ rpcUrl: RPC_URL, networkPassphrase: StellarSdk.Networks.STANDALONE });
+    const client = new ILNSdk({ rpcUrl: RPC_URL, networkPassphrase: StellarSdk.Networks.STANDALONE });
     
     const invoiceId = await client.submitInvoice({
       borrower: borrower.publicKey(),
@@ -121,7 +120,7 @@ describe('SDK e2e against local Stellar node', () => {
     if (!isNodeRunning) return ctx.skip();
     const borrower = await createFundedAccount();
     const payer = await createFundedAccount();
-    const client = new ILNClient({ rpcUrl: RPC_URL, networkPassphrase: StellarSdk.Networks.STANDALONE });
+    const client = new ILNSdk({ rpcUrl: RPC_URL, networkPassphrase: StellarSdk.Networks.STANDALONE });
     
     const invoiceId = await client.submitInvoice({
       borrower: borrower.publicKey(),
@@ -148,7 +147,7 @@ describe('SDK e2e against local Stellar node', () => {
     const borrower = await createFundedAccount();
     const lp = await createFundedAccount();
     const payer = await createFundedAccount();
-    const client = new ILNClient({ rpcUrl: RPC_URL, networkPassphrase: StellarSdk.Networks.STANDALONE });
+    const client = new ILNSdk({ rpcUrl: RPC_URL, networkPassphrase: StellarSdk.Networks.STANDALONE });
     
     const initialReputation = await client.getReputation(borrower.publicKey());
 

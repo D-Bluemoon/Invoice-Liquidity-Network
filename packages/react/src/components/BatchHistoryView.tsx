@@ -14,10 +14,6 @@ interface BatchHistoryViewProps {
 export function BatchHistoryView({ maxDisplay = 20 }: BatchHistoryViewProps) {
   const [history, setHistory] = useState<BatchHistoryEntry[]>(() => loadBatchHistory());
 
-  const refresh = useCallback(() => {
-    setHistory(loadBatchHistory());
-  }, []);
-
   const handleClear = useCallback(() => {
     clearBatchHistory();
     setHistory([]);

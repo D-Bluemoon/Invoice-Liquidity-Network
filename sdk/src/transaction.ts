@@ -1,11 +1,14 @@
-import { 
-  TransactionBuilder, 
-  Networks, 
-  Operation, 
-  Transaction, 
-  FeeBumpTransaction 
+import {
+  TransactionBuilder,
+  Networks,
+  Transaction,
 } from '@stellar/stellar-sdk';
 import { SimulationError } from './errors.js';
+
+// Derived from TransactionBuilder's own method signature (rather than the
+// standalone `Operation` type) to avoid nominal type mismatches when
+// multiple @stellar/stellar-base versions are present in the workspace.
+type TxOperation = Parameters<TransactionBuilder["addOperation"]>[0];
 
 export interface TransactionConfig {
   baseFee?: number;
@@ -96,7 +99,7 @@ export class ILNTransactionBuilder {
   }
 
   async buildTransaction(
-    operations: Operation[],
+    operations: TxOperation[],
     config: TransactionConfig
   ): Promise<{
     transaction: Transaction;
@@ -112,7 +115,7 @@ export class ILNTransactionBuilder {
 
     const account = await this.rpcClient.getAccount(sourceAccount);
 
-    let txBuilder = new TransactionBuilder(account, {
+    const txBuilder = new TransactionBuilder(account, {
       fee: baseFee.toString(),
       networkPassphrase,
     });
@@ -129,7 +132,10 @@ export class ILNTransactionBuilder {
         Math.max(baseFee, simulation.minResourceFee),
         maxFee,
       );
-      transaction = txBuilder.setFee(adjustedFee.toString()).build();
+      transaction = TransactionBuilder.cloneFrom(transaction, {
+        fee: adjustedFee.toString(),
+        networkPassphrase,
+      }).build();
     }
 
     return { transaction, simulation };
@@ -149,7 +155,7 @@ export class ILNTransactionBuilder {
   }
 
   async estimateCost(
-    operations: Operation[],
+    operations: TxOperation[],
     config: TransactionConfig
   ): Promise<{
     baseFee: number;
@@ -171,7 +177,7 @@ export class ILNTransactionBuilder {
   }
 
   async forceSubmit(
-    operations: Operation[],
+    operations: TxOperation[],
     config: TransactionConfig
   ): Promise<{
     transaction: Transaction;

@@ -6,6 +6,7 @@ import {
   type ErrorEventData,
   type ContractEvent,
 } from "./event-emitter";
+import type { InvoiceCreatedEvent } from "@iln/shared";
 
 describe("ILNEventEmitter", () => {
   it("should emit and receive invoice events", () => {
@@ -81,7 +82,7 @@ describe("ILNEventEmitter", () => {
 
     emitter.on("contract:InvoiceCreated", listener);
 
-    const event: ContractEvent = {
+    const event: InvoiceCreatedEvent = {
       contractId: "CABC...",
       type: "InvoiceCreated",
       ledger: 100,
@@ -92,16 +93,30 @@ describe("ILNEventEmitter", () => {
         id: BigInt(1),
         freelancer: "GABC...",
         payer: "GDEF...",
+        token: "CTOKEN...",
         amount: BigInt(1000),
         dueDate: 1704067200,
         discountRate: 500,
         status: "Pending",
         funder: null,
         fundedAt: null,
+        amountFunded: BigInt(0),
+        amountPaid: BigInt(0),
+        submitterReputation: 0,
+        referralCode: null,
+        allowedLps: null,
+        isAuction: false,
+        auctionStartRate: null,
+        auctionMinRate: null,
+        auctionRateDecayPerHour: null,
+        auctionStartedAt: null,
       },
-    } as ContractEvent;
+    };
 
-    emitter.emitContract(event);
+    // `emitContract` accepts the current ContractEvent union; this test
+    // exercises the deprecated "InvoiceCreated" event name/shape that
+    // predates it, so the cast below is intentional.
+    emitter.emitContract(event as unknown as ContractEvent);
     expect(listener).toHaveBeenCalledWith(event);
   });
 

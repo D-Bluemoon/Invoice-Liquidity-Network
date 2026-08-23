@@ -58,7 +58,7 @@ export async function processEvent(
   // Track processed events
   try {
     eventsProcessedTotal.inc();
-  } catch {}
+  } catch { /* metrics failure is non-fatal */ }
 
   // ── Fetch latest invoice state and upsert ─────────────────────────────────
   // We always fetch the current state from the RPC regardless of event type.
@@ -73,7 +73,7 @@ export async function processEvent(
     await invalidateInvoiceCache(invoiceId);
 try {
       invoicesUpsertedTotal.inc();
-    } catch {}
+    } catch { /* metrics failure is non-fatal */ }
     pubsub.publish(INVOICE_UPDATED, { invoiceUpdated: invoice, triggeringEvent: ilnEvent });
     pubsub.publish(EVENT_STREAM, { eventStream: ilnEvent });
     if (eventType === "submitted") {

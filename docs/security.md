@@ -14,4 +14,4 @@ This stub is kept so existing links to `docs/security.md` continue to resolve.
 
 ## Unified Vulnerability Disclosure
 
-For our complete reporting policy, response timelines, severity criteria, and links to technical threat models, please review our canonical [Vulnerability Disclosure Guide](docs/vulnerability-disclosure.md).
+For our complete reporting policy, response timelines, severity criteria, and links to technical threat models, please review our canonical [Vulnerability Disclosure Guide](vulnerability-disclosure.md).

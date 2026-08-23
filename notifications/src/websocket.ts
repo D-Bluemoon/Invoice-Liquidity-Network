@@ -1,12 +1,10 @@
 import { WebSocketServer, WebSocket } from "ws";
 import { IncomingMessage } from "http";
 import { Server } from "http";
-import { v4 as uuidv4 } from "crypto";
 import type {
   WebSocketClient,
   WebSocketMessage,
   InvoiceEvent,
-  NotificationTrigger,
 } from "./types";
 
 const HEARTBEAT_INTERVAL = 30000;
@@ -84,7 +82,7 @@ export class NotificationWebSocketServer {
     return Array.from(addresses);
   }
 
-  private handleConnection(socket: WebSocket, req: IncomingMessage): void {
+  private handleConnection(socket: WebSocket, _req: IncomingMessage): void {
     const clientId = this.generateClientId();
     const client: WebSocketClient = {
       id: clientId,

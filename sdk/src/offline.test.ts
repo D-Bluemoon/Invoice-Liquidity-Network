@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { OfflineManager, type OfflineConfig, type OfflineQueueItem } from "./offline";
+import { OfflineManager } from "./offline";
 
 describe("OfflineManager", () => {
   let manager: OfflineManager;

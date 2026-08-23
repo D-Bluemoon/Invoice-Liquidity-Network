@@ -161,10 +161,20 @@ export class InsurancePoolClient {
       reason: String(v.reason ?? ""),
       status: status as ClaimStatus,
       filedAt: Number(v.filed_at ?? v.filedAt ?? 0),
-      reviewedAt: v.reviewed_at != null ? Number(v.reviewed_at) : v.reviewedAt != null ? Number(v.reviewedAt) : null,
+      reviewedAt:
+        v.reviewed_at !== null && v.reviewed_at !== undefined
+          ? Number(v.reviewed_at)
+          : v.reviewedAt !== null && v.reviewedAt !== undefined
+            ? Number(v.reviewedAt)
+            : null,
       reviewer: v.reviewer ? String(v.reviewer) : null,
       rejectionReason: v.rejection_reason ? String(v.rejection_reason) : v.rejectionReason ? String(v.rejectionReason) : null,
-      payoutAmount: v.payout_amount != null ? BigInt(String(v.payout_amount)) : v.payoutAmount != null ? BigInt(String(v.payoutAmount)) : null,
+      payoutAmount:
+        v.payout_amount !== null && v.payout_amount !== undefined
+          ? BigInt(String(v.payout_amount))
+          : v.payoutAmount !== null && v.payoutAmount !== undefined
+            ? BigInt(String(v.payoutAmount))
+            : null,
     };
   }
 

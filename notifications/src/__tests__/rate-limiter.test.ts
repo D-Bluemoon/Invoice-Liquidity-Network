@@ -3,7 +3,7 @@ process.env.NOTIFICATIONS_CONTRACT_ID = "GTESTCONTRACT";
 process.env.NOTIFICATIONS_NETWORK_PASSPHRASE = "Test SDF Network ; September 2015";
 process.env.RESEND_API_KEY = "test-api-key";
 
-import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import Database from "better-sqlite3";
 import { createApp } from "../api";

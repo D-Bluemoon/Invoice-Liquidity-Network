@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useSubmitClaim } from '../hooks/useInsurance';
 import { useLPCoverage } from '../hooks/useInsurance';
 import { useInvoices } from '../hooks/useInvoices';
-import { AddressDisplay } from './AddressDisplay';
 
 export interface ClaimFormProps {
   lp: string;
@@ -45,10 +44,12 @@ export function ClaimForm({ lp, invoiceId: preselectedId, className, style, onSu
       setReason('');
       reset();
       onSuccess?.(id);
-    } catch { }
+    } catch {
+      // surfaced via useSubmitClaim's own error state
+    }
   };
 
-  const isEligible = coverage != null;
+  const isEligible = coverage !== null && coverage !== undefined;
   const hasDefaulted = defaultedInvoices.length > 0;
 
   return (

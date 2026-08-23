@@ -157,16 +157,21 @@ export function useGovernanceProposal(id: number): UseGovernanceProposalResult {
   const executionEtaLedger = readExecutionEtaLedger(proposalLike);
   const currentLedger = latestLedgerQuery.data ?? null;
 
+  const executionEtaLedgerSet = executionEtaLedger !== null && executionEtaLedger !== undefined;
+  const currentLedgerSet = currentLedger !== null && currentLedger !== undefined;
+
   const timelockRemainingLedgers =
-    proposalStatus === 'Passed' && executionEtaLedger != null && currentLedger != null
+    proposalStatus === 'Passed' && executionEtaLedgerSet && currentLedgerSet
       ? Math.max(0, executionEtaLedger - currentLedger)
       : null;
 
   const timeUntilExecutionMs =
-    timelockRemainingLedgers != null ? timelockRemainingLedgers * LEDGER_SECONDS * 1_000 : null;
+    timelockRemainingLedgers !== null && timelockRemainingLedgers !== undefined
+      ? timelockRemainingLedgers * LEDGER_SECONDS * 1_000
+      : null;
 
   const timelockProgress =
-    proposalStatus === 'Passed' && executionEtaLedger != null && currentLedger != null && executionEtaLedger > 0
+    proposalStatus === 'Passed' && executionEtaLedgerSet && currentLedgerSet && executionEtaLedger > 0
       ? Math.min(1, currentLedger / executionEtaLedger)
       : proposalStatus === 'Passed'
         ? 0
@@ -174,8 +179,8 @@ export function useGovernanceProposal(id: number): UseGovernanceProposalResult {
 
   const canExecute =
     proposalStatus === 'Passed' &&
-    executionEtaLedger != null &&
-    currentLedger != null &&
+    executionEtaLedgerSet &&
+    currentLedgerSet &&
     currentLedger >= executionEtaLedger;
 
   const isPolling =

@@ -10,6 +10,7 @@ import {
   xdr,
 } from "@stellar/stellar-sdk";
 import { createLogger } from "./logger";
+import type { Unsubscribe } from "./state";
 import { track } from "./usage-analytics";
 import { Cache, type CacheOptions } from "./cache";
 import { Validators } from "./validators";
@@ -24,6 +25,7 @@ import type { Invoice, InvoiceState } from "@iln/shared";
 
 import {
   GovernanceContractMethod,
+  ProposalStatus,
   type CastVoteParams,
   type CreateProposalParams,
   type DelegateVotesParams,
@@ -31,7 +33,6 @@ import {
   type GetProposalParams,
   type GovernanceProposal,
   type ListProposalsParams,
-  type ProposalStatus,
   type UndelegateVotesParams,
   type VetoProposalParams,
 } from "./governance";
@@ -54,17 +55,13 @@ import type {
   SubmitInvoiceParams,
   TransactionSigner,
   CompatibilityResult,
-  ContractEvent,
 } from "./types";
 
-import { openSSE } from "./stream";
+import { openSSE, type RawContractEvent } from "./stream";
 import { ILNEventEmitter } from "./event-emitter";
-import type { InvoiceEventData, WalletEventData, ErrorEventData } from "./event-emitter";
 
 /** Callback invoked when a contract event is received via SSE. */
-export type EventCallback = (event: ContractEvent) => void | Promise<void>;
-/** Function that terminates an active event subscription. */
-export type Unsubscribe = () => void;
+export type EventCallback = (event: RawContractEvent) => void | Promise<void>;
 
 import { checkCompatibility } from "./compatibility";
 import {
@@ -80,7 +77,6 @@ import {
 import {
   OfflineManager,
   OfflineQueuedError,
-  type OfflineConfig,
   type OfflineQueueItem,
   type OfflineState,
 } from "./offline";
@@ -653,7 +649,7 @@ export class ILNSdk {
     const base = this.rpcUrl.replace(/\/$/, "");
     const url = `${base}/contracts/${this.contractId}/events?limit=200&order=asc`;
 
-    const handle = openSSE(url, (ev: ContractEvent) => {
+    const handle = openSSE(url, (ev: RawContractEvent) => {
       try {
         // crude filtering: check topics or value for invoice id string
         const topics = (ev.topics ?? []) as unknown[];
@@ -693,7 +689,7 @@ export class ILNSdk {
     const base = this.rpcUrl.replace(/\/$/, "");
     const url = `${base}/contracts/${this.contractId}/events?limit=200&order=asc`;
 
-    const handle = openSSE(url, (ev: ContractEvent) => {
+    const handle = openSSE(url, (ev: RawContractEvent) => {
       try {
         const topics = (ev.topics ?? []) as unknown[];
         const value = ev.value ?? "";
@@ -958,7 +954,7 @@ export class ILNSdk {
     
     // Try cache first
     if (this.cacheEnabled && !options?.bypass) {
-      const cached = this.cache.get<Invoice>(cacheKey, options);
+      const cached = this.cache.get(cacheKey, options) as Invoice | null;
       if (cached) {
         return cached;
       }
@@ -1245,7 +1241,7 @@ export class ILNSdk {
     }
 
     const latestLedger = await this.getLatestLedger();
-    if (latestLedger != null && latestLedger < proposal.etaLedger) {
+    if (latestLedger !== null && latestLedger !== undefined && latestLedger < proposal.etaLedger) {
       const remaining = proposal.etaLedger - latestLedger;
       throw new ValidationError(
         `Proposal ${String(params.proposalId)} is still timelocked for ${remaining} ledger(s).`,
@@ -1558,10 +1554,19 @@ export class ILNSdk {
       "get_invoice",
     ) as Record<string, unknown>;
 
+    const referralCode = nativeInvoice.referral_code ?? nativeInvoice.referralCode;
+    const allowedLps = nativeInvoice.allowed_lps ?? nativeInvoice.allowedLps;
+    const auctionStartRate = nativeInvoice.auction_start_rate ?? nativeInvoice.auctionStartRate;
+    const auctionMinRate = nativeInvoice.auction_min_rate ?? nativeInvoice.auctionMinRate;
+    const auctionRateDecayPerHour =
+      nativeInvoice.auction_rate_decay_per_hour ?? nativeInvoice.auctionRateDecayPerHour;
+    const auctionStartedAt = nativeInvoice.auction_started_at ?? nativeInvoice.auctionStartedAt;
+
     return {
       id: this.toBigInt(nativeInvoice.id),
       freelancer: this.toStringValue(nativeInvoice.freelancer, "freelancer"),
       payer: this.toStringValue(nativeInvoice.payer, "payer"),
+      token: this.toStringValue(nativeInvoice.token, "token"),
       amount: this.toBigInt(nativeInvoice.amount),
       dueDate: this.toNumberValue(
         nativeInvoice.due_date ?? nativeInvoice.dueDate,
@@ -1572,11 +1577,46 @@ export class ILNSdk {
         "discountRate",
       ),
       status: this.parseStatus(nativeInvoice.status),
-      funder: nativeInvoice.funder == null ? null : this.toStringValue(nativeInvoice.funder, "funder"),
+      funder:
+        nativeInvoice.funder === null || nativeInvoice.funder === undefined
+          ? null
+          : this.toStringValue(nativeInvoice.funder, "funder"),
       fundedAt:
-        nativeInvoice.funded_at == null && nativeInvoice.fundedAt == null
+        (nativeInvoice.funded_at === null || nativeInvoice.funded_at === undefined) &&
+        (nativeInvoice.fundedAt === null || nativeInvoice.fundedAt === undefined)
           ? null
           : this.toNumberValue(nativeInvoice.funded_at ?? nativeInvoice.fundedAt, "fundedAt"),
+      amountFunded: this.toBigInt(nativeInvoice.amount_funded ?? nativeInvoice.amountFunded),
+      amountPaid: this.toBigInt(nativeInvoice.amount_paid ?? nativeInvoice.amountPaid),
+      submitterReputation: this.toNumberValue(
+        nativeInvoice.submitter_reputation ?? nativeInvoice.submitterReputation,
+        "submitterReputation",
+      ),
+      referralCode:
+        referralCode === null || referralCode === undefined
+          ? null
+          : (referralCode as Uint8Array),
+      allowedLps:
+        allowedLps === null || allowedLps === undefined
+          ? null
+          : (allowedLps as unknown[]).map((lp, i) => this.toStringValue(lp, `allowedLps[${i}]`)),
+      isAuction: Boolean(nativeInvoice.is_auction ?? nativeInvoice.isAuction),
+      auctionStartRate:
+        auctionStartRate === null || auctionStartRate === undefined
+          ? null
+          : this.toNumberValue(auctionStartRate, "auctionStartRate"),
+      auctionMinRate:
+        auctionMinRate === null || auctionMinRate === undefined
+          ? null
+          : this.toNumberValue(auctionMinRate, "auctionMinRate"),
+      auctionRateDecayPerHour:
+        auctionRateDecayPerHour === null || auctionRateDecayPerHour === undefined
+          ? null
+          : this.toNumberValue(auctionRateDecayPerHour, "auctionRateDecayPerHour"),
+      auctionStartedAt:
+        auctionStartedAt === null || auctionStartedAt === undefined
+          ? null
+          : this.toNumberValue(auctionStartedAt, "auctionStartedAt"),
     };
   }
 

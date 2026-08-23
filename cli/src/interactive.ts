@@ -61,6 +61,7 @@ export async function runInteractive(deps: InteractiveDependencies): Promise<voi
   ui.info(`  Contract: ${pc.cyan(config.contractId)}\n`);
 
   try {
+    // eslint-disable-next-line no-constant-condition -- loop exits via internal break
     while (true) {
       const choice = await promptMenu(ask, ui);
       if (choice === "exit") break;
@@ -104,6 +105,7 @@ async function promptMenu(ask: Asker, ui: Ui): Promise<MenuChoice> {
     "0": "exit",
   };
 
+  // eslint-disable-next-line no-constant-condition -- loop exits via internal break
   while (true) {
     const input = (await ask(pc.bold("\nChoose [0-5]: "))).trim();
     if (map[input]) return map[input];
@@ -330,6 +332,7 @@ async function askValidated(
   prompt: string,
   validate: Validator,
 ): Promise<string> {
+  // eslint-disable-next-line no-constant-condition -- loop exits via internal break
   while (true) {
     const value = (await ask(pc.bold(prompt))).trim();
     const error = validate(value);

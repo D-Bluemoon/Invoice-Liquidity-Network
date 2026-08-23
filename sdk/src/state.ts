@@ -17,6 +17,7 @@ export interface StateDebugEntry<T> {
   next: T;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- T is a phantom param kept for API symmetry with StateStore<T>
 export interface StateStoreOptions<T> {
   /** Storage key for persistence (required when `persist: true`). */
   key?: string;

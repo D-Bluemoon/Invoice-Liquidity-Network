@@ -1,5 +1,5 @@
 import { Keypair } from "@stellar/stellar-sdk";
-import { existsSync, readFileSync, writeFileSync, readdirSync, mkdirSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { createHash, randomBytes, createCipheriv, createDecipheriv } from "node:crypto";
@@ -52,7 +52,7 @@ function encryptData(data: string, password: string): string {
   return `${salt.toString("hex")}:${iv.toString("hex")}:${encrypted.toString("hex")}`;
 }
 
-function decryptData(encryptedData: string, password: string): string {
+export function decryptData(encryptedData: string, password: string): string {
   const parts = encryptedData.split(":");
   if (parts.length !== 3) {
     throw new Error("Invalid encrypted data format");
@@ -151,7 +151,6 @@ export function deleteWallet(name: string): void {
 
   const walletFile = join(WALLET_DIR, `${name}.enc`);
   if (existsSync(walletFile)) {
-    const { unlinkSync } = require("node:fs");
     unlinkSync(walletFile);
   }
 
