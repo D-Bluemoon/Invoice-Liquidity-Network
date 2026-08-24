@@ -1,6 +1,9 @@
 name: E2E Integration
 
-on: [push, pull_request]
+on:
+  workflow_dispatch:
+# Manual trigger only: push/PR runs duplicated "SDK E2E (local Stellar node)"
+# on main and "E2E Nightly" (scheduled), and fired on every branch push.
 
 # Least-privilege: read code to run the E2E smoke test.
 permissions:

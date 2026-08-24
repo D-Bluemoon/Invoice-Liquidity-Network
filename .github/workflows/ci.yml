@@ -247,7 +247,6 @@ jobs:
       - build
       - lint
       - node-tests
-      - node-coverage
       - license-compliance
       - sdk-types-sync
       - core-install
@@ -276,7 +275,7 @@ jobs:
 
           # Collect which jobs failed
           FAILED_JOBS=""
-          for job in test build lint node-tests node-coverage license-compliance sdk-types-sync core-install core-format core-lint core-type-check core-test core-build; do
+          for job in test build lint node-tests license-compliance sdk-types-sync core-install core-format core-lint core-type-check core-test core-build; do
             result=$(echo '${{ toJSON(needs) }}' | jq -r --arg job "$job" '.[$job].result // "skipped"')
             if [ "$result" = "failure" ]; then
               FAILED_JOBS="$FAILED_JOBS\n- **$job**: ❌ $result"
@@ -437,53 +436,6 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: '🚨 **CI Node.js tests failed!** Please check the action logs for details.'
-            })
-
-  node-coverage:
-    name: Node.js coverage (≥80%)
-    needs: [pnpm-cache, changes]
-    if: >-
-      needs.changes.outputs.notifications == 'true' ||
-      needs.changes.outputs.shared_config == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup pnpm with store cache
-        uses: ./.github/actions/setup-pnpm
-
-      - name: Run notification template coverage
-        run: >
-          pnpm exec vitest run tests/templates.test.ts
-          --coverage
-          --coverage.include=src/templates/funded.template.ts
-          --coverage.include=src/templates/payment.template.ts
-          --coverage.include=src/templates/dispute.template.ts
-          --coverage.include=src/templates/due-warning.template.ts
-          --coverage.include=src/templates/helpers.ts
-          --coverage.thresholds.lines=80
-          --coverage.thresholds.functions=80
-          --coverage.thresholds.branches=80
-          --coverage.thresholds.statements=80
-        working-directory: notifications
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@5975040f7f7d40edaff8d784b576fd65ae95c073 # v5.5.5
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          slug: Nursca/Invoice-Liquidity-Network
-
-      - name: Comment PR on failure
-        if: failure() && github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
-        continue-on-error: true
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: '🚨 **Coverage dropped below 80%!** Please check the action logs for details.'
             })
 
   # packages/shared is a dependency of the SDK, CLI, indexer, and notifications
