@@ -2,7 +2,7 @@ import { Keypair } from "@stellar/stellar-sdk";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
-import { createHash, randomBytes, createCipheriv, createDecipheriv } from "node:crypto";
+import { createHash, randomBytes, createCipheriv } from "node:crypto";
 
 const WALLET_DIR = join(homedir(), ".iln", "wallets");
 const WALLET_INDEX_FILE = join(WALLET_DIR, "index.json");
@@ -50,20 +50,6 @@ function encryptData(data: string, password: string): string {
   const cipher = createCipheriv("aes-256-cbc", key, iv);
   const encrypted = Buffer.concat([cipher.update(data, "utf8"), cipher.final()]);
   return `${salt.toString("hex")}:${iv.toString("hex")}:${encrypted.toString("hex")}`;
-}
-
-export function decryptData(encryptedData: string, password: string): string {
-  const parts = encryptedData.split(":");
-  if (parts.length !== 3) {
-    throw new Error("Invalid encrypted data format");
-  }
-  const salt = Buffer.from(parts[0], "hex");
-  const iv = Buffer.from(parts[1], "hex");
-  const encrypted = Buffer.from(parts[2], "hex");
-  const key = deriveKey(password, salt);
-  const decipher = createDecipheriv("aes-256-cbc", key, iv);
-  const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
-  return decrypted.toString("utf8");
 }
 
 export function createWallet(name: string, password: string): WalletInfo {

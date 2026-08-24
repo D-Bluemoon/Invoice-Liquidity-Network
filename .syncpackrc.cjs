@@ -12,6 +12,24 @@ const config = {
   ],
   versionGroups: [
     {
+      // References between workspace packages (e.g. "workspace:*" or
+      // "file:../../sdk") intentionally don't match the referenced
+      // package's own declared "version" field — that's how local linking
+      // works, not a drift bug.
+      label: "Local workspace package references",
+      packages: ["**"],
+      dependencies: ["$LOCAL"],
+      isIgnored: true,
+    },
+    {
+      // docs/ (legacy Nextra 2 site) and packages/docs (app-router,
+      // Nextra 4) are intentionally pinned to different major versions.
+      label: "nextra (intentionally split across legacy and current docs sites)",
+      packages: ["**"],
+      dependencies: ["nextra", "nextra-theme-docs"],
+      isIgnored: true,
+    },
+    {
       label: "@stellar/stellar-sdk",
       packages: ["**"],
       dependencies: ["@stellar/stellar-sdk"],

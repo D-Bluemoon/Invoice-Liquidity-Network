@@ -147,12 +147,6 @@ export function upsertInvoice(
     });
 }
 
-export function getInvoiceById(id: number): Invoice | undefined {
-  return getDb().prepare("SELECT * FROM invoices WHERE id = ?").get(id) as
-    | Invoice
-    | undefined;
-}
-
 export function queryInvoicesByStatus(status: string): Invoice[] {
   return getDb()
     .prepare("SELECT * FROM invoices WHERE status = ? ORDER BY id ASC")

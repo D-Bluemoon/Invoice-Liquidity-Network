@@ -39,7 +39,7 @@ on:
         description: Cargo features passed to stellar-cli install
         required: false
         type: string
-        default: opt
+        default: ""
     outputs:
       identity-name:
         description: Identity alias created or reused in the Stellar CLI config
@@ -82,7 +82,7 @@ jobs:
             ${{ runner.os }}-stellar-cli-
 
       - name: Install Stellar CLI
-        run: cargo install --locked stellar-cli --features ${{ inputs.stellar-cli-features }}
+        run: cargo install --locked stellar-cli ${{ inputs.stellar-cli-features != '' && format('--features {0}', inputs.stellar-cli-features) || '' }}
 
       - name: Configure Stellar network
         id: network

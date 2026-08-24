@@ -235,6 +235,8 @@ describe("SimulationError", () => {
     const error = new SimulationError();
 
     expect(error.message).toBe("Transaction simulation failed.");
-    expect(error.remediation).toBe("Review transaction parameters and contract state.");
+    expect(error.remediation).toBe(
+      "The SDK could not simulate the transaction successfully. Review transaction parameters and ensure contract state is consistent before retrying.",
+    );
   });
 });

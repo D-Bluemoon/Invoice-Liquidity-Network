@@ -18,7 +18,7 @@ const defaultQueryClient = new QueryClient({
   },
 });
 
-export function ILNProvider({ client, children, queryClient = defaultQueryClient }: ILNProviderProps): JSX.Element {
+export function ILNProvider({ client, children, queryClient = defaultQueryClient }: ILNProviderProps){
   return (
     <QueryClientProvider client={queryClient}>
       <ILNContext.Provider value={client}>

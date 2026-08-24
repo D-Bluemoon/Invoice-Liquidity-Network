@@ -1,6 +1,6 @@
 import React from 'react';
 
-export function SkipNav(): JSX.Element {
+export function SkipNav(){
   return (
     <a
       href="#main-content"

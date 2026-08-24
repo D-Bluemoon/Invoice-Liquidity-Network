@@ -94,15 +94,23 @@ describe("OfflineManager", () => {
     });
 
     it("should mark item as failed after max retries", async () => {
+      // maxRetries: 1 so a single failed attempt immediately exhausts retries.
+      const singleRetryManager = new OfflineManager({
+        maxRetries: 1,
+        retryDelayMs: 100,
+        maxQueueSize: 5,
+      });
       const submitFn = vi.fn().mockRejectedValue(new Error("Always fail"));
-      manager.onSubmit(submitFn);
+      singleRetryManager.onSubmit(submitFn);
 
-      manager.enqueue("op1", {});
-      await manager.processQueue();
+      singleRetryManager.enqueue("op1", {});
+      await singleRetryManager.processQueue();
 
       // Should have retried and failed
       expect(submitFn).toHaveBeenCalledTimes(1);
-      expect(manager.getState().failedCount).toBe(1);
+      expect(singleRetryManager.getState().failedCount).toBe(1);
+
+      singleRetryManager.destroy();
     });
   });
 
@@ -117,7 +125,11 @@ describe("OfflineManager", () => {
 
       await manager.retryItem(item.id);
 
-      expect(item.status).toBe("pending");
+      // retryItem resets the item and immediately reprocesses the queue;
+      // with a submit callback that resolves successfully, the item
+      // completes and is pruned from the queue.
+      expect(submitFn).toHaveBeenCalledTimes(1);
+      expect(item.status).toBe("completed");
       expect(item.retries).toBe(0);
     });
 

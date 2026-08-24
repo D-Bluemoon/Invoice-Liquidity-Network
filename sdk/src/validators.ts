@@ -60,8 +60,8 @@ export class Validators {
   private static readonly customValidators = new Map<string, CustomValidator>();
 
   static readonly submitInvoiceSchema: ValidationSchema = {
-    freelancer: { required: true, validate: (value) => this.validateStellarAddress(value as string) },
-    payer: { required: true, validate: (value) => this.validateStellarAddress(value as string) },
+    freelancer: { required: true, validate: (value) => this.validateStellarAddress(value as string, {}, "freelancer") },
+    payer: { required: true, validate: (value) => this.validateStellarAddress(value as string, {}, "payer") },
     amount: { required: true, validate: (value) => this.validateAmount(value as bigint, { allowZero: false }) },
     dueDate: { required: true, validate: (value) => this.validateUnixTimestamp(value) },
     discountRate: {
@@ -75,7 +75,7 @@ export class Validators {
   };
 
   static readonly fundingSchema: ValidationSchema = {
-    funder: { required: true, validate: (value) => this.validateStellarAddress(value as string) },
+    funder: { required: true, validate: (value) => this.validateStellarAddress(value as string, {}, "funder") },
     invoiceId: { required: true, validate: (value) => this.validateInvoiceId(value) },
   };
 
@@ -90,25 +90,26 @@ export class Validators {
   static validateStellarAddress(
     address: string,
     options: StellarAddressValidationOptions = {},
+    fieldPath = "address",
   ): ValidationResult {
     void options;
 
     if (!address || typeof address !== "string") {
-      return this.invalid("Address must be a non-empty string", "address", "REQUIRED");
+      return this.invalid("Address must be a non-empty string", fieldPath, "REQUIRED");
     }
 
     if (address.length !== 56) {
-      return this.invalid("Invalid Stellar address format. Must be 56 characters", "address", "INVALID_LENGTH");
+      return this.invalid("Invalid Stellar address format. Must be 56 characters", fieldPath, "INVALID_LENGTH");
     }
 
     if (!address.startsWith("G")) {
-      return this.invalid("Invalid Stellar address format. Must start with 'G'", "address", "INVALID_PREFIX");
+      return this.invalid("Invalid Stellar address format. Must start with 'G'", fieldPath, "INVALID_PREFIX");
     }
 
     const base32Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
     for (const char of address.slice(1)) {
       if (!base32Chars.includes(char)) {
-        return this.invalid("Address contains invalid base32 characters", "address", "INVALID_BASE32");
+        return this.invalid("Address contains invalid base32 characters", fieldPath, "INVALID_BASE32");
       }
     }
 
@@ -172,7 +173,7 @@ export class Validators {
       return this.invalid("Date cannot be in the past", "date", "PAST_NOT_ALLOWED");
     }
 
-    if (!options.allowFuture && dateObj > now) {
+    if (options.allowFuture === false && dateObj > now) {
       return this.invalid("Date cannot be in the future", "date", "FUTURE_NOT_ALLOWED");
     }
 

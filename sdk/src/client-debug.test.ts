@@ -3,17 +3,18 @@ import { Keypair, nativeToScVal } from "@stellar/stellar-sdk";
 
 describe("ILNSdk debug logging", () => {
   const originalEnv = process.env.ILN_DEBUG;
-  const originalConsoleDebug = console.debug;
+  const originalConsoleLog = console.log;
 
   beforeEach(() => {
     vi.resetModules();
     process.env.ILN_DEBUG = "1";
-    globalThis.console.debug = vi.fn();
+    // The logger routes DEBUG-level entries through console.log (see logger.ts).
+    globalThis.console.log = vi.fn();
   });
 
   afterEach(() => {
     process.env.ILN_DEBUG = originalEnv;
-    globalThis.console.debug = originalConsoleDebug;
+    globalThis.console.log = originalConsoleLog;
   });
 
   it("emits debug logs when ILN_DEBUG=1", async () => {
@@ -27,6 +28,8 @@ describe("ILNSdk debug logging", () => {
         result: {
           retval: nativeToScVal({
             amount: 25000000n,
+            amount_funded: 25000000n,
+            amount_paid: 0n,
             discount_rate: 300,
             due_date: 1700000000,
             funder: Keypair.random().publicKey(),
@@ -35,6 +38,8 @@ describe("ILNSdk debug logging", () => {
             id: 7n,
             payer: Keypair.random().publicKey(),
             status: "Funded",
+            submitter_reputation: 0,
+            token: Keypair.random().publicKey(),
           }),
         },
       }),
@@ -49,6 +54,6 @@ describe("ILNSdk debug logging", () => {
 
     await sdk.getInvoice(7n);
 
-    expect(console.debug).toHaveBeenCalled();
+    expect(console.log).toHaveBeenCalled();
   });
 });

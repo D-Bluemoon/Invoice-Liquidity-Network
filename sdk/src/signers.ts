@@ -171,6 +171,9 @@ async function assertFreighterNetwork(
   }
 
   const network = await freighter.getNetworkDetails();
+  if (!network) {
+    return;
+  }
   if (network.error) {
     throw new Error(String(network.error));
   }

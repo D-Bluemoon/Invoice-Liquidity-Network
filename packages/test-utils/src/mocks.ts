@@ -1,6 +1,5 @@
 import { vi } from 'vitest';
-import type { ILNClient, Invoice, ReputationScore, LPPortfolio, ContractStats } from '../../../sdk/src/types';
-import type { GovernanceProposal } from '../../../sdk/src/governance-types';
+import type { ILNClient, Invoice, ReputationScore, LPPortfolio, ContractStats, GovernanceProposal } from '@iln/sdk';
 import { createInvoice, createReputationScore, createGovernanceProposal, createLPStats, createContractStats } from './factories';
 
 /** A mock ILNClient backed by factory-generated data. All methods are vitest spies. */
