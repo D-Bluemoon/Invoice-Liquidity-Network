@@ -20,7 +20,7 @@ const DANGER = '#B91C1C';
 const POSITIVE = '#15803D';
 const ACCENT = '#8B5E34';
 
-export function ClaimForm({ lp, invoiceId: preselectedId, className, style, onSuccess }: ClaimFormProps): JSX.Element {
+export function ClaimForm({ lp, invoiceId: preselectedId, className, style, onSuccess }: ClaimFormProps){
   const { data: coverage, isLoading: covLoading } = useLPCoverage(lp);
   const { data: invoices, isLoading: invLoading } = useInvoices(lp, { role: 'issuer' });
   const { submitClaim, isPending, error, reset } = useSubmitClaim();

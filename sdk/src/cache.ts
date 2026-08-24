@@ -81,6 +81,10 @@ export class Cache<T> {
     if (!options?.forceRefresh) {
       entry.accessCount++;
       entry.lastAccessedAt = now;
+      // Move to the end of the Map's iteration order so it reads as most
+      // recently used, independent of Date.now() millisecond resolution.
+      this.cache.delete(key);
+      this.cache.set(key, entry);
       this.stats.hits++;
       this.updateHitRate();
       return entry.value;
@@ -174,15 +178,9 @@ export class Cache<T> {
   }
 
   private evictLRU(): void {
-    let lruKey: string | null = null;
-    let lruTime = Infinity;
-
-    for (const [key, entry] of this.cache.entries()) {
-      if (entry.lastAccessedAt < lruTime) {
-        lruTime = entry.lastAccessedAt;
-        lruKey = key;
-      }
-    }
+    // Map iteration order tracks recency (get() re-inserts touched entries
+    // at the end), so the least recently used entry is simply the first one.
+    const lruKey = this.cache.keys().next().value ?? null;
 
     if (lruKey) {
       this.cache.delete(lruKey);

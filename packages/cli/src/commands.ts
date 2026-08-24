@@ -1,7 +1,7 @@
 import { Command } from "commander";
 import pc from "picocolors";
 import Table from "cli-table3";
-import { ILNSdk, AnalyticsSDK, createKeypairSigner } from "@iln/sdk";
+import { ILNSdk, AnalyticsSDK, createKeypairSigner, type ContractStats, type Invoice } from "@iln/sdk";
 import { loadConfig, saveConfig, ILNConfig } from "./config";
 import { Keypair } from "@stellar/stellar-sdk";
 import fs from "fs";
@@ -259,8 +259,8 @@ export function registerCommands(program: Command) {
       try {
         const config = loadConfig();
         const sdk = createSdkInstance(config);
-        const count = await sdk.getInvoiceCount();
-        const invoices = [];
+        const count = ((await sdk.getStats()) as ContractStats).totalInvoices;
+        const invoices: Invoice[] = [];
 
         for (let i = 1n; i <= count; i++) {
           try {
@@ -397,8 +397,8 @@ export function registerCommands(program: Command) {
       try {
         const config = loadConfig();
         const sdk = createSdkInstance(config);
-        const count = await sdk.getInvoiceCount();
-        const invoices = [];
+        const count = ((await sdk.getStats()) as ContractStats).totalInvoices;
+        const invoices: Invoice[] = [];
 
         for (let i = 1n; i <= count; i++) {
           try {
@@ -461,9 +461,9 @@ export function registerCommands(program: Command) {
 
         const serialized = {
           totalInvoices: stats.totalInvoices,
+          totalFunded: stats.totalFunded,
+          totalPaid: stats.totalPaid,
           totalVolume: stats.totalVolume.toString(),
-          totalYield: stats.totalYield.toString(),
-          defaultRate: stats.defaultRate,
         };
 
         handleOutputLocal(
@@ -475,9 +475,9 @@ export function registerCommands(program: Command) {
 
             table.push(
               ["Total Invoices", serialized.totalInvoices],
-              ["Total Volume", formatAmount(stats.totalVolume)],
-              ["Total Yield", formatAmount(stats.totalYield)],
-              ["Default Rate", `${(serialized.defaultRate * 100).toFixed(2)}%`]
+              ["Total Funded", serialized.totalFunded],
+              ["Total Paid", serialized.totalPaid],
+              ["Total Volume", formatAmount(stats.totalVolume)]
             );
 
             return table.toString();

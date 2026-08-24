@@ -29,7 +29,7 @@ describe("CLI Commands", () => {
   let processExitMock: any;
 
   beforeEach(() => {
-    vi.restoreMocks();
+    vi.restoreAllMocks();
     program = new Command();
     program.option("--json", "output JSON");
     registerCommands(program);

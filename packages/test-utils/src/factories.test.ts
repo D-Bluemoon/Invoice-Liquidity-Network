@@ -6,7 +6,7 @@ import {
   createLPStats,
   createContractStats
 } from './factories'
-import { ProposalStatus } from '../../../sdk/src/governance-types'
+import { ProposalStatus } from '@iln/sdk'
 
 describe('Factories', () => {
   describe('createInvoice', () => {

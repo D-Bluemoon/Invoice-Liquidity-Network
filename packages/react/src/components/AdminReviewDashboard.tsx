@@ -37,7 +37,7 @@ function formatTimestamp(ts: number | null | undefined): string {
   });
 }
 
-export function AdminReviewDashboard({ adminAddress, className, style }: AdminReviewDashboardProps): JSX.Element {
+export function AdminReviewDashboard({ adminAddress, className, style }: AdminReviewDashboardProps){
   const [tab, setTab] = useState<TabFilter>('Pending');
   const [rejectionModal, setRejectionModal] = useState<{ claimId: bigint } | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
@@ -339,7 +339,7 @@ export function AdminReviewDashboard({ adminAddress, className, style }: AdminRe
   );
 }
 
-function StatusBadge({ status }: { status: string }): JSX.Element {
+function StatusBadge({ status }: { status: string }){
   const colors: Record<string, { bg: string; text: string }> = {
     Pending: { bg: '#FEF3C7', text: '#92400E' },
     Approved: { bg: '#DCFCE7', text: '#166534' },

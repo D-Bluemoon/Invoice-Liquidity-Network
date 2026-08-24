@@ -117,7 +117,7 @@ describe("ILNSdk", () => {
     const invoiceId = await sdk.submitInvoice({
       amount: 10000000n,
       discountRate: 250,
-      dueDate: 1700000200,
+      dueDate: Math.floor(Date.now() / 1000) + 86400,
       freelancer: freelancerKeypair.publicKey(),
       payer,
     });
@@ -362,7 +362,7 @@ describe("ILNSdk", () => {
         freelancer: Keypair.random().publicKey(),
         payer: Keypair.random().publicKey(),
         amount: 100n,
-        dueDate: 123,
+        dueDate: Math.floor(Date.now() / 1000) + 86400,
         discountRate: 5,
       })
     ).rejects.toThrow("submitInvoice must be signed by the freelancer address.");
@@ -549,7 +549,7 @@ describe("ILNSdk", () => {
     const promise = sdk.submitInvoice({
       amount: 10000000n,
       discountRate: 250,
-      dueDate: 1700000200,
+      dueDate: Math.floor(Date.now() / 1000) + 86400,
       freelancer: freelancerKeypair.publicKey(),
       payer: Keypair.random().publicKey(),
     });

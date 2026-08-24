@@ -77,18 +77,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: packages/docs/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
+      - name: Setup pnpm with store cache
+        uses: ./.github/actions/setup-pnpm
 
       - name: Build
-        run: npm run build
+        run: pnpm run build
 
       - name: Setup Pages
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

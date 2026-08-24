@@ -28,7 +28,7 @@ function formatPercent(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
 }
 
-export function InsuranceAnalytics({ className, style }: InsuranceAnalyticsProps): JSX.Element {
+export function InsuranceAnalytics({ className, style }: InsuranceAnalyticsProps){
   const { data: poolBalance, error: poolError } = usePoolBalance();
   const { data: pendingClaims } = useClaimsList('Pending');
   const { data: approvedClaims } = useClaimsList('Approved');
@@ -136,7 +136,7 @@ export function InsuranceAnalytics({ className, style }: InsuranceAnalyticsProps
   );
 }
 
-function MetricRow({ label, value, color }: { label: string; value: number; color: string }): JSX.Element {
+function MetricRow({ label, value, color }: { label: string; value: number; color: string }){
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
       <span style={{ fontSize: 13, color: MUTED }}>{label}</span>

@@ -8,7 +8,7 @@ interface TestWrapperProps {
   children: ReactNode;
 }
 
-export function TestWrapper({ client, children }: TestWrapperProps): JSX.Element {
+export function TestWrapper({ client, children }: TestWrapperProps){
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {

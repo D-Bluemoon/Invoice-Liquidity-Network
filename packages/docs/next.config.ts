@@ -2,7 +2,6 @@ import type { NextConfig } from 'next'
 import nextra from 'nextra'
 
 const withNextra = nextra({
-  contentDirBasePath: '/',
   defaultShowCopyCode: true,
   search: {
     codeblocks: true

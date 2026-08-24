@@ -2,6 +2,33 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { registerEnvCommands, getCurrentEnvironment, getEnvironment } from "./env";
 import { Command } from "commander";
 
+// Commander's `.action(fn)` registers a handler; it doesn't invoke it, and
+// wraps it so the raw function isn't retrievable through any public API.
+// Patch `.action` for the duration of registration to stash the raw
+// function on each command, so tests can call it directly with whatever
+// args they want to exercise.
+function withCapturedActions<T>(fn: () => T): T {
+  const original = Command.prototype.action;
+  Command.prototype.action = function (
+    this: Command,
+    actionFn: (...args: unknown[]) => void | Promise<void>,
+  ) {
+    (this as unknown as { __rawAction: typeof actionFn }).__rawAction = actionFn;
+    return original.call(this, actionFn);
+  };
+  try {
+    return fn();
+  } finally {
+    Command.prototype.action = original;
+  }
+}
+
+function invokeAction(command: Command, ...args: unknown[]): unknown {
+  return (command as unknown as { __rawAction: (...args: unknown[]) => unknown }).__rawAction(
+    ...args,
+  );
+}
+
 // Mock fs and os
 const mockFs = {
   readFileSync: vi.fn(),
@@ -72,14 +99,14 @@ describe("Environment Management", () => {
           throw new Error("File not found");
         });
 
-        registerEnvCommands(program);
+        withCapturedActions(() => registerEnvCommands(program));
 
         // Simulate command execution
         const listCommand = program.commands.find((c: any) => c.name() === "env");
         const listSubcommand = listCommand?.commands.find((c: any) => c.name() === "list");
         
         if (listSubcommand) {
-          listSubcommand.action();
+          invokeAction(listSubcommand);
           expect(consoleLogSpy).toHaveBeenCalledWith("No environments configured. Use 'iln env create' to add one.");
         }
       });
@@ -100,13 +127,13 @@ describe("Environment Management", () => {
 
         mockFs.readFileSync.mockReturnValue(JSON.stringify(mockConfig));
 
-        registerEnvCommands(program);
+        withCapturedActions(() => registerEnvCommands(program));
 
         const listCommand = program.commands.find((c: any) => c.name() === "env");
         const listSubcommand = listCommand?.commands.find((c: any) => c.name() === "list");
         
         if (listSubcommand) {
-          listSubcommand.action();
+          invokeAction(listSubcommand);
           expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("testnet"));
         }
       });
@@ -130,13 +157,13 @@ describe("Environment Management", () => {
         mockFs.readFileSync.mockReturnValue(JSON.stringify(mockConfig));
         mockFs.writeFileSync.mockImplementation(() => {});
 
-        registerEnvCommands(program);
+        withCapturedActions(() => registerEnvCommands(program));
 
         const useCommand = program.commands.find((c: any) => c.name() === "env");
         const useSubcommand = useCommand?.commands.find((c: any) => c.name() === "use");
         
         if (useSubcommand) {
-          useSubcommand.action("testnet");
+          invokeAction(useSubcommand, "testnet");
           expect(mockFs.writeFileSync).toHaveBeenCalled();
           expect(consoleLogSpy).toHaveBeenCalledWith("Switched to environment: testnet");
         }
@@ -150,14 +177,14 @@ describe("Environment Management", () => {
 
         mockFs.readFileSync.mockReturnValue(JSON.stringify(mockConfig));
 
-        registerEnvCommands(program);
+        withCapturedActions(() => registerEnvCommands(program));
 
         const useCommand = program.commands.find((c: any) => c.name() === "env");
         const useSubcommand = useCommand?.commands.find((c: any) => c.name() === "use");
         
         if (useSubcommand) {
           expect(() => {
-            useSubcommand.action("nonexistent");
+            invokeAction(useSubcommand, "nonexistent");
           }).toThrow("Process exited");
           expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("not found"));
         }
@@ -176,13 +203,13 @@ describe("Environment Management", () => {
         mockFs.mkdirSync.mockImplementation(() => {});
         mockFs.writeFileSync.mockImplementation(() => {});
 
-        registerEnvCommands(program);
+        withCapturedActions(() => registerEnvCommands(program));
 
         const createCommand = program.commands.find((c: any) => c.name() === "env");
         const createSubcommand = createCommand?.commands.find((c: any) => c.name() === "create");
         
         if (createSubcommand) {
-          createSubcommand.action("testnet", {
+          invokeAction(createSubcommand, "testnet", {
             contractId: "GABCD1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890",
             rpcUrl: "https://testnet.rpc.com",
             networkPassphrase: "Test SDF Network",
@@ -209,14 +236,14 @@ describe("Environment Management", () => {
 
         mockFs.readFileSync.mockReturnValue(JSON.stringify(mockConfig));
 
-        registerEnvCommands(program);
+        withCapturedActions(() => registerEnvCommands(program));
 
         const createCommand = program.commands.find((c: any) => c.name() === "env");
         const createSubcommand = createCommand?.commands.find((c: any) => c.name() === "create");
         
         if (createSubcommand) {
           expect(() => {
-            createSubcommand.action("testnet", {
+            invokeAction(createSubcommand, "testnet", {
               contractId: "GABCD1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890",
               rpcUrl: "https://testnet.rpc.com",
               networkPassphrase: "Test SDF Network",
@@ -236,14 +263,14 @@ describe("Environment Management", () => {
         mockFs.existsSync.mockReturnValue(false);
         mockFs.mkdirSync.mockImplementation(() => {});
 
-        registerEnvCommands(program);
+        withCapturedActions(() => registerEnvCommands(program));
 
         const createCommand = program.commands.find((c: any) => c.name() === "env");
         const createSubcommand = createCommand?.commands.find((c: any) => c.name() === "create");
         
         if (createSubcommand) {
           expect(() => {
-            createSubcommand.action("testnet", {
+            invokeAction(createSubcommand, "testnet", {
               contractId: "invalid", // Invalid address
               rpcUrl: "https://testnet.rpc.com",
               networkPassphrase: "Test SDF Network",
@@ -291,13 +318,13 @@ describe("Environment Management", () => {
           createInterface: () => mockRl,
         }));
 
-        registerEnvCommands(program);
+        withCapturedActions(() => registerEnvCommands(program));
 
         const deleteCommand = program.commands.find((c: any) => c.name() === "env");
         const deleteSubcommand = deleteCommand?.commands.find((c: any) => c.name() === "delete");
         
         if (deleteSubcommand) {
-          deleteSubcommand.action("testnet");
+          invokeAction(deleteSubcommand, "testnet");
           expect(consoleLogSpy).toHaveBeenCalledWith("Deleted environment: testnet");
         }
       });
@@ -318,14 +345,14 @@ describe("Environment Management", () => {
 
         mockFs.readFileSync.mockReturnValue(JSON.stringify(mockConfig));
 
-        registerEnvCommands(program);
+        withCapturedActions(() => registerEnvCommands(program));
 
         const deleteCommand = program.commands.find((c: any) => c.name() === "env");
         const deleteSubcommand = deleteCommand?.commands.find((c: any) => c.name() === "delete");
         
         if (deleteSubcommand) {
           expect(() => {
-            deleteSubcommand.action("testnet");
+            invokeAction(deleteSubcommand, "testnet");
           }).toThrow("Process exited");
           expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("Cannot delete the active environment"));
         }
@@ -358,14 +385,14 @@ describe("Environment Management", () => {
           createInterface: () => mockRl,
         }));
 
-        registerEnvCommands(program);
+        withCapturedActions(() => registerEnvCommands(program));
 
         const deleteCommand = program.commands.find((c: any) => c.name() === "env");
         const deleteSubcommand = deleteCommand?.commands.find((c: any) => c.name() === "delete");
         
         if (deleteSubcommand) {
           expect(() => {
-            deleteSubcommand.action("testnet");
+            invokeAction(deleteSubcommand, "testnet");
           }).toThrow("Process exited");
           expect(consoleLogSpy).toHaveBeenCalledWith("Deletion cancelled.");
         }
@@ -390,13 +417,13 @@ describe("Environment Management", () => {
 
         mockFs.readFileSync.mockReturnValue(JSON.stringify(mockConfig));
 
-        registerEnvCommands(program);
+        withCapturedActions(() => registerEnvCommands(program));
 
         const showCommand = program.commands.find((c: any) => c.name() === "env");
         const showSubcommand = showCommand?.commands.find((c: any) => c.name() === "show");
         
         if (showSubcommand) {
-          showSubcommand.action("testnet");
+          invokeAction(showSubcommand, "testnet");
           expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("testnet"));
           expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("GABCD1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"));
         }
@@ -410,14 +437,14 @@ describe("Environment Management", () => {
 
         mockFs.readFileSync.mockReturnValue(JSON.stringify(mockConfig));
 
-        registerEnvCommands(program);
+        withCapturedActions(() => registerEnvCommands(program));
 
         const showCommand = program.commands.find((c: any) => c.name() === "env");
         const showSubcommand = showCommand?.commands.find((c: any) => c.name() === "show");
         
         if (showSubcommand) {
           expect(() => {
-            showSubcommand.action("nonexistent");
+            invokeAction(showSubcommand, "nonexistent");
           }).toThrow("Process exited");
           expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("not found"));
         }

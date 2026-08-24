@@ -72,12 +72,11 @@ export class OfflineQueuedError extends Error {
 // Default Configuration
 // ---------------------------------------------------------------------------
 
-const DEFAULT_CONFIG: Required<OfflineConfig> = {
+const DEFAULT_CONFIG: Omit<Required<OfflineConfig>, "storage"> = {
   maxRetries: 3,
   retryDelayMs: 5000,
   maxQueueSize: 100,
   storageKey: "iln_offline_queue",
-  storage: typeof localStorage !== "undefined" ? localStorage : createMemoryStorage(),
 };
 
 function createMemoryStorage(): OfflineStorage {
@@ -96,13 +95,18 @@ function createMemoryStorage(): OfflineStorage {
 export class OfflineManager {
   private queue: OfflineQueueItem[] = [];
   private config: Required<OfflineConfig>;
-  private isOnline: boolean = typeof navigator !== "undefined" ? navigator.onLine : true;
+  private isOnline: boolean =
+    typeof navigator !== "undefined" && typeof navigator.onLine === "boolean"
+      ? navigator.onLine
+      : true;
   private listeners: Set<StateChangeCallback> = new Set();
   private submitCallback: SubmitCallback | null = null;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(config: OfflineConfig = {}) {
-    this.config = { ...DEFAULT_CONFIG, ...config };
+    const storage =
+      config.storage ?? (typeof localStorage !== "undefined" ? localStorage : createMemoryStorage());
+    this.config = { ...DEFAULT_CONFIG, storage, ...config };
     this.loadQueue();
     this.setupEventListeners();
   }

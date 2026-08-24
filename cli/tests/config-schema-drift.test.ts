@@ -12,7 +12,6 @@ describe("Config Schema Drift", () => {
     const jsonProperties = Object.keys(jsonSchema.properties || {}).sort();
 
     // 2. Load Zod Schema shape keys
-    // @ts-expect-error Zod shape access for dynamic keys
     const zodProperties = Object.keys(ConfigSchema.shape)
       .filter((key) => key !== "$schema")
       .sort();
