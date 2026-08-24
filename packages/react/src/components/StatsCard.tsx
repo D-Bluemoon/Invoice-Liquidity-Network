@@ -42,15 +42,15 @@ export const StatsCard: React.FC<StatsCardProps> = ({
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
 
   useEffect(() => {
-    if (theme === 'system') {
-      const mq = window.matchMedia('(prefers-color-scheme: dark)');
-      setResolvedTheme(mq.matches ? 'dark' : 'light');
-      const handler = (e: MediaQueryListEvent) => setResolvedTheme(e.matches ? 'dark' : 'light');
-      mq.addEventListener('change', handler);
-      return () => mq.removeEventListener('change', handler);
-    } else {
+    if (theme !== 'system') {
       setResolvedTheme(theme);
+      return;
     }
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    setResolvedTheme(mq.matches ? 'dark' : 'light');
+    const handler = (e: MediaQueryListEvent) => setResolvedTheme(e.matches ? 'dark' : 'light');
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
   }, [theme]);
 
   const isDark = resolvedTheme === 'dark';

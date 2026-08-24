@@ -29,7 +29,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      id-token: write  # required for SLSA provenance attestation
+      id-token: write # required for SLSA provenance attestation
 
     steps:
       - name: Checkout
@@ -39,7 +39,7 @@ jobs:
 
       - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
         with:
-          version: "9.0.0"
+          version: '9.0.0'
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -51,7 +51,20 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Check npm publish credentials
+        id: npm-auth
+        run: |
+          if [ -z "$NPM_TOKEN" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::NPM_TOKEN secret is not configured — skipping Version Packages/Publish. Add the secret (or configure npm trusted publishing) to enable releases."
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - name: Create Release PR or Publish
+        if: steps.npm-auth.outputs.available == 'true'
         id: changesets
         uses: changesets/action@3841a0683d3cfa6dae0f9bb335290003010fe3f0 # v1.9.0
         with:

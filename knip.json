@@ -1,17 +1,6 @@
 {
-  "ignore": [
-    "frontend/**",
-    "backend/**",
-    "oracle-service/**"
-  ],
-  "ignoreBinaries": [
-    "playwright",
-    "sqlite3",
-    "sha256sum",
-    "gsutil",
-    "gitleaks",
-    "less"
-  ],
+  "ignore": ["frontend/**", "backend/**", "oracle-service/**"],
+  "ignoreBinaries": ["playwright", "sqlite3", "sha256sum", "gsutil", "gitleaks", "less"],
   "rules": {
     "optionalPeerDependencies": "off",
     "duplicates": "off"
@@ -22,28 +11,14 @@
   },
   "workspaces": {
     "sdk": {
-      "entry": [
-        "src/**/*.test.ts"
-      ],
-      "project": [
-        "src/**/*.ts"
-      ],
-      "ignoreDependencies": [
-        "@commitlint/cli",
-        "@commitlint/config-conventional"
-      ]
+      "entry": ["src/**/*.test.ts"],
+      "project": ["src/**/*.ts"],
+      "ignoreDependencies": ["@commitlint/cli", "@commitlint/config-conventional"]
     },
     ".": {
-      "entry": [
-        "scripts/*.ts",
-        "scripts/migrations/*.ts"
-      ],
-      "project": [
-        "scripts/**/*.ts"
-      ],
-      "ignoreDependencies": [
-        "husky"
-      ]
+      "entry": ["scripts/*.ts", "scripts/migrations/*.ts"],
+      "project": ["scripts/**/*.ts"],
+      "ignoreDependencies": ["husky"]
     },
     "packages/sdk": {
       "entry": [
@@ -55,88 +30,39 @@
         "src/**/*.test.ts",
         "src/crypto-browser.ts"
       ],
-      "project": [
-        "src/**/*.ts",
-        "*.ts"
-      ]
+      "project": ["src/**/*.ts", "*.ts"]
     },
     "cli": {
-      "entry": [
-        "src/bin.ts",
-        "src/cli.ts",
-        "src/index.ts"
-      ],
-      "project": [
-        "src/**/*.ts"
-      ],
-      "ignoreDependencies": [
-        "@commitlint/cli",
-        "@commitlint/config-conventional"
-      ]
+      "entry": ["src/bin.ts", "src/cli.ts", "src/index.ts"],
+      "project": ["src/**/*.ts"],
+      "ignoreDependencies": ["@commitlint/cli", "@commitlint/config-conventional"]
     },
     "indexer": {
-      "project": [
-        "src/**/*.ts"
-      ],
-      "ignoreDependencies": [
-        "@commitlint/cli",
-        "@commitlint/config-conventional"
-      ]
+      "project": ["src/**/*.ts"],
+      "ignoreDependencies": ["@commitlint/cli", "@commitlint/config-conventional"]
     },
     "notifications": {
-      "entry": [
-        "src/service.ts"
-      ],
-      "project": [
-        "src/**/*.ts"
-      ],
-      "ignoreDependencies": [
-        "@commitlint/cli",
-        "@commitlint/config-conventional"
-      ]
+      "entry": ["src/service.ts"],
+      "project": ["src/**/*.ts"],
+      "ignoreDependencies": ["@commitlint/cli", "@commitlint/config-conventional"]
     },
     "docs": {
-      "entry": [
-        "pages/**/*.{ts,tsx,mdx}",
-        "theme.config.jsx",
-        "next.config.{js,mjs}"
-      ],
-      "project": [
-        "**/*.{ts,tsx,jsx}"
-      ]
+      "entry": ["pages/**/*.{ts,tsx,mdx}", "theme.config.jsx", "next.config.{js,mjs}"],
+      "project": ["**/*.{ts,tsx,jsx}"]
     },
     "packages/indexer": {
-      "project": [
-        "src/**/*.ts"
-      ],
-      "ignoreDependencies": [
-        "@commitlint/cli",
-        "@commitlint/config-conventional"
-      ]
+      "project": ["src/**/*.ts"],
+      "ignoreDependencies": ["@commitlint/cli", "@commitlint/config-conventional"]
     },
     "packages/opentelemetry": {
-      "entry": [
-        "tests/**/*.test.ts"
-      ],
-      "project": [
-        "src/**/*.ts"
-      ],
-      "ignoreDependencies": [
-        "@iln/sdk"
-      ]
+      "entry": ["tests/**/*.test.ts"],
+      "project": ["src/**/*.ts"],
+      "ignoreDependencies": ["@iln/sdk"]
     },
     "packages/docs": {
-      "entry": [
-        "mdx-components.ts",
-        "app/**/*.{ts,tsx}",
-        "content/**/_meta.ts"
-      ],
-      "project": [
-        "**/*.{ts,tsx}"
-      ],
-      "ignoreUnresolved": [
-        "./generated/_meta"
-      ],
+      "entry": ["mdx-components.ts", "app/**/*.{ts,tsx}", "content/**/_meta.ts"],
+      "project": ["**/*.{ts,tsx}"],
+      "ignoreUnresolved": [],
       "ignoreDependencies": [
         "@iln/eslint-config",
         "@typescript-eslint/eslint-plugin",
@@ -144,28 +70,19 @@
         "eslint-config-prettier",
         "eslint-plugin-jsx-a11y",
         "eslint-plugin-react",
-        "eslint-plugin-react-hooks"
+        "eslint-plugin-react-hooks",
+        "tailwindcss"
       ]
     },
     "packages/scripts": {
-      "entry": [
-        "**/*.{ts,js}"
-      ],
-      "project": [
-        "**/*.{ts,js}"
-      ]
+      "entry": ["**/*.{ts,js}"],
+      "project": ["**/*.{ts,js}"]
     },
     "packages/invoice-sdk": {
-      "ignoreDependencies": [
-        "@iln/sdk"
-      ]
+      "ignoreDependencies": ["@iln/sdk"]
     },
     "packages/eslint-config": {
-      "ignoreDependencies": [
-        "eslint-plugin-react",
-        "eslint-plugin-react-hooks",
-        "eslint-plugin-jsx-a11y"
-      ]
+      "ignoreDependencies": []
     }
   },
   "ignoreExportsUsedInFile": true

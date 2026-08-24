@@ -49,10 +49,10 @@ export function useInvoiceList(address: string, role: InvoiceRole): UseInvoiceLi
         case 'issuer':
           return client.getInvoicesByIssuer(address);
         case 'lp':
-          return client.getInvoicesByStatus(1); // Funded — then filter by fundedBy client-side or extend SDK
+          return client.getInvoicesByStatus('Funded'); // then filter by fundedBy client-side or extend SDK
         case 'payer': {
           // If SDK doesn't have payer filter, fetch all and filter
-          const all = await client.getInvoicesByStatus(0); // Pending as proxy
+          const all = await client.getInvoicesByStatus('Pending'); // as proxy
           return all.filter((inv) => inv.payer === address);
         }
         default:

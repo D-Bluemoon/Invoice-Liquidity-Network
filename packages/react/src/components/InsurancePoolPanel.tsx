@@ -33,7 +33,7 @@ const ACCENT = '#8B5E34';
 export function InsurancePoolPanel({ address, className, style }: InsurancePoolPanelProps){
   const { data: coverage, isLoading: coverageLoading, error: coverageError } = useLPCoverage(address);
   const { data: poolBalance } = usePoolBalance();
-  const { invoices } = useInvoices(address, 'funder');
+  const { data: invoices } = useInvoices(address, { role: 'lp' });
   const { enroll, isPending: enrolling, error: enrollError, reset: resetEnroll } = useEnroll();
   const { depositPremium, isPending: depositing, error: depositError, reset: resetDeposit } = useDepositPremium();
 

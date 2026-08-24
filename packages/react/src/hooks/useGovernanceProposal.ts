@@ -21,7 +21,7 @@ export interface GovernanceTimelockState {
 }
 
 export interface UseGovernanceProposalResult {
-  data: import('@iln/sdk').Proposal | undefined;
+  data: Awaited<ReturnType<import('@iln/sdk').ILNClient['getProposal']>> | undefined;
   isLoading: boolean;
   error: Error | null;
   isPolling: boolean;

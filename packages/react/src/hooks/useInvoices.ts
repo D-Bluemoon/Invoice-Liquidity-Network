@@ -65,9 +65,9 @@ export function useInvoices(address: string, options: UseInvoicesOptions = {}): 
         case 'issuer':
           return client.getInvoicesByIssuer(address);
         case 'lp':
-          return client.getInvoicesByStatus(1);
+          return client.getInvoicesByStatus('Funded');
         case 'payer': {
-          const all = await client.getInvoicesByStatus(0);
+          const all = await client.getInvoicesByStatus('Pending');
           return all.filter((inv) => inv.payer === address);
         }
         default:

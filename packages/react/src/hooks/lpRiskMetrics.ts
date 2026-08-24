@@ -125,7 +125,7 @@ function readPortfolioNumber(portfolio: LPPortfolio | undefined, keys: string[])
   if (!portfolio) {
     return 0;
   }
-  const record = portfolio as Record<string, unknown>;
+  const record = portfolio as unknown as Record<string, unknown>;
   for (const key of keys) {
     if (record[key] !== undefined) {
       return toNumberValue(record[key]);
@@ -263,13 +263,13 @@ function simulateValueAtRisk(
 export function calculateLPRiskMetrics(input: LPRiskMetricsInput): LPRiskMetrics {
   const nowSeconds = normalizeTimestampSeconds(input.now ?? Date.now());
   const validInvoices = input.invoices.filter((invoice) => {
-    const record = invoice as Record<string, unknown>;
+    const record = invoice as unknown as Record<string, unknown>;
     const fundedBy = String(record.fundedBy ?? record.funder ?? '');
     return fundedBy.length === 0 || fundedBy === input.address;
   });
 
   const positionSummaries = validInvoices.map((invoice) => {
-    const record = invoice as Record<string, unknown>;
+    const record = invoice as unknown as Record<string, unknown>;
     const payer = String(record.payer ?? '');
     const token = normalizeTokenLabel(record.token);
     const amount = toBigIntValue(record.amount);

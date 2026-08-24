@@ -41,7 +41,7 @@ export function useLPRiskMetrics(
   const invoicePositions = useMemo(() => {
     const invoices = rawInvoices ?? [];
     return invoices.filter((invoice) => {
-      const record = invoice as Record<string, unknown>;
+      const record = invoice as unknown as Record<string, unknown>;
       const fundedBy = String(record.fundedBy ?? record.funder ?? '');
       return fundedBy.length === 0 || fundedBy === address;
     });
@@ -50,7 +50,7 @@ export function useLPRiskMetrics(
   const payerAddresses = useMemo(() => {
     const unique = new Set<string>();
     for (const invoice of invoicePositions) {
-      const payer = String((invoice as Record<string, unknown>).payer ?? '');
+      const payer = String((invoice as unknown as Record<string, unknown>).payer ?? '');
       if (payer) {
         unique.add(payer);
       }
@@ -80,7 +80,7 @@ export function useLPRiskMetrics(
       payerAddresses.forEach((payer, index) => {
         const query = reputationQueries[index];
         if (query?.data !== undefined) {
-          next.set(payer, query.data);
+          next.set(payer, query.data.score);
         }
       });
     }

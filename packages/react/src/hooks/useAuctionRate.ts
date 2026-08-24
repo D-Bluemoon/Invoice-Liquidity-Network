@@ -218,16 +218,16 @@ export function useAuctionRate(
         const current = await auctionClient.getCurrentDiscount(invoiceId);
         if (typeof current === 'number') {
           return {
-            ...(initialInvoice as AuctionInvoiceRecord | undefined),
+            ...(initialInvoice as unknown as AuctionInvoiceRecord | undefined),
             currentDiscountBps: current,
-          } as Invoice;
+          } as unknown as Invoice;
         }
 
         if (current.invoice) {
           return {
-            ...(current.invoice as AuctionInvoiceRecord),
+            ...(current.invoice as unknown as AuctionInvoiceRecord),
             currentDiscountBps: current.currentDiscountBps,
-          } as Invoice;
+          } as unknown as Invoice;
         }
       }
 

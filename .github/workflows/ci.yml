@@ -609,16 +609,6 @@ jobs:
           PAYER_SECRET: ${{ secrets.TESTNET_PAYER_SECRET }}
           FUNDER_SECRET: ${{ secrets.TESTNET_FUNDER_SECRET }}
 
-  sdk-testnet-skipped:
-    name: SDK testnet integration (skipped — unhealthy testnet)
-    needs: [testnet-health]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.testnet-health.outputs.healthy != 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Report skipped integration tests
-        run: |
-          echo "::warning::Horizon testnet was unhealthy; SDK testnet integration tests were skipped."
-
   # ===========================================================================
   # Core JS/TS quality gate — Issue #252
   #

@@ -48,7 +48,6 @@ export type {
   BatchInvoiceInput,
   BatchProgress,
   InvoiceProgress,
-  InvoiceProgress,
   AuctionRatePoint,
   AuctionRateState,
   UseAuctionRateOptions,

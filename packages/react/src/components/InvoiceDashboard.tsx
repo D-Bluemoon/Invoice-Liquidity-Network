@@ -15,7 +15,7 @@
  * onEvent        Callback fired for every incoming event
  */
 
-import React, {
+import {
   useCallback,
   useEffect,
   useMemo,

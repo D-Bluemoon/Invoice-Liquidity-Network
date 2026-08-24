@@ -97,7 +97,7 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
         <div>
           <div style={labelStyle}>Issuer</div>
           <div style={valueStyle}>
-            <AddressDisplay address={invoice.issuer as unknown as string ?? ''} copyable={!isClickable} />
+            <AddressDisplay address={invoice.freelancer as unknown as string ?? ''} copyable={!isClickable} />
           </div>
         </div>
 

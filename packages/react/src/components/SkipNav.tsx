@@ -1,5 +1,3 @@
-import React from 'react';
-
 export function SkipNav(){
   return (
     <a
@@ -7,8 +5,8 @@ export function SkipNav(){
       style={{
         position: 'absolute',
         left: '-9999px',
-        width: 1,
-        height: 1,
+        width: '1px',
+        height: '1px',
         overflow: 'hidden',
         zIndex: 9999,
       }}
@@ -22,7 +20,7 @@ export function SkipNav(){
         e.currentTarget.style.background = '#1F2937';
         e.currentTarget.style.color = '#fff';
         e.currentTarget.style.borderRadius = '8px';
-        e.currentTarget.style.fontWeight = 700;
+        e.currentTarget.style.fontWeight = '700';
         e.currentTarget.style.fontSize = '14px';
         e.currentTarget.style.textDecoration = 'none';
       }}
