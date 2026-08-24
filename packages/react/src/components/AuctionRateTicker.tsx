@@ -89,7 +89,7 @@ export function AuctionRateTicker({
   onFund,
   onFunded,
   onError,
-}: AuctionRateTickerProps): JSX.Element {
+}: AuctionRateTickerProps){
   const client = useContext(ILNContext);
   const queryClient = useQueryClient();
   const auction = useAuctionRate(invoiceId, {

@@ -24,6 +24,7 @@ import {
   helpExample,
   helpSection,
   formatJsonSuccess,
+  formatJsonError,
 } from "./format";
 import { generateManPage } from "./man";
 import { registerInspectCommand } from "./inspect";
@@ -1299,7 +1300,7 @@ export async function runCli(
           ) + "\n",
         );
       } else {
-        stdout.write(JSON.stringify({ success: false, error: formatUnknownError(error) }, null, 2) + "\n");
+        stdout.write(formatJsonError(formatUnknownError(error)) + "\n");
       }
     } else if (isStructuredError(error)) {
       const hyperlinks = Boolean((stderr as NodeJS.WriteStream).isTTY);

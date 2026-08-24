@@ -14,23 +14,23 @@ beforeEach(() => {
 
 describe("Version Parsing", () => {
   it("parses clean version strings", () => {
-    expect(parseVersion("1.2.3")).toEqual([1, 2, 3]);
+    expect(parseVersion("1.2.3")).toMatchObject({ major: 1, minor: 2, patch: 3 });
   });
 
   it("handles leading 'v' prefix case-insensitively", () => {
-    expect(parseVersion("v1.2.3")).toEqual([1, 2, 3]);
-    expect(parseVersion("V2.4.6")).toEqual([2, 4, 6]);
+    expect(parseVersion("v1.2.3")).toMatchObject({ major: 1, minor: 2, patch: 3 });
+    expect(parseVersion("V2.4.6")).toMatchObject({ major: 2, minor: 4, patch: 6 });
   });
 
   it("ignores pre-release or build suffixes", () => {
-    expect(parseVersion("1.0.0-beta.1")).toEqual([1, 0, 0]);
-    expect(parseVersion("0.1.0-alpha+build.123")).toEqual([0, 1, 0]);
+    expect(parseVersion("1.0.0-beta.1")).toMatchObject({ major: 1, minor: 0, patch: 0 });
+    expect(parseVersion("0.1.0-alpha+build.123")).toMatchObject({ major: 0, minor: 1, patch: 0 });
   });
 
   it("handles incomplete version strings gracefully", () => {
-    expect(parseVersion("1")).toEqual([1, 0, 0]);
-    expect(parseVersion("1.2")).toEqual([1, 2, 0]);
-    expect(parseVersion("")).toEqual([0, 0, 0]);
+    expect(parseVersion("1")).toMatchObject({ major: 1, minor: 0, patch: 0 });
+    expect(parseVersion("1.2")).toMatchObject({ major: 1, minor: 2, patch: 0 });
+    expect(parseVersion("")).toMatchObject({ major: 0, minor: 0, patch: 0 });
   });
 });
 

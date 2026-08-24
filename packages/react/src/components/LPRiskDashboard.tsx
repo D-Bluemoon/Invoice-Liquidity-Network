@@ -126,7 +126,7 @@ function MetricPill({
   label: string;
   value: string;
   tone?: 'neutral' | 'warning' | 'danger' | 'positive';
-}): JSX.Element {
+}){
   const toneMap = {
     neutral: { bg: PANEL_ALT, text: TEXT },
     warning: { bg: '#FEF3C7', text: WARNING },
@@ -156,7 +156,7 @@ export function PayerConcentrationChart({
   data,
 }: {
   data: LPRiskPayerExposure[];
-}): JSX.Element {
+}){
   const pieData = data.map((entry) => ({
     name: formatPayerLabel(entry.payer),
     payer: entry.payer,
@@ -208,7 +208,7 @@ export function TokenDiversificationChart({
   data,
 }: {
   data: LPRiskTokenDiversification[];
-}): JSX.Element {
+}){
   const barData = data.map((entry) => ({
     token: entry.token,
     value: Number(entry.amount),
@@ -255,7 +255,7 @@ export function MaturityProfileChart({
   data,
 }: {
   data: LPRiskMaturityBucket[];
-}): JSX.Element {
+}){
   const barData = data.map((entry) => ({
     bucket: entry.label,
     value: Number(entry.amount),
@@ -318,7 +318,7 @@ export function LPRiskDashboard({
   isLoading: externalLoading = false,
   className,
   style,
-}: LPRiskDashboardProps): JSX.Element {
+}: LPRiskDashboardProps){
   const { data, isLoading, error } = useLPRiskMetrics(address, {
     portfolio,
     invoices,

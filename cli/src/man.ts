@@ -2,6 +2,12 @@ import type { Command, Option, Argument } from "commander";
 
 const TODAY = new Date().toISOString().slice(0, 7); // YYYY-MM
 
+// Commander tracks a command's hidden state on an internal `_hidden` field
+// (set via `.hideHelp()` or `{ hidden: true }`); there's no public getter.
+function isHiddenCommand(command: Command): boolean {
+  return Boolean((command as unknown as { _hidden?: boolean })._hidden);
+}
+
 function roffEscape(text: string): string {
   return text
     .replace(/\\/g, "\\\\")
@@ -90,7 +96,7 @@ function generateTopLevelManPage(program: Command): string {
   ];
 
   // Commands section
-  const cmds = program.commands.filter((c) => !c.hidden);
+  const cmds = program.commands.filter((c) => !isHiddenCommand(c));
   if (cmds.length > 0) {
     sections.push(".SH COMMANDS");
     for (const cmd of cmds) {
@@ -160,7 +166,7 @@ function generateSubcommandManPage(program: Command, commandName: string): strin
   ];
 
   // Nested subcommands
-  const subCmds = sub.commands.filter((c) => !c.hidden);
+  const subCmds = sub.commands.filter((c) => !isHiddenCommand(c));
   if (subCmds.length > 0) {
     sections.push(".SH COMMANDS");
     for (const nested of subCmds) {

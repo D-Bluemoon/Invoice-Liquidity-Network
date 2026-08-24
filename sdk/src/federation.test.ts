@@ -113,7 +113,10 @@ describe('FederationRecordManager', () => {
   it('getByAddress delegates to resolveFederationAddress', async () => {
     vi.mocked(Federation.Server.resolve).mockResolvedValueOnce({ account_id: 'GRESOLVED' } as any);
     const mgr = new FederationRecordManager('https://fed.example.com');
-    const result = await mgr.getByAddress('alice*iln.finance');
+    // Use an address not resolved elsewhere in this file — resolveFederationAddress
+    // caches results for 5 minutes, and a shared address would return another
+    // test's cached value instead of exercising this mock.
+    const result = await mgr.getByAddress('carol*iln.finance');
     expect(result).toBe('GRESOLVED');
   });
 

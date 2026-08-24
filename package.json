@@ -11,6 +11,7 @@
     "test:load:indexer": "ts-node --esm scripts/load-test-indexer.ts",
     "test:load:notifications": "ts-node --esm scripts/load-test-notifications.ts",
     "build": "turbo run build",
+    "changeset:version": "changeset version",
     "licence:check": "node scripts/check-licenses.js",
     "generate:types": "ts-node --esm scripts/generate-types.ts",
     "generate:shared-types": "node --import tsx/esm scripts/generate-shared-types.mts --spec backend/target/spec.json --out packages/shared/src/types.ts",
@@ -45,7 +46,7 @@
     "check:shared-types": "node scripts/check-no-duplicate-types.mjs"
   },
   "devDependencies": {
-    "@changesets/cli": "2.31.0",
+    "@changesets/cli": "^2.31.0",
     "@commitlint/cli": "^17.6.0",
     "@commitlint/config-conventional": "^17.6.0",
     "@stellar/stellar-sdk": "^15.0.1",

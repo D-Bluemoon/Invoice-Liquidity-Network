@@ -27,7 +27,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:integration": "vitest run tests/integration.test.ts",
-    "docs:generate": "ts-node --esm scripts/generate-docs.ts",
+    "docs:generate": "tsx scripts/generate-docs.ts",
     "dead-code:check": "pnpm dead-code:check --filter @invoice-liquidity/cli"
   },
   "dependencies": {

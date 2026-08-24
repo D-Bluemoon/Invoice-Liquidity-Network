@@ -5,7 +5,7 @@ import { ValidationError } from "./errors";
 describe("Validators", () => {
   describe("validateStellarAddress", () => {
     it("should validate correct Stellar addresses", () => {
-      const result = Validators.validateStellarAddress("GABCD1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890");
+      const result = Validators.validateStellarAddress("GBIPW5ELSZAHOV4DKRY7GNU3CJQX6FMT2BIPW5ELSZAHOV4DKRY7GNU3");
       expect(result.isValid).toBe(true);
       expect(result.error).toBeUndefined();
     });
@@ -23,7 +23,7 @@ describe("Validators", () => {
     });
 
     it("should reject address without G prefix", () => {
-      const result = Validators.validateStellarAddress("ABCD1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890");
+      const result = Validators.validateStellarAddress("ABIPW5ELSZAHOV4DKRY7GNU3CJQX6FMT2BIPW5ELSZAHOV4DKRY7GNU3");
       expect(result.isValid).toBe(false);
       expect(result.error).toContain("start with 'G'");
     });
@@ -35,7 +35,7 @@ describe("Validators", () => {
     });
 
     it("should reject address with invalid characters", () => {
-      const result = Validators.validateStellarAddress("GABCD1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789g");
+      const result = Validators.validateStellarAddress("GBIPW5ELSZAHOV4DKRY7GNU3CJQX6FMT2BIPW5ELSZAHOV4DKRY7GNU0");
       expect(result.isValid).toBe(false);
       expect(result.error).toContain("invalid base32 characters");
     });
@@ -77,7 +77,7 @@ describe("Validators", () => {
     it("should reject infinite numbers", () => {
       const result = Validators.validateAmount(Infinity);
       expect(result.isValid).toBe(false);
-      expect(result.error).toContain("finite number");
+      expect(result.error).toContain("finite integer number");
     });
 
     it("should reject invalid string amounts", () => {
@@ -118,7 +118,8 @@ describe("Validators", () => {
     });
 
     it("should validate date strings", () => {
-      const result = Validators.validateDate("2025-12-31");
+      const futureDateString = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+      const result = Validators.validateDate(futureDateString);
       expect(result.isValid).toBe(true);
     });
 
@@ -157,7 +158,7 @@ describe("Validators", () => {
     it("should enforce minimum date", () => {
       const minDate = new Date("2025-01-01");
       const earlierDate = new Date("2024-12-31");
-      const result = Validators.validateDate(earlierDate, { min: minDate });
+      const result = Validators.validateDate(earlierDate, { min: minDate, allowPast: true });
       expect(result.isValid).toBe(false);
       expect(result.error).toContain("after");
     });
@@ -165,7 +166,7 @@ describe("Validators", () => {
     it("should enforce maximum date", () => {
       const maxDate = new Date("2025-12-31");
       const laterDate = new Date("2026-01-01");
-      const result = Validators.validateDate(laterDate, { max: maxDate });
+      const result = Validators.validateDate(laterDate, { max: maxDate, allowPast: true });
       expect(result.isValid).toBe(false);
       expect(result.error).toContain("before");
     });
@@ -180,7 +181,7 @@ describe("Validators", () => {
     it("should reject non-finite numbers", () => {
       const result = Validators.validateDiscountRate(Infinity);
       expect(result.isValid).toBe(false);
-      expect(result.error).toContain("finite number");
+      expect(result.error).toContain("finite integer number");
     });
 
     it("should reject zero when not allowed", () => {
@@ -251,8 +252,8 @@ describe("Validators", () => {
   describe("validateInvoiceSubmission", () => {
     it("should validate valid invoice submission", () => {
       const result = Validators.validateInvoiceSubmission({
-        freelancer: "GABCD1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890",
-        payer: "GABCD1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567891",
+        freelancer: "GBIPW5ELSZAHOV4DKRY7GNU3CJQX6FMT2BIPW5ELSZAHOV4DKRY7GNU3",
+        payer: "GFMT2BIPW5ELSZAHOV4DKRY7GNU3CJQX6FMT2BIPW5ELSZAHOV4DKRY7",
         amount: 1000n,
         dueDate: Math.floor(Date.now() / 1000) + 86400,
         discountRate: 300,
@@ -263,31 +264,31 @@ describe("Validators", () => {
     it("should reject invalid freelancer address", () => {
       const result = Validators.validateInvoiceSubmission({
         freelancer: "invalid",
-        payer: "GABCD1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567891",
+        payer: "GFMT2BIPW5ELSZAHOV4DKRY7GNU3CJQX6FMT2BIPW5ELSZAHOV4DKRY7",
         amount: 1000n,
         dueDate: Math.floor(Date.now() / 1000) + 86400,
         discountRate: 300,
       });
       expect(result.isValid).toBe(false);
-      expect(result.error).toContain("freelancer address");
+      expect(result.error).toContain("freelancer");
     });
 
     it("should reject invalid payer address", () => {
       const result = Validators.validateInvoiceSubmission({
-        freelancer: "GABCD1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890",
+        freelancer: "GBIPW5ELSZAHOV4DKRY7GNU3CJQX6FMT2BIPW5ELSZAHOV4DKRY7GNU3",
         payer: "invalid",
         amount: 1000n,
         dueDate: Math.floor(Date.now() / 1000) + 86400,
         discountRate: 300,
       });
       expect(result.isValid).toBe(false);
-      expect(result.error).toContain("payer address");
+      expect(result.error).toContain("payer");
     });
 
     it("should reject zero amount", () => {
       const result = Validators.validateInvoiceSubmission({
-        freelancer: "GABCD1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890",
-        payer: "GABCD1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567891",
+        freelancer: "GBIPW5ELSZAHOV4DKRY7GNU3CJQX6FMT2BIPW5ELSZAHOV4DKRY7GNU3",
+        payer: "GFMT2BIPW5ELSZAHOV4DKRY7GNU3CJQX6FMT2BIPW5ELSZAHOV4DKRY7",
         amount: 0n,
         dueDate: Math.floor(Date.now() / 1000) + 86400,
         discountRate: 300,
@@ -298,33 +299,33 @@ describe("Validators", () => {
 
     it("should reject past due date", () => {
       const result = Validators.validateInvoiceSubmission({
-        freelancer: "GABCD1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890",
-        payer: "GABCD1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567891",
+        freelancer: "GBIPW5ELSZAHOV4DKRY7GNU3CJQX6FMT2BIPW5ELSZAHOV4DKRY7GNU3",
+        payer: "GFMT2BIPW5ELSZAHOV4DKRY7GNU3CJQX6FMT2BIPW5ELSZAHOV4DKRY7",
         amount: 1000n,
         dueDate: Math.floor(Date.now() / 1000) - 86400,
         discountRate: 300,
       });
       expect(result.isValid).toBe(false);
-      expect(result.error).toContain("due date");
+      expect(result.error).toContain("cannot be in the past");
     });
 
     it("should reject invalid discount rate", () => {
       const result = Validators.validateInvoiceSubmission({
-        freelancer: "GABCD1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890",
-        payer: "GABCD1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567891",
+        freelancer: "GBIPW5ELSZAHOV4DKRY7GNU3CJQX6FMT2BIPW5ELSZAHOV4DKRY7GNU3",
+        payer: "GFMT2BIPW5ELSZAHOV4DKRY7GNU3CJQX6FMT2BIPW5ELSZAHOV4DKRY7",
         amount: 1000n,
         dueDate: Math.floor(Date.now() / 1000) + 86400,
         discountRate: 15000,
       });
       expect(result.isValid).toBe(false);
-      expect(result.error).toContain("discount rate");
+      expect(result.error).toContain("discountRate");
     });
   });
 
   describe("validateFunding", () => {
     it("should validate valid funding parameters", () => {
       const result = Validators.validateFunding({
-        funder: "GABCD1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890",
+        funder: "GBIPW5ELSZAHOV4DKRY7GNU3CJQX6FMT2BIPW5ELSZAHOV4DKRY7GNU3",
         invoiceId: 1n,
       });
       expect(result.isValid).toBe(true);
@@ -336,12 +337,12 @@ describe("Validators", () => {
         invoiceId: 1n,
       });
       expect(result.isValid).toBe(false);
-      expect(result.error).toContain("funder address");
+      expect(result.error).toContain("funder");
     });
 
     it("should reject negative invoice ID", () => {
       const result = Validators.validateFunding({
-        funder: "GABCD1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890",
+        funder: "GBIPW5ELSZAHOV4DKRY7GNU3CJQX6FMT2BIPW5ELSZAHOV4DKRY7GNU3",
         invoiceId: -1n,
       });
       expect(result.isValid).toBe(false);

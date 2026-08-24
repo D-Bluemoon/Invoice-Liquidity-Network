@@ -1,6 +1,6 @@
-import type { Invoice, InvoiceStatus, ProtocolConfig } from '../../../sdk/src/types'
-import type { GovernanceProposal, ProposalAction } from '../../../sdk/src/governance-types'
-import { ProposalActionKind, ProposalStatus } from '../../../sdk/src/governance-types'
+import type { Invoice, InvoiceState, ProtocolConfig } from '@iln/sdk'
+import type { GovernanceProposal, ProposalAction } from '@iln/sdk'
+import { ProposalActionKind, ProposalStatus } from '@iln/sdk'
 import { faker } from '@faker-js/faker'
 
 export function createInvoice(overrides?: Partial<Invoice>): Invoice {
@@ -8,12 +8,23 @@ export function createInvoice(overrides?: Partial<Invoice>): Invoice {
     id: BigInt(faker.number.int({ min: 1, max: 9999 })),
     freelancer: faker.finance.ethereumAddress(),
     payer: faker.finance.ethereumAddress(),
+    token: faker.finance.ethereumAddress(),
     amount: BigInt(faker.number.int({ min: 100, max: 100000 })),
     dueDate: faker.date.future().getTime(),
     discountRate: faker.number.int({ min: 1, max: 20 }),
-    status: "Pending" as InvoiceStatus,
+    status: "Pending" as InvoiceState,
     funder: null,
     fundedAt: null,
+    amountFunded: 0n,
+    amountPaid: 0n,
+    submitterReputation: 0,
+    referralCode: null,
+    allowedLps: null,
+    isAuction: false,
+    auctionStartRate: null,
+    auctionMinRate: null,
+    auctionRateDecayPerHour: null,
+    auctionStartedAt: null,
     ...overrides
   };
 }

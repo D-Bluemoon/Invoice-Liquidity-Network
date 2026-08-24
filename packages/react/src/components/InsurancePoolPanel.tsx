@@ -30,7 +30,7 @@ const WARNING = '#B45309';
 const DANGER = '#B91C1C';
 const ACCENT = '#8B5E34';
 
-export function InsurancePoolPanel({ address, className, style }: InsurancePoolPanelProps): JSX.Element {
+export function InsurancePoolPanel({ address, className, style }: InsurancePoolPanelProps){
   const { data: coverage, isLoading: coverageLoading, error: coverageError } = useLPCoverage(address);
   const { data: poolBalance } = usePoolBalance();
   const { invoices } = useInvoices(address, 'funder');
