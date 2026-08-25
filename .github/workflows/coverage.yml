@@ -2,9 +2,9 @@ name: Coverage
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ['main']
   pull_request:
-    branches: [ "main" ]
+    branches: ['main']
 
 # Least-privilege: read code to run tests and upload coverage to Codecov.
 permissions:

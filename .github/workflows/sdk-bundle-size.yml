@@ -3,18 +3,18 @@ name: SDK Bundle Size
 on:
   push:
     paths:
-      - "sdk/src/**"
-      - "sdk/package.json"
-      - "sdk/tsup.config.ts"
-      - "sdk/.bundle-size.json"
-      - "packages/shared/src/**"
+      - 'sdk/src/**'
+      - 'sdk/package.json'
+      - 'sdk/tsup.config.ts'
+      - 'sdk/.bundle-size.json'
+      - 'packages/shared/src/**'
   pull_request:
     paths:
-      - "sdk/src/**"
-      - "sdk/package.json"
-      - "sdk/tsup.config.ts"
-      - "sdk/.bundle-size.json"
-      - "packages/shared/src/**"
+      - 'sdk/src/**'
+      - 'sdk/package.json'
+      - 'sdk/tsup.config.ts'
+      - 'sdk/.bundle-size.json'
+      - 'packages/shared/src/**'
 
 permissions:
   contents: read
@@ -41,7 +41,7 @@ jobs:
 
       - name: Build SDK
         env:
-          SKIP_DTS: "true"
+          SKIP_DTS: 'true'
         run: pnpm --filter @iln/sdk build
 
       - name: Check bundle size

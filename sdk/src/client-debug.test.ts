@@ -1,13 +1,13 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Keypair, nativeToScVal } from "@stellar/stellar-sdk";
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Keypair, nativeToScVal } from '@stellar/stellar-sdk';
 
-describe("ILNSdk debug logging", () => {
+describe('ILNSdk debug logging', () => {
   const originalEnv = process.env.ILN_DEBUG;
   const originalConsoleLog = console.log;
 
   beforeEach(() => {
     vi.resetModules();
-    process.env.ILN_DEBUG = "1";
+    process.env.ILN_DEBUG = '1';
     // The logger routes DEBUG-level entries through console.log (see logger.ts).
     globalThis.console.log = vi.fn();
   });
@@ -17,8 +17,8 @@ describe("ILNSdk debug logging", () => {
     globalThis.console.log = originalConsoleLog;
   });
 
-  it("emits debug logs when ILN_DEBUG=1", async () => {
-    const { ILNSdk } = await import("./client");
+  it('emits debug logs when ILN_DEBUG=1', async () => {
+    const { ILNSdk } = await import('./client');
     const server = {
       getAccount: vi.fn(),
       prepareTransaction: vi.fn(),
@@ -37,7 +37,7 @@ describe("ILNSdk debug logging", () => {
             freelancer: Keypair.random().publicKey(),
             id: 7n,
             payer: Keypair.random().publicKey(),
-            status: "Funded",
+            status: 'Funded',
             submitter_reputation: 0,
             token: Keypair.random().publicKey(),
           }),
@@ -46,9 +46,9 @@ describe("ILNSdk debug logging", () => {
     };
 
     const sdk = new ILNSdk({
-      contractId: "CD3TE3IAHM737P236XZL2OYU275ZKD6MN7YH7PYYAXYIGEH55OPEWYJC",
-      networkPassphrase: "Test SDF Network ; September 2015",
-      rpcUrl: "https://example.test",
+      contractId: 'CD3TE3IAHM737P236XZL2OYU275ZKD6MN7YH7PYYAXYIGEH55OPEWYJC',
+      networkPassphrase: 'Test SDF Network ; September 2015',
+      rpcUrl: 'https://example.test',
       server,
     });
 

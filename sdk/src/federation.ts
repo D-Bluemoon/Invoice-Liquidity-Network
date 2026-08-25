@@ -116,7 +116,8 @@ export async function lookupFederationAddress(gAddress: string): Promise<string 
     // `stellar_address` isn't part of the standard Federation.Api.Record shape
     // (reverse lookups aren't part of the federation protocol) — some
     // non-standard servers may still include it, so read it defensively.
-    const fedAddress = (response as unknown as { stellar_address?: string }).stellar_address || null;
+    const fedAddress =
+      (response as unknown as { stellar_address?: string }).stellar_address || null;
     lookupCache.set(gAddress, { value: fedAddress, timestamp: Date.now() });
     return fedAddress;
   } catch (error: any) {
@@ -178,7 +179,7 @@ export class FederationRecordManager {
     if (!res.ok) {
       const text = await res.text().catch(() => '');
       throw new FederationResolutionError(
-        `Federation server error (${res.status}): ${text || res.statusText}`,
+        `Federation server error (${res.status}): ${text || res.statusText}`
       );
     }
     return res;
@@ -229,7 +230,10 @@ export class FederationRecordManager {
    * await manager.updateRecord("alice", { stellarAddress: "GDEF..." });
    * ```
    */
-  async updateRecord(name: string, updates: Partial<Omit<FederationRecord, 'name'>>): Promise<void> {
+  async updateRecord(
+    name: string,
+    updates: Partial<Omit<FederationRecord, 'name'>>
+  ): Promise<void> {
     if (!name) {
       throw new FederationResolutionError('Record name is required');
     }

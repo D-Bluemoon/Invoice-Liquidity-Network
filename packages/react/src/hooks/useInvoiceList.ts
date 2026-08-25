@@ -11,7 +11,7 @@ export type InvoiceRole = 'issuer' | 'lp' | 'payer';
  */
 const invoiceListKeys = {
   all: ['invoices', 'list'] as const,
-  byAddress: (address: string, role: InvoiceRole) => 
+  byAddress: (address: string, role: InvoiceRole) =>
     [...invoiceListKeys.all, address, role] as const,
 };
 
@@ -24,16 +24,16 @@ export interface UseInvoiceListResult {
 
 /**
  * Fetches invoices filtered by address and role.
- * 
+ *
  * @param address - The Stellar address to filter by
  * @param role - The role ('issuer' | 'lp' | 'payer')
  * @returns {UseInvoiceListResult} List of invoices, loading state, and error
- * 
+ *
  * @example
  * ```tsx
  * function IssuerInvoices({ address }: { address: string }) {
  *   const { data: invoices, isLoading } = useInvoiceList(address, 'issuer');
- *   
+ *
  *   if (isLoading) return <Spinner />;
  *   return <InvoiceTable invoices={invoices ?? []} />;
  * }

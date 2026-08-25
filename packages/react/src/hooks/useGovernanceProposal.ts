@@ -171,11 +171,14 @@ export function useGovernanceProposal(id: number): UseGovernanceProposalResult {
       : null;
 
   const timelockProgress =
-    proposalStatus === 'Passed' && executionEtaLedgerSet && currentLedgerSet && executionEtaLedger > 0
+    proposalStatus === 'Passed' &&
+    executionEtaLedgerSet &&
+    currentLedgerSet &&
+    executionEtaLedger > 0
       ? Math.min(1, currentLedger / executionEtaLedger)
       : proposalStatus === 'Passed'
-        ? 0
-        : 1;
+      ? 0
+      : 1;
 
   const canExecute =
     proposalStatus === 'Passed' &&
@@ -183,8 +186,7 @@ export function useGovernanceProposal(id: number): UseGovernanceProposalResult {
     currentLedgerSet &&
     currentLedger >= executionEtaLedger;
 
-  const isPolling =
-    proposalQuery.isFetching || latestLedgerQuery.isFetching;
+  const isPolling = proposalQuery.isFetching || latestLedgerQuery.isFetching;
 
   return {
     data: proposalQuery.data,
@@ -193,8 +195,8 @@ export function useGovernanceProposal(id: number): UseGovernanceProposalResult {
       proposalQuery.error instanceof Error
         ? proposalQuery.error
         : latestLedgerQuery.error instanceof Error
-          ? latestLedgerQuery.error
-          : null,
+        ? latestLedgerQuery.error
+        : null,
     isPolling,
     proposalStatus,
     currentLedger,

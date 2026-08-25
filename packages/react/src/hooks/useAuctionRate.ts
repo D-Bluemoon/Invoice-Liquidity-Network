@@ -41,7 +41,10 @@ type AuctionInvoiceRecord = Record<string, unknown>;
 
 const DEFAULT_POLL_INTERVAL_MS = 10_000;
 
-function readNumber(record: AuctionInvoiceRecord | undefined, ...keys: string[]): number | undefined {
+function readNumber(
+  record: AuctionInvoiceRecord | undefined,
+  ...keys: string[]
+): number | undefined {
   if (!record) return undefined;
 
   for (const key of keys) {
@@ -103,7 +106,7 @@ function buildHistory({
 
 export function deriveAuctionRateState(
   invoice: Invoice | undefined,
-  nowSeconds: number,
+  nowSeconds: number
 ): AuctionRateState {
   const record = invoice as AuctionInvoiceRecord | undefined;
   const startDiscountBps =
@@ -111,17 +114,12 @@ export function deriveAuctionRateState(
     readNumber(record, 'discountRate', 'discount_bps') ??
     0;
   const maxDiscountBps =
-    readNumber(record, 'maxDiscountBps', 'max_discount_bps') ??
-    startDiscountBps;
-  const auctionStepBps =
-    readNumber(record, 'auctionStepBps', 'auction_step_bps') ??
-    0;
+    readNumber(record, 'maxDiscountBps', 'max_discount_bps') ?? startDiscountBps;
+  const auctionStepBps = readNumber(record, 'auctionStepBps', 'auction_step_bps') ?? 0;
   const stepIntervalSeconds =
-    readNumber(record, 'stepIntervalSeconds', 'step_interval_seconds') ??
-    0;
+    readNumber(record, 'stepIntervalSeconds', 'step_interval_seconds') ?? 0;
   const submittedAt =
-    readNumber(record, 'submittedAt', 'submitted_at', 'createdAt', 'created_at') ??
-    0;
+    readNumber(record, 'submittedAt', 'submitted_at', 'createdAt', 'created_at') ?? 0;
   const dueDate = readNumber(record, 'dueDate', 'due_date');
   const contractDiscount =
     readNumber(record, 'currentDiscountBps', 'current_discount_bps') ??
@@ -140,9 +138,7 @@ export function deriveAuctionRateState(
     ? Math.min(startDiscountBps + elapsedSteps * auctionStepBps, maxDiscountBps)
     : startDiscountBps;
   const currentDiscountBps = Math.min(contractDiscount ?? computedDiscount, maxDiscountBps);
-  const currentStepStartedAt = hasAuction
-    ? submittedAt + elapsedSteps * stepIntervalSeconds
-    : null;
+  const currentStepStartedAt = hasAuction ? submittedAt + elapsedSteps * stepIntervalSeconds : null;
   const nextIncrementAt =
     hasAuction && currentDiscountBps < maxDiscountBps && currentStepStartedAt !== null
       ? currentStepStartedAt + stepIntervalSeconds
@@ -182,7 +178,7 @@ export function deriveAuctionRateState(
 
 export function useAuctionRate(
   invoiceId: number,
-  options: UseAuctionRateOptions = {},
+  options: UseAuctionRateOptions = {}
 ): UseAuctionRateResult {
   const client = useContext(ILNContext);
   const {
@@ -206,7 +202,9 @@ export function useAuctionRate(
 
       const auctionClient = client as unknown as {
         getAuctionRate?: (id: number) => Promise<Invoice>;
-        getCurrentDiscount?: (id: number) => Promise<number | { currentDiscountBps?: number; invoice?: Invoice }>;
+        getCurrentDiscount?: (
+          id: number
+        ) => Promise<number | { currentDiscountBps?: number; invoice?: Invoice }>;
         getInvoice: (id: number) => Promise<Invoice>;
       };
 
@@ -239,10 +237,7 @@ export function useAuctionRate(
     staleTime: Math.min(pollIntervalMs, 30_000),
   });
 
-  const state = useMemo(
-    () => deriveAuctionRateState(data, nowSeconds),
-    [data, nowSeconds],
-  );
+  const state = useMemo(() => deriveAuctionRateState(data, nowSeconds), [data, nowSeconds]);
 
   return {
     ...state,

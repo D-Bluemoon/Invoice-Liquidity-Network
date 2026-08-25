@@ -1,9 +1,9 @@
-import { createHmac } from "crypto";
-import { Resend } from "resend";
-import Twilio from "twilio";
-import { CONFIG } from "./config";
-import { createWebhookDeliveryLog, updateWebhookDeliveryLog } from "./db";
-import type { NotificationPayload, Subscription, NotificationTrigger, Invoice } from "./types";
+import { createHmac } from 'crypto';
+import { Resend } from 'resend';
+import Twilio from 'twilio';
+import { CONFIG } from './config';
+import { createWebhookDeliveryLog, updateWebhookDeliveryLog } from './db';
+import type { NotificationPayload, Subscription, NotificationTrigger, Invoice } from './types';
 
 const resend = new Resend(CONFIG.resendApiKey);
 
@@ -21,7 +21,7 @@ function delay(ms: number): Promise<void> {
 }
 
 export interface DeadLetterEntry {
-  channel: "email" | "sms" | "webhook";
+  channel: 'email' | 'sms' | 'webhook';
   destination: string;
   subscriptionId: string;
   trigger: NotificationTrigger;
@@ -65,7 +65,7 @@ async function retryWithBackoff<T>(
     baseDelayMs?: number;
     onRetry?: (attempt: number, error: string) => void;
     onDeadLetter?: (lastError: string) => void;
-  },
+  }
 ): Promise<T> {
   const maxRetries = options.maxRetries ?? CONFIG.maxWebhookRetry;
   const baseDelayMs = options.baseDelayMs ?? CONFIG.webhookBackoffBaseMs;
@@ -97,7 +97,7 @@ async function retryWithBackoff<T>(
 
 export async function sendEmail(
   subscription: Subscription,
-  payload: NotificationPayload,
+  payload: NotificationPayload
 ): Promise<void> {
   await retryWithBackoff(
     async () => {
@@ -115,7 +115,7 @@ export async function sendEmail(
       label: `email to ${subscription.destination}`,
       onDeadLetter: (lastError) => {
         deadLetterQueue.push({
-          channel: "email",
+          channel: 'email',
           destination: subscription.destination,
           subscriptionId: subscription.id,
           trigger: payload.trigger,
@@ -127,19 +127,19 @@ export async function sendEmail(
           timestamp: Date.now(),
         });
       },
-    },
+    }
   );
 }
 
 function getWebhookSignature(secret: string, body: string): string {
-  return createHmac("sha256", secret).update(body).digest("hex");
+  return createHmac('sha256', secret).update(body).digest('hex');
 }
 
 export async function sendWebhook(
   subscription: Subscription,
   payload: NotificationPayload,
   attempt = 1,
-  logId?: number,
+  logId?: number
 ): Promise<void> {
   const body = JSON.stringify({
     trigger: payload.trigger,
@@ -159,7 +159,7 @@ export async function sendWebhook(
       trigger: payload.trigger,
       invoice_id: payload.invoice.id,
       recipient_address: payload.recipientAddress,
-      status: "pending",
+      status: 'pending',
       attempts: 0,
       response_status: null,
       error: null,
@@ -170,24 +170,24 @@ export async function sendWebhook(
 
   try {
     const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      "X-ILN-Trigger": payload.trigger,
-      "X-ILN-Recipient": payload.recipientAddress,
+      'Content-Type': 'application/json',
+      'X-ILN-Trigger': payload.trigger,
+      'X-ILN-Recipient': payload.recipientAddress,
     };
 
     if (subscription.webhook_secret) {
-      headers["X-ILN-Signature"] = `sha256=${getWebhookSignature(
+      headers['X-ILN-Signature'] = `sha256=${getWebhookSignature(
         subscription.webhook_secret,
-        body,
+        body
       )}`;
     }
 
     if (payload.eventId) {
-      headers["X-ILN-Event-Id"] = payload.eventId;
+      headers['X-ILN-Event-Id'] = payload.eventId;
     }
 
     response = await fetch(subscription.destination, {
-      method: "POST",
+      method: 'POST',
       headers,
       body,
     });
@@ -199,35 +199,32 @@ export async function sendWebhook(
 
     if (response.ok) {
       await updateWebhookDeliveryLog(id, {
-        status: "success",
+        status: 'success',
       });
       return;
     }
 
     errorMessage = `HTTP ${response.status}`;
   } catch (error: any) {
-    errorMessage = error?.message ?? "Network Error";
-    console.error(
-      `[delivery] Webhook fetch error on attempt ${attempt}:`,
-      error,
-    );
+    errorMessage = error?.message ?? 'Network Error';
+    console.error(`[delivery] Webhook fetch error on attempt ${attempt}:`, error);
   }
 
   if (attempt >= CONFIG.maxWebhookRetry) {
     await updateWebhookDeliveryLog(id, {
-      status: "failed",
+      status: 'failed',
       attempts: attempt,
       error: errorMessage,
     });
     deadLetterQueue.push({
-      channel: "webhook",
+      channel: 'webhook',
       destination: subscription.destination,
       subscriptionId: subscription.id,
       trigger: payload.trigger,
       invoice: payload.invoice,
       subject: payload.subject,
       message: payload.message,
-      lastError: errorMessage ?? "Unknown error",
+      lastError: errorMessage ?? 'Unknown error',
       attempts: attempt,
       timestamp: Date.now(),
     });
@@ -250,20 +247,20 @@ export async function sendWebhook(
 
 export async function sendSms(
   subscription: Subscription,
-  payload: NotificationPayload,
+  payload: NotificationPayload
 ): Promise<void> {
   const client = getTwilioClient();
   if (!client) {
-    throw new Error("Twilio credentials not configured");
+    throw new Error('Twilio credentials not configured');
   }
 
   const message = [
     payload.subject,
-    "",
+    '',
     `Invoice #${payload.invoice.id}`,
     `Status: ${payload.invoice.status}`,
     `Due date: ${new Date(payload.invoice.due_date * 1000).toISOString()}`,
-  ].join("\n");
+  ].join('\n');
 
   await retryWithBackoff(
     async () => {
@@ -277,7 +274,7 @@ export async function sendSms(
       label: `sms to ${subscription.destination}`,
       onDeadLetter: (lastError) => {
         deadLetterQueue.push({
-          channel: "sms",
+          channel: 'sms',
           destination: subscription.destination,
           subscriptionId: subscription.id,
           trigger: payload.trigger,
@@ -289,20 +286,20 @@ export async function sendSms(
           timestamp: Date.now(),
         });
       },
-    },
+    }
   );
 }
 
 export async function deliverNotification(
   subscription: Subscription,
-  payload: NotificationPayload,
+  payload: NotificationPayload
 ): Promise<void> {
-  if (subscription.channel === "email") {
+  if (subscription.channel === 'email') {
     await sendEmail(subscription, payload);
     return;
   }
 
-  if (subscription.channel === "sms") {
+  if (subscription.channel === 'sms') {
     await sendSms(subscription, payload);
     return;
   }

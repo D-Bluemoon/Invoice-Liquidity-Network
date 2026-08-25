@@ -1,8 +1,8 @@
-import { execSync } from "child_process";
-import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync, readFileSync } from "fs";
-import { join } from "path";
-import Database from "better-sqlite3";
-import { CONFIG } from "./config";
+import { execSync } from 'child_process';
+import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync, readFileSync } from 'fs';
+import { join } from 'path';
+import Database from 'better-sqlite3';
+import { CONFIG } from './config';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -19,7 +19,7 @@ export interface BackupConfig {
 
 export interface CloudStorageConfig {
   /** Cloud provider: "s3", "gcs", or "azure". */
-  provider: "s3" | "gcs" | "azure";
+  provider: 's3' | 'gcs' | 'azure';
   /** Bucket or container name. */
   bucket: string;
   /** Optional prefix/folder within the bucket. */
@@ -54,7 +54,7 @@ export interface RestoreOptions {
 
 // ─── Defaults ─────────────────────────────────────────────────────────────────
 
-const DEFAULT_BACKUP_DIR = "./backups";
+const DEFAULT_BACKUP_DIR = './backups';
 const DEFAULT_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const DEFAULT_MAX_LOCAL_BACKUP = 30;
 
@@ -85,18 +85,16 @@ export class BackupManager {
   start(): void {
     if (this.timer) return;
 
-    console.log(
-      `[backup] Starting backup scheduler — interval: ${this.config.intervalMs}ms`
-    );
+    console.log(`[backup] Starting backup scheduler — interval: ${this.config.intervalMs}ms`);
 
     // Run initial backup
     this.runBackup().catch((err) => {
-      console.error("[backup] Initial backup failed:", err);
+      console.error('[backup] Initial backup failed:', err);
     });
 
     this.timer = setInterval(() => {
       this.runBackup().catch((err) => {
-        console.error("[backup] Scheduled backup failed:", err);
+        console.error('[backup] Scheduled backup failed:', err);
       });
     }, this.config.intervalMs);
   }
@@ -109,7 +107,7 @@ export class BackupManager {
       clearInterval(this.timer);
       this.timer = undefined;
     }
-    console.log("[backup] Backup scheduler stopped");
+    console.log('[backup] Backup scheduler stopped');
   }
 
   /**
@@ -118,7 +116,7 @@ export class BackupManager {
    */
   async runBackup(): Promise<BackupManifest | null> {
     if (this.running) {
-      console.log("[backup] Backup already in progress, skipping");
+      console.log('[backup] Backup already in progress, skipping');
       return null;
     }
 
@@ -126,7 +124,7 @@ export class BackupManager {
     const startTime = Date.now();
 
     try {
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const filename = `iln-backup-${timestamp}.db`;
       const backupPath = join(this.config.backupDir, filename);
 
@@ -156,7 +154,7 @@ export class BackupManager {
 
       // Save manifest alongside backup
       const manifestPath = join(this.config.backupDir, `${filename}.manifest.json`);
-      const { writeFileSync } = await import("fs");
+      const { writeFileSync } = await import('fs');
       writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
 
       // Upload to cloud if configured
@@ -174,7 +172,7 @@ export class BackupManager {
 
       return manifest;
     } catch (error) {
-      console.error("[backup] Backup failed:", error);
+      console.error('[backup] Backup failed:', error);
       return null;
     } finally {
       this.running = false;
@@ -188,19 +186,21 @@ export class BackupManager {
     const dbPath = CONFIG.dbPath;
     try {
       execSync(`sqlite3 "${dbPath}" ".backup '${backupPath}'"`, {
-        stdio: "pipe",
+        stdio: 'pipe',
         timeout: 60_000,
       });
     } catch {
       // Fallback: try using VACUUM INTO (SQLite 3.27+)
       try {
         execSync(`sqlite3 "${dbPath}" "VACUUM INTO '${backupPath}';"`, {
-          stdio: "pipe",
+          stdio: 'pipe',
           timeout: 60_000,
         });
       } catch (fallbackErr) {
         throw new Error(
-          `Failed to dump database: ${fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)}`
+          `Failed to dump database: ${
+            fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)
+          }`
         );
       }
     }
@@ -212,11 +212,11 @@ export class BackupManager {
   verifyBackup(backupPath: string): boolean {
     try {
       const result = execSync(`sqlite3 "${backupPath}" "PRAGMA integrity_check;"`, {
-        stdio: "pipe",
+        stdio: 'pipe',
         timeout: 30_000,
       });
       const output = result.toString().trim();
-      return output === "ok";
+      return output === 'ok';
     } catch {
       return false;
     }
@@ -227,10 +227,10 @@ export class BackupManager {
    */
   private computeChecksum(filePath: string): string {
     try {
-      const result = execSync(`sha256sum "${filePath}"`, { stdio: "pipe" });
-      return result.toString().split(" ")[0];
+      const result = execSync(`sha256sum "${filePath}"`, { stdio: 'pipe' });
+      return result.toString().split(' ')[0];
     } catch {
-      return "";
+      return '';
     }
   }
 
@@ -240,7 +240,7 @@ export class BackupManager {
   private getCurrentLedgerSequence(): number {
     try {
       const db = new Database(CONFIG.dbPath, { readonly: true });
-      const row = db.prepare("SELECT last_ledger FROM cursor WHERE id = 1").get() as
+      const row = db.prepare('SELECT last_ledger FROM cursor WHERE id = 1').get() as
         | { last_ledger: number }
         | undefined;
       db.close();
@@ -255,20 +255,18 @@ export class BackupManager {
    */
   private async uploadToCloud(localPath: string, filename: string): Promise<void> {
     const cloud = this.config.cloud!;
-    const objectKey = cloud.prefix
-      ? `${cloud.prefix}/${filename}`
-      : filename;
+    const objectKey = cloud.prefix ? `${cloud.prefix}/${filename}` : filename;
 
     console.log(`[backup] Uploading to ${cloud.provider}:${cloud.bucket}/${objectKey}`);
 
     switch (cloud.provider) {
-      case "s3":
+      case 's3':
         await this.uploadToS3(localPath, objectKey, cloud);
         break;
-      case "gcs":
+      case 'gcs':
         await this.uploadToGcs(localPath, objectKey, cloud);
         break;
-      case "azure":
+      case 'azure':
         await this.uploadToAzure(localPath, objectKey, cloud);
         break;
     }
@@ -279,11 +277,11 @@ export class BackupManager {
     key: string,
     cloud: CloudStorageConfig
   ): Promise<void> {
-    const region = cloud.region ?? "us-east-1";
-    execSync(
-      `aws s3 cp "${localPath}" "s3://${cloud.bucket}/${key}" --region ${region}`,
-      { stdio: "pipe", timeout: 120_000 }
-    );
+    const region = cloud.region ?? 'us-east-1';
+    execSync(`aws s3 cp "${localPath}" "s3://${cloud.bucket}/${key}" --region ${region}`, {
+      stdio: 'pipe',
+      timeout: 120_000,
+    });
   }
 
   private async uploadToGcs(
@@ -291,10 +289,10 @@ export class BackupManager {
     key: string,
     cloud: CloudStorageConfig
   ): Promise<void> {
-    execSync(
-      `gsutil cp "${localPath}" "gs://${cloud.bucket}/${key}"`,
-      { stdio: "pipe", timeout: 120_000 }
-    );
+    execSync(`gsutil cp "${localPath}" "gs://${cloud.bucket}/${key}"`, {
+      stdio: 'pipe',
+      timeout: 120_000,
+    });
   }
 
   private async uploadToAzure(
@@ -304,7 +302,7 @@ export class BackupManager {
   ): Promise<void> {
     execSync(
       `az storage blob upload --file "${localPath}" --name "${key}" --container-name "${cloud.bucket}"`,
-      { stdio: "pipe", timeout: 120_000 }
+      { stdio: 'pipe', timeout: 120_000 }
     );
   }
 
@@ -313,7 +311,7 @@ export class BackupManager {
    */
   pruneOldBackups(): void {
     const files = readdirSync(this.config.backupDir)
-      .filter((f) => f.startsWith("iln-backup-") && f.endsWith(".db"))
+      .filter((f) => f.startsWith('iln-backup-') && f.endsWith('.db'))
       .map((f) => ({
         name: f,
         path: join(this.config.backupDir, f),
@@ -357,15 +355,15 @@ export class BackupManager {
       if (!verified) {
         throw new Error(`Backup verification failed: ${backupPath}`);
       }
-      console.log("[backup] Backup verification passed");
+      console.log('[backup] Backup verification passed');
     }
 
     console.log(`[backup] Restoring from ${backupPath} to ${targetPath}`);
 
     // Copy the backup file to the target location
-    execSync(`cp "${backupPath}" "${targetPath}"`, { stdio: "pipe" });
+    execSync(`cp "${backupPath}" "${targetPath}"`, { stdio: 'pipe' });
 
-    console.log("[backup] Restore complete");
+    console.log('[backup] Restore complete');
   }
 
   /**
@@ -373,21 +371,18 @@ export class BackupManager {
    */
   listBackups(): BackupManifest[] {
     const manifests: BackupManifest[] = [];
-    const files = readdirSync(this.config.backupDir)
-      .filter((f) => f.endsWith(".manifest.json"));
+    const files = readdirSync(this.config.backupDir).filter((f) => f.endsWith('.manifest.json'));
 
     for (const file of files) {
       try {
-        const content = readFileSync(join(this.config.backupDir, file), "utf-8");
+        const content = readFileSync(join(this.config.backupDir, file), 'utf-8');
         manifests.push(JSON.parse(content));
       } catch {
         // Skip malformed manifests
       }
     }
 
-    return manifests.sort((a, b) =>
-      a.timestamp.localeCompare(b.timestamp)
-    );
+    return manifests.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
   }
 
   /**

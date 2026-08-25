@@ -28,7 +28,7 @@ stateDiagram-v2
 ### Parameters
 
 | Parameter            | Default Value | Description                              |
-| --------------------- | ------------- | ---------------------------------------- |
+| -------------------- | ------------- | ---------------------------------------- |
 | `voting_delay`       | 1 day         | Time before voting starts after proposal |
 | `voting_period`      | 7 days        | Duration of voting                       |
 | `execution_delay`    | 2 days        | Time after success before execution      |
@@ -40,7 +40,9 @@ stateDiagram-v2
 ```ts
 import { ILNClient } from '@invoice-liquidity/sdk';
 
-const client = new ILNClient({ /* config */ });
+const client = new ILNClient({
+  /* config */
+});
 
 // Create a proposal to change the minimum invoice amount
 const proposalId = await client.createProposal({

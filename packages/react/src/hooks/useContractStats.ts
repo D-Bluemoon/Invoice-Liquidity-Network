@@ -13,14 +13,14 @@ export interface UseContractStatsResult {
 
 /**
  * Fetches global protocol statistics.
- * 
+ *
  * @returns {UseContractStatsResult} Protocol stats, loading state, and error
- * 
+ *
  * @example
  * ```tsx
  * function ProtocolStats() {
  *   const { data: stats } = useContractStats();
- *   
+ *
  *   return (
  *     <div>
  *       <Stat label="TVL" value={stats?.totalValueLocked} />

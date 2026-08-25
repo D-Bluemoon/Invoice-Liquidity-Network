@@ -26,7 +26,7 @@ const riskMetricsKeys = {
 
 export function useLPRiskMetrics(
   address: string,
-  options: UseLPRiskMetricsOptions = {},
+  options: UseLPRiskMetricsOptions = {}
 ): UseLPRiskMetricsResult {
   const client = useILNClient();
   const portfolioAddress = options.portfolio ? '' : address;
@@ -62,7 +62,8 @@ export function useLPRiskMetrics(
     return new Map(Object.entries(options.reputationByPayer ?? {}));
   }, [options.reputationByPayer]);
 
-  const shouldFetchReputation = payerAddresses.length > 0 && reputationByPayer.size !== payerAddresses.length;
+  const shouldFetchReputation =
+    payerAddresses.length > 0 && reputationByPayer.size !== payerAddresses.length;
   const reputationQueries = useQueries({
     queries: shouldFetchReputation
       ? payerAddresses.map((payer) => ({
@@ -99,7 +100,13 @@ export function useLPRiskMetrics(
       reputationByPayer: resolvedReputationByPayer,
       simulations: options.simulations,
     });
-  }, [address, invoicePositions, options.simulations, resolvedPortfolio, resolvedReputationByPayer]);
+  }, [
+    address,
+    invoicePositions,
+    options.simulations,
+    resolvedPortfolio,
+    resolvedReputationByPayer,
+  ]);
 
   const error =
     portfolioQuery.error ??
@@ -110,7 +117,7 @@ export function useLPRiskMetrics(
   const isLoading =
     Boolean(portfolioAddress && portfolioQuery.isLoading) ||
     Boolean(invoiceAddress && invoiceListQuery.isLoading) ||
-    shouldFetchReputation && reputationQueries.some((query) => query.isLoading);
+    (shouldFetchReputation && reputationQueries.some((query) => query.isLoading));
 
   return {
     data,

@@ -1,9 +1,9 @@
-import type { ContractEvent } from "./types";
+import type { ContractEvent } from './types';
 export type { ContractEvent };
 
-export type InvoiceEventType = "submitted" | "funded" | "paid" | "defaulted";
-export type WalletEventType = "connected" | "disconnected";
-export type ErrorEventType = "simulation_failed" | "submission_failed" | "network_error";
+export type InvoiceEventType = 'submitted' | 'funded' | 'paid' | 'defaulted';
+export type WalletEventType = 'connected' | 'disconnected';
+export type ErrorEventType = 'simulation_failed' | 'submission_failed' | 'network_error';
 
 export interface InvoiceEventData {
   invoiceId: bigint;
@@ -31,7 +31,7 @@ export interface ErrorEventData {
 export type EventData = InvoiceEventData | WalletEventData | ErrorEventData;
 
 export interface EventEmitterEvent {
-  category: "invoice" | "wallet" | "error" | "contract";
+  category: 'invoice' | 'wallet' | 'error' | 'contract';
   type: string;
   data: EventData | ContractEvent;
   timestamp: number;
@@ -55,10 +55,7 @@ export class ILNEventEmitter {
     this.maxHistorySize = options?.maxHistorySize ?? 100;
   }
 
-  on<T extends EventData = EventData>(
-    eventType: string,
-    listener: EventListener<T>,
-  ): () => void {
+  on<T extends EventData = EventData>(eventType: string, listener: EventListener<T>): () => void {
     if (!this.listeners.has(eventType)) {
       this.listeners.set(eventType, new Set());
     }
@@ -79,10 +76,7 @@ export class ILNEventEmitter {
     }
   }
 
-  once<T extends EventData = EventData>(
-    eventType: string,
-    listener: EventListener<T>,
-  ): () => void {
+  once<T extends EventData = EventData>(eventType: string, listener: EventListener<T>): () => void {
     const wrapper: EventListener<T> = (data) => {
       this.off(eventType, wrapper as EventListener);
       listener(data);
@@ -91,23 +85,23 @@ export class ILNEventEmitter {
   }
 
   emitInvoice(type: InvoiceEventType, data: InvoiceEventData): void {
-    this.recordEvent("invoice", type, data);
+    this.recordEvent('invoice', type, data);
     this.notifyListeners(`invoice:${type}`, data);
   }
 
   emitWallet(type: WalletEventType, data: WalletEventData): void {
-    this.recordEvent("wallet", type, data);
+    this.recordEvent('wallet', type, data);
     this.notifyListeners(`wallet:${type}`, data);
   }
 
   emitError(type: ErrorEventType, data: ErrorEventData): void {
-    this.recordEvent("error", type, data);
+    this.recordEvent('error', type, data);
     this.notifyListeners(`error:${type}`, data);
-    this.notifyListeners("error:*", data);
+    this.notifyListeners('error:*', data);
   }
 
   emitContract(event: ContractEvent): void {
-    this.recordEvent("contract", event.type, event);
+    this.recordEvent('contract', event.type, event);
     this.notifyListeners(`contract:${event.type}`, event);
   }
 

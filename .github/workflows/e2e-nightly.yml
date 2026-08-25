@@ -57,7 +57,7 @@ jobs:
         working-directory: frontend
         run: npm run test:e2e
         env:
-          NEXT_PUBLIC_API_MOCKING: "enabled"
+          NEXT_PUBLIC_API_MOCKING: 'enabled'
 
       - name: Upload test results
         if: always()

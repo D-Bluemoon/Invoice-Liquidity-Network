@@ -1,3 +1,3 @@
 export default {
-  integration: 'React Integration'
-}
+  integration: 'React Integration',
+};

@@ -50,9 +50,9 @@ describe('preflightMutation', () => {
       simulateTransaction: vi.fn(),
     };
 
-    await expect(
-      preflightMutation(server, transaction, { simulate: false }),
-    ).resolves.toBe(transaction);
+    await expect(preflightMutation(server, transaction, { simulate: false })).resolves.toBe(
+      transaction
+    );
     expect(server.simulateTransaction).not.toHaveBeenCalled();
   });
 });

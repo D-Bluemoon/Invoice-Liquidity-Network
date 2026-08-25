@@ -13,11 +13,11 @@ Invoice Liquidity Network CLI
 
 ### Global Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `-v, --version` | output the current version |  |
-| `--json` | output machine-readable JSON (applies to: status, list) |  |
-| `--quiet` | suppress informational messages; show only command output |  |
+| Option          | Description                                               | Default |
+| --------------- | --------------------------------------------------------- | ------- |
+| `-v, --version` | output the current version                                |         |
+| `--json`        | output machine-readable JSON (applies to: status, list)   |         |
+| `--quiet`       | suppress informational messages; show only command output |         |
 
 ## `iln submit`
 
@@ -31,14 +31,14 @@ iln submit [options]
 
 ### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--payer <address>` | payer Stellar address |  |
-| `--amount <amount>` | invoice amount in display units, for example 100 or 12.5 |  |
-| `--due <date>` | due date as YYYY-MM-DD or Unix timestamp |  |
-| `--rate <bps>` | discount rate in basis points |  |
-| `--token <contractId>` | override token contract ID from config |  |
-| `--yes` | skip interactive prompts and use defaults |  |
+| Option                 | Description                                              | Default |
+| ---------------------- | -------------------------------------------------------- | ------- |
+| `--payer <address>`    | payer Stellar address                                    |         |
+| `--amount <amount>`    | invoice amount in display units, for example 100 or 12.5 |         |
+| `--due <date>`         | due date as YYYY-MM-DD or Unix timestamp                 |         |
+| `--rate <bps>`         | discount rate in basis points                            |         |
+| `--token <contractId>` | override token contract ID from config                   |         |
+| `--yes`                | skip interactive prompts and use defaults                |         |
 
 ## `iln fund`
 
@@ -52,11 +52,11 @@ iln fund [options]
 
 ### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--id <invoiceId>` | invoice ID |  |
-| `--amount <amount>` | amount to fund in display units; defaults to the remaining balance |  |
-| `--yes` | skip interactive prompts and use defaults |  |
+| Option              | Description                                                        | Default |
+| ------------------- | ------------------------------------------------------------------ | ------- |
+| `--id <invoiceId>`  | invoice ID                                                         |         |
+| `--amount <amount>` | amount to fund in display units; defaults to the remaining balance |         |
+| `--yes`             | skip interactive prompts and use defaults                          |         |
 
 ## `iln pay`
 
@@ -70,10 +70,10 @@ iln pay [options]
 
 ### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--id <invoiceId>` | invoice ID |  |
-| `--yes` | skip interactive prompts and use defaults |  |
+| Option             | Description                               | Default |
+| ------------------ | ----------------------------------------- | ------- |
+| `--id <invoiceId>` | invoice ID                                |         |
+| `--yes`            | skip interactive prompts and use defaults |         |
 
 ## `iln status`
 
@@ -87,10 +87,10 @@ iln status [options]
 
 ### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--id <invoiceId>` | invoice ID |  |
-| `--yes` | skip interactive prompts and use defaults |  |
+| Option             | Description                               | Default |
+| ------------------ | ----------------------------------------- | ------- |
+| `--id <invoiceId>` | invoice ID                                |         |
+| `--yes`            | skip interactive prompts and use defaults |         |
 
 ## `iln list`
 
@@ -104,10 +104,10 @@ iln list [options]
 
 ### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--address <address>` | freelancer, payer, or funder Stellar address |  |
-| `--yes` | skip interactive prompts and use defaults |  |
+| Option                | Description                                  | Default |
+| --------------------- | -------------------------------------------- | ------- |
+| `--address <address>` | freelancer, payer, or funder Stellar address |         |
+| `--yes`               | skip interactive prompts and use defaults    |         |
 
 ## `iln history`
 
@@ -121,14 +121,14 @@ iln history [options]
 
 ### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--address <address>` | Stellar address to query history for |  |
-| `--id <invoiceId>` | filter to a specific invoice ID |  |
-| `--action <type>` | filter by action type: submit (freelancer), fund (funder), pay (payer) |  |
-| `--limit <n>` | maximum number of results to return |  |
-| `--format <fmt>` | output format: table (default) or json | `table` |
-| `--yes` | skip interactive prompts and use defaults |  |
+| Option                | Description                                                            | Default |
+| --------------------- | ---------------------------------------------------------------------- | ------- |
+| `--address <address>` | Stellar address to query history for                                   |         |
+| `--id <invoiceId>`    | filter to a specific invoice ID                                        |         |
+| `--action <type>`     | filter by action type: submit (freelancer), fund (funder), pay (payer) |         |
+| `--limit <n>`         | maximum number of results to return                                    |         |
+| `--format <fmt>`      | output format: table (default) or json                                 | `table` |
+| `--yes`               | skip interactive prompts and use defaults                              |         |
 
 ## `iln compat`
 
@@ -182,9 +182,9 @@ iln config init [options]
 
 ### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--cwd <dir>` | directory to write the config file into (defaults to current directory) |  |
+| Option        | Description                                                             | Default |
+| ------------- | ----------------------------------------------------------------------- | ------- |
+| `--cwd <dir>` | directory to write the config file into (defaults to current directory) |         |
 
 ## `iln config show`
 
@@ -228,10 +228,10 @@ iln dashboard [options]
 
 ### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--refresh <ms>` | Refresh interval in milliseconds | `5000` |
-| `--export <file>` | Export dashboard data to JSON file |  |
+| Option            | Description                        | Default |
+| ----------------- | ---------------------------------- | ------- |
+| `--refresh <ms>`  | Refresh interval in milliseconds   | `5000`  |
+| `--export <file>` | Export dashboard data to JSON file |         |
 
 ## `iln generate`
 
@@ -245,12 +245,12 @@ iln generate [template] [options]
 
 ### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--list` | list available templates and exit |  |
-| `--preview` | print generated output without writing to disk |  |
-| `--out <dir>` | output directory (default: current directory) | `.` |
-| `--var <key=value>` | set a template variable, repeatable (e.g. --var contractId=C…) | `` |
+| Option              | Description                                                    | Default |
+| ------------------- | -------------------------------------------------------------- | ------- |
+| `--list`            | list available templates and exit                              |         |
+| `--preview`         | print generated output without writing to disk                 |         |
+| `--out <dir>`       | output directory (default: current directory)                  | `.`     |
+| `--var <key=value>` | set a template variable, repeatable (e.g. --var contractId=C…) | ``      |
 
 ## `iln dev`
 
@@ -304,9 +304,9 @@ iln dev status [options]
 
 ### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--json` | output machine-readable JSON |  |
+| Option   | Description                  | Default |
+| -------- | ---------------------------- | ------- |
+| `--json` | output machine-readable JSON |         |
 
 ## `iln dev seed`
 
@@ -320,11 +320,11 @@ iln dev seed [options]
 
 ### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--scenario <type>` | seeding scenario: new-user, active-lp, disputed |  |
-| `--count <n>` | number of records to seed per scenario | `1` |
-| `--token <symbol>` | specific token to use: USDC or EURC |  |
+| Option              | Description                                     | Default |
+| ------------------- | ----------------------------------------------- | ------- |
+| `--scenario <type>` | seeding scenario: new-user, active-lp, disputed |         |
+| `--count <n>`       | number of records to seed per scenario          | `1`     |
+| `--token <symbol>`  | specific token to use: USDC or EURC             |         |
 
 ## `iln update`
 
@@ -368,10 +368,10 @@ iln wallet create [options]
 
 ### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--name <name>` | wallet name identifier |  |
-| `--password <password>` | encryption password for the wallet |  |
+| Option                  | Description                        | Default |
+| ----------------------- | ---------------------------------- | ------- |
+| `--name <name>`         | wallet name identifier             |         |
+| `--password <password>` | encryption password for the wallet |         |
 
 ## `iln wallet import`
 
@@ -385,11 +385,11 @@ iln wallet import [options]
 
 ### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--name <name>` | wallet name identifier |  |
-| `--secret <secret>` | Stellar secret key (starts with S) |  |
-| `--password <password>` | encryption password for the wallet |  |
+| Option                  | Description                        | Default |
+| ----------------------- | ---------------------------------- | ------- |
+| `--name <name>`         | wallet name identifier             |         |
+| `--secret <secret>`     | Stellar secret key (starts with S) |         |
+| `--password <password>` | encryption password for the wallet |         |
 
 ## `iln wallet list`
 
@@ -403,9 +403,9 @@ iln wallet list [options]
 
 ### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--json` | output machine-readable JSON |  |
+| Option   | Description                  | Default |
+| -------- | ---------------------------- | ------- |
+| `--json` | output machine-readable JSON |         |
 
 ## `iln wallet fund`
 
@@ -419,11 +419,11 @@ iln wallet fund [options]
 
 ### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--name <name>` | wallet name to fund |  |
-| `--password <password>` | encryption password for the wallet |  |
-| `--friendbot <url>` | Friendbot URL | `https://friendbot.stellar.org` |
+| Option                  | Description                        | Default                         |
+| ----------------------- | ---------------------------------- | ------------------------------- |
+| `--name <name>`         | wallet name to fund                |                                 |
+| `--password <password>` | encryption password for the wallet |                                 |
+| `--friendbot <url>`     | Friendbot URL                      | `https://friendbot.stellar.org` |
 
 ## `iln wallet delete`
 
@@ -437,9 +437,9 @@ iln wallet delete [options]
 
 ### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--name <name>` | wallet name to delete |  |
+| Option          | Description           | Default |
+| --------------- | --------------------- | ------- |
+| `--name <name>` | wallet name to delete |         |
 
 ## `iln interactive`
 
@@ -493,9 +493,9 @@ iln alias list [options]
 
 ### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--json` | output machine-readable JSON |  |
+| Option   | Description                  | Default |
+| -------- | ---------------------------- | ------- |
+| `--json` | output machine-readable JSON |         |
 
 ## `iln alias add`
 
@@ -516,4 +516,3 @@ Remove a custom alias
 ```bash
 iln alias remove <alias> [options]
 ```
-
