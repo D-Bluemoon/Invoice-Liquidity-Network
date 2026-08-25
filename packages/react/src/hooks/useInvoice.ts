@@ -20,19 +20,19 @@ export interface UseInvoiceResult {
 
 /**
  * Fetches a single invoice by ID.
- * 
+ *
  * @param id - The invoice ID to fetch
  * @returns {UseInvoiceResult} Invoice data, loading state, and error
- * 
+ *
  * @example
  * ```tsx
  * function InvoiceCard({ id }: { id: number }) {
  *   const { data: invoice, isLoading, error } = useInvoice(id);
- *   
+ *
  *   if (isLoading) return <Spinner />;
  *   if (error) return <Error message={error.message} />;
  *   if (!invoice) return <NotFound />;
- *   
+ *
  *   return <div>Invoice #{invoice.id}: {invoice.status}</div>;
  * }
  * ```

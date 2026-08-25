@@ -15,7 +15,7 @@ iln webhook create \
 ## Event Types
 
 | Event                | Description                 | Payload              |
-| -------------------- | --------------------------- | --------------------- |
+| -------------------- | --------------------------- | -------------------- |
 | `invoice.submitted`  | New invoice created         | Invoice details      |
 | `invoice.funded`     | Invoice funded by LP        | Invoice + LP details |
 | `invoice.paid`       | Invoice marked paid         | Payment details      |
@@ -50,9 +50,7 @@ import { createHmac } from 'crypto';
 const secret = process.env.ILN_WEBHOOK_SECRET;
 
 function verifyWebhook(payload: string, signature: string): boolean {
-  const expected = createHmac('sha256', secret)
-    .update(payload)
-    .digest('hex');
+  const expected = createHmac('sha256', secret).update(payload).digest('hex');
   return signature === `sha256=${expected}`;
 }
 ```

@@ -1,4 +1,4 @@
-export function SkipNav(){
+export function SkipNav() {
   return (
     <a
       href="#main-content"

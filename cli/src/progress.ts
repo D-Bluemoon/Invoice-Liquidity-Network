@@ -12,7 +12,7 @@
  *   createTransactionProgress — 4-step bar (build → simulate → sign → submit)
  */
 
-import pc from "picocolors";
+import pc from 'picocolors';
 
 export interface ProgressOptions {
   /** Output stream (defaults to process.stdout). */
@@ -66,12 +66,12 @@ export interface TransactionProgress {
 // Internal constants
 // ---------------------------------------------------------------------------
 
-const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 const SPINNER_INTERVAL_MS = 80;
 const BAR_WIDTH = 24;
 
 /** Labels for each of the 4 transaction steps. */
-const TX_STEPS = ["Building", "Simulating", "Signing", "Submitting"] as const;
+const TX_STEPS = ['Building', 'Simulating', 'Signing', 'Submitting'] as const;
 const TX_TOTAL = TX_STEPS.length;
 
 // ---------------------------------------------------------------------------
@@ -89,7 +89,7 @@ function writeLine(output: NodeJS.WritableStream, line: string): void {
 }
 
 function clearLine(output: NodeJS.WritableStream, width: number): void {
-  output.write(`\r${" ".repeat(width)}\r`);
+  output.write(`\r${' '.repeat(width)}\r`);
 }
 
 /**
@@ -101,7 +101,7 @@ function formatElapsed(seconds: number): string {
   }
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
-  return `${m}m ${String(s).padStart(2, "0")}s`;
+  return `${m}m ${String(s).padStart(2, '0')}s`;
 }
 
 /**
@@ -112,11 +112,11 @@ function formatElapsed(seconds: number): string {
  * @param elapsed  Elapsed milliseconds since start.
  */
 function formatEta(current: number, total: number, elapsed: number): string {
-  if (current <= 0 || total <= 0 || elapsed <= 0) return "";
+  if (current <= 0 || total <= 0 || elapsed <= 0) return '';
   const rate = current / elapsed; // steps per ms
   const remaining = (total - current) / rate; // ms
   const etaSec = remaining / 1000;
-  if (etaSec < 0.5) return pc.dim("ETA <1s");
+  if (etaSec < 0.5) return pc.dim('ETA <1s');
   return pc.dim(`ETA ${formatElapsed(etaSec)}`);
 }
 
@@ -125,7 +125,7 @@ function formatBar(current: number, total: number): string {
   const filled = Math.round(ratio * BAR_WIDTH);
   const empty = BAR_WIDTH - filled;
   const percent = Math.round(ratio * 100);
-  const bar = `${pc.green("█".repeat(filled))}${pc.dim("░".repeat(empty))}`;
+  const bar = `${pc.green('█'.repeat(filled))}${pc.dim('░'.repeat(empty))}`;
   return `[${bar}] ${pc.bold(String(percent).padStart(3))}% (${current}/${total})`;
 }
 
@@ -185,14 +185,14 @@ export function createSpinner(message: string, options?: ProgressOptions): Spinn
       if (animated) {
         renderLine();
       } else if (!silent) {
-        writeLine(output, `${pc.cyan("→")} ${nextMessage}`);
+        writeLine(output, `${pc.cyan('→')} ${nextMessage}`);
       }
     },
     succeed(message?: string) {
-      finish(message ? `${pc.green("✓")} ${message}` : undefined);
+      finish(message ? `${pc.green('✓')} ${message}` : undefined);
     },
     fail(message?: string) {
-      finish(message ? `${pc.red("✗")} ${message}` : undefined);
+      finish(message ? `${pc.red('✗')} ${message}` : undefined);
     },
     stop() {
       finish();
@@ -209,7 +209,7 @@ export function createSpinner(message: string, options?: ProgressOptions): Spinn
 export function createProgressBar(
   total: number,
   message: string,
-  options?: ProgressOptions,
+  options?: ProgressOptions
 ): ProgressBar {
   const output = options?.output ?? process.stdout;
   const silent = options?.enabled === false;
@@ -223,8 +223,8 @@ export function createProgressBar(
     const elapsed = Date.now() - startedAt;
     const eta = formatEta(current, total, elapsed);
     const bar = formatBar(current, total);
-    const elapsedStr = elapsed >= 500 ? pc.dim(` [${formatElapsed(elapsed / 1000)}]`) : "";
-    return `${bar} ${messageText}${elapsedStr}${eta ? `  ${eta}` : ""}`;
+    const elapsedStr = elapsed >= 500 ? pc.dim(` [${formatElapsed(elapsed / 1000)}]`) : '';
+    return `${bar} ${messageText}${elapsedStr}${eta ? `  ${eta}` : ''}`;
   };
 
   const paint = (): void => {
@@ -270,10 +270,10 @@ export function createProgressBar(
     },
     succeed(message?: string) {
       if (current < total) setProgress(total);
-      finish(message ? `${pc.green("✓")} ${message}` : undefined);
+      finish(message ? `${pc.green('✓')} ${message}` : undefined);
     },
     fail(message?: string) {
-      finish(message ? `${pc.red("✗")} ${message}` : undefined);
+      finish(message ? `${pc.red('✗')} ${message}` : undefined);
     },
     stop() {
       finish();
@@ -299,7 +299,7 @@ export function createProgressBar(
  */
 export function createTransactionProgress(
   label: string,
-  options?: ProgressOptions,
+  options?: ProgressOptions
 ): TransactionProgress {
   const bar = createProgressBar(TX_TOTAL, `${label} — ${TX_STEPS[0]}…`, options);
 
@@ -335,7 +335,7 @@ export async function withSpinner<T>(
   message: string,
   fn: () => Promise<T>,
   options?: ProgressOptions,
-  successMsg?: string,
+  successMsg?: string
 ): Promise<T> {
   const spinner = createSpinner(message, options);
   try {
@@ -359,7 +359,7 @@ export async function withProgressBar<T>(
   total: number,
   message: string,
   fn: (bar: ProgressBar) => Promise<T>,
-  options?: ProgressOptions,
+  options?: ProgressOptions
 ): Promise<T> {
   const bar = createProgressBar(total, message, options);
   try {

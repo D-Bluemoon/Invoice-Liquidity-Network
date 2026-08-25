@@ -8,7 +8,7 @@ interface TestWrapperProps {
   children: ReactNode;
 }
 
-export function TestWrapper({ client, children }: TestWrapperProps){
+export function TestWrapper({ client, children }: TestWrapperProps) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -21,9 +21,7 @@ export function TestWrapper({ client, children }: TestWrapperProps){
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ILNContext.Provider value={client}>
-        {children}
-      </ILNContext.Provider>
+      <ILNContext.Provider value={client}>{children}</ILNContext.Provider>
     </QueryClientProvider>
   );
 }

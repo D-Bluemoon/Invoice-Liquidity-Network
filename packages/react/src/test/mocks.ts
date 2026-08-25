@@ -1,5 +1,13 @@
 import { vi } from 'vitest';
-import type { ILNClient, Invoice, Proposal, ReputationScore, LPPortfolio, ContractStats, TokenBalance } from '@iln/sdk';
+import type {
+  ILNClient,
+  Invoice,
+  Proposal,
+  ReputationScore,
+  LPPortfolio,
+  ContractStats,
+  TokenBalance,
+} from '@iln/sdk';
 
 export const mockInvoice: Invoice = {
   id: 42,
@@ -121,7 +129,9 @@ export function createMockILNClient(overrides: Partial<Record<string, unknown>> 
     markPaid: vi.fn().mockResolvedValue(undefined),
     createProposal: vi.fn().mockResolvedValue(undefined),
     vote: vi.fn().mockResolvedValue(undefined),
-    connectWallet: vi.fn().mockResolvedValue('GDRMKYQMTNZ3XPRF7K7L3PFBJQI2S2Y2E3KJQF3KHKY3XT3LZXG3G5X2'),
+    connectWallet: vi
+      .fn()
+      .mockResolvedValue('GDRMKYQMTNZ3XPRF7K7L3PFBJQI2S2Y2E3KJQF3KHKY3XT3LZXG3G5X2'),
     getLPCoverage: vi.fn().mockResolvedValue(mockLPCoverage),
     getPoolBalance: vi.fn().mockResolvedValue(mockPoolBalance),
     getClaim: vi.fn().mockResolvedValue(mockInsuranceClaim),

@@ -12,7 +12,9 @@ export const ILNContext = createContext<ILNClient | null>(null);
  */
 export class ILNProviderNotFoundError extends Error {
   constructor() {
-    super('useILNClient must be used within an ILNProvider. Wrap your app with <ILNProvider client={client}>');
+    super(
+      'useILNClient must be used within an ILNProvider. Wrap your app with <ILNProvider client={client}>'
+    );
     this.name = 'ILNProviderNotFoundError';
   }
 }

@@ -14,16 +14,16 @@ export interface UseReputationScoreResult {
 
 /**
  * Fetches the on-chain reputation score for a given address.
- * 
+ *
  * @param address - The Stellar address to check
  * @returns {UseReputationScoreResult} Reputation data, loading state, and error
- * 
+ *
  * @example
  * ```tsx
  * function TrustBadge({ address }: { address: string }) {
  *   const { data: rep } = useReputationScore(address);
  *   if (!rep) return null;
- *   
+ *
  *   return <Badge score={rep.score} />;
  * }
  * ```

@@ -2,13 +2,8 @@
  * Re-exported shared types from the @iln/shared package.
  * These represent core domain objects used throughout the SDK.
  */
-import type {
-  ContractStats,
-  GovernanceProposal,
-  Invoice,
-  ReputationScore,
-} from "@iln/shared";
-import type { CacheConfig } from "./cache";
+import type { ContractStats, GovernanceProposal, Invoice, ReputationScore } from '@iln/shared';
+import type { CacheConfig } from './cache';
 
 // Note: GovernanceProposal and ProposalStatus are intentionally NOT
 // re-exported here — the SDK's public API surfaces the SDK-specific
@@ -22,7 +17,7 @@ export type {
   LPStats,
   ReputationScore,
   Token,
-} from "@iln/shared";
+} from '@iln/shared';
 
 export type {
   InvoiceCreatedEvent,
@@ -37,7 +32,7 @@ export type {
   ReputationUpdatedEvent,
   ContractStatsUpdatedEvent,
   LPStatsUpdatedEvent,
-} from "@iln/shared";
+} from '@iln/shared';
 
 /**
  * Parameters for submitting a new invoice to the ILN contract.
@@ -142,10 +137,7 @@ export interface TransactionSigner {
    * @param options - Signing options including network passphrase.
    * @returns The signed transaction as a base64-encoded XDR string.
    */
-  signTransaction(
-    transactionXdr: string,
-    options: SignTransactionOptions,
-  ): Promise<string>;
+  signTransaction(transactionXdr: string, options: SignTransactionOptions): Promise<string>;
 }
 
 /**
@@ -202,7 +194,7 @@ export interface ILNSdkConfig {
    * offline and submit them when connectivity is restored.
    * Set to `{}` to use all defaults.
    */
-  offline?: import("./offline").OfflineConfig;
+  offline?: import('./offline').OfflineConfig;
 }
 
 /**
@@ -317,14 +309,18 @@ export interface ILNClient {
   createProposal(params: Record<string, unknown>): Promise<unknown>;
   vote(params: Record<string, unknown>): Promise<void>;
   connectWallet(): Promise<string>;
-  getLPCoverage?(address: string): Promise<import("./insurance-types").LPCoverage | null>;
-  getPoolBalance?(): Promise<import("./insurance-types").PoolBalance>;
-  getClaim?(claimId: bigint): Promise<import("./insurance-types").InsuranceClaim>;
-  listClaims?(statusFilter?: import("./insurance-types").ClaimStatus, page?: number, pageSize?: number): Promise<import("./insurance-types").InsuranceClaim[]>;
-  enroll?(params: import("./insurance-types").EnrollParams): Promise<void>;
-  depositPremium?(params: import("./insurance-types").DepositPremiumParams): Promise<void>;
-  submitClaim?(params: import("./insurance-types").SubmitClaimParams): Promise<bigint>;
-  reviewClaim?(params: import("./insurance-types").ReviewClaimParams): Promise<void>;
+  getLPCoverage?(address: string): Promise<import('./insurance-types').LPCoverage | null>;
+  getPoolBalance?(): Promise<import('./insurance-types').PoolBalance>;
+  getClaim?(claimId: bigint): Promise<import('./insurance-types').InsuranceClaim>;
+  listClaims?(
+    statusFilter?: import('./insurance-types').ClaimStatus,
+    page?: number,
+    pageSize?: number
+  ): Promise<import('./insurance-types').InsuranceClaim[]>;
+  enroll?(params: import('./insurance-types').EnrollParams): Promise<void>;
+  depositPremium?(params: import('./insurance-types').DepositPremiumParams): Promise<void>;
+  submitClaim?(params: import('./insurance-types').SubmitClaimParams): Promise<bigint>;
+  reviewClaim?(params: import('./insurance-types').ReviewClaimParams): Promise<void>;
 }
 
 export interface TokenBalance {

@@ -31,11 +31,7 @@ function simulationFailure(response: SimulationResponse): unknown {
     return response.error;
   }
 
-  if (
-    response.result &&
-    typeof response.result === 'object' &&
-    'error' in response.result
-  ) {
+  if (response.result && typeof response.result === 'object' && 'error' in response.result) {
     return (response.result as { error: unknown }).error;
   }
 
@@ -54,7 +50,7 @@ function simulationFailure(response: SimulationResponse): unknown {
 export async function preflightMutation<T>(
   server: SimulationServer<T>,
   transaction: T,
-  options: SimulationOptions = {},
+  options: SimulationOptions = {}
 ): Promise<T> {
   if (options.simulate === false) {
     return transaction;
@@ -87,7 +83,7 @@ export async function preflightMutation<T>(
     return rpc
       .assembleTransaction(
         transaction as Parameters<typeof rpc.assembleTransaction>[0],
-        response as Parameters<typeof rpc.assembleTransaction>[1],
+        response as Parameters<typeof rpc.assembleTransaction>[1]
       )
       .build() as T;
   } catch (cause) {

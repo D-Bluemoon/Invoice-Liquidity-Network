@@ -14,17 +14,17 @@ export interface UseLPPortfolioResult {
 
 /**
  * Fetches the liquidity provider portfolio for a given address.
- * 
+ *
  * @param address - The LP's Stellar address
  * @returns {UseLPPortfolioResult} Portfolio data, loading state, and error
- * 
+ *
  * @example
  * ```tsx
  * function LPDashboard({ address }: { address: string }) {
  *   const { data: portfolio, isLoading } = useLPPortfolio(address);
- *   
+ *
  *   if (isLoading) return <Spinner />;
- *   
+ *
  *   return (
  *     <div>
  *       <Stat label="Total Invested" value={portfolio?.totalInvested} />

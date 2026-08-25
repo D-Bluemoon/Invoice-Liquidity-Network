@@ -106,7 +106,8 @@ function getLastSyncLedger(): number | null {
   try {
     const db = getDb();
     const row = db.prepare('SELECT last_ledger FROM cursor WHERE id = 1').get() as
-      { last_ledger: number } | undefined;
+      | { last_ledger: number }
+      | undefined;
     return row?.last_ledger ?? null;
   } catch {
     return null;
