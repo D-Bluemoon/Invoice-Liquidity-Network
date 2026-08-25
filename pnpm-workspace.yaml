@@ -13,7 +13,6 @@
 #   docs/           Nextra 2 legacy docs source      (@invoice-liquidity/docs)
 #
 # Shared library packages     (packages/*)
-#   packages/cli            Experimental CLI package    (@iln/cli)
 #   packages/docs           Canonical deployed docs site (@invoice-liquidity/docs-next)
 #   packages/eslint-config  Shared ESLint config         (@iln/eslint-config)
 #   packages/indexer        Horizon indexer utility lib  (@iln/indexer)

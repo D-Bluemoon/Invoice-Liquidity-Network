@@ -357,7 +357,6 @@ they resolve from the workspace instead.
 
 | Local Name | Published Name | Status |
 |---|---|---|
-| `packages/cli` | `@iln/cli` | Unpublished |
 | `packages/test-utils` | `@iln/test-utils` | Unpublished |
 | `packages/scripts` | `@iln/scripts` | Unpublished |
 | `packages/sdk` | `@iln/sdk-next` | Unpublished |

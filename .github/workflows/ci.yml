@@ -51,10 +51,8 @@ jobs:
               - 'sdk/**'
               - 'packages/sdk/**'
               - 'packages/shared/**'
-              - 'packages/invoice-sdk/**'
             cli:
               - 'cli/**'
-              - 'packages/cli/**'
             indexer:
               - 'indexer/**'
               - 'packages/indexer/**'
@@ -409,7 +407,7 @@ jobs:
         if: always()
         continue-on-error: true
         run: |
-          for pkg in sdk cli indexer notifications packages/react packages/mock-backend packages/opentelemetry packages/upgrade-tests packages/test-utils packages/cli; do
+          for pkg in sdk cli indexer notifications packages/react packages/mock-backend packages/opentelemetry packages/upgrade-tests packages/test-utils; do
             if [ -f "$pkg/vitest.config.ts" ] || [ -f "$pkg/vitest.config.js" ]; then
               echo "Generating JUnit report for $pkg..."
               cd "$GITHUB_WORKSPACE/$pkg"
