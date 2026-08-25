@@ -34,12 +34,12 @@ on:
         description: Network passphrase for custom testnet registration
         required: false
         type: string
-        default: "Test SDF Network ; September 2015"
+        default: 'Test SDF Network ; September 2015'
       stellar-cli-features:
         description: Cargo features passed to stellar-cli install
         required: false
         type: string
-        default: ""
+        default: ''
     outputs:
       identity-name:
         description: Identity alias created or reused in the Stellar CLI config

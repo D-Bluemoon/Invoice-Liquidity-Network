@@ -18,12 +18,14 @@ const defaultQueryClient = new QueryClient({
   },
 });
 
-export function ILNProvider({ client, children, queryClient = defaultQueryClient }: ILNProviderProps){
+export function ILNProvider({
+  client,
+  children,
+  queryClient = defaultQueryClient,
+}: ILNProviderProps) {
   return (
     <QueryClientProvider client={queryClient}>
-      <ILNContext.Provider value={client}>
-        {children}
-      </ILNContext.Provider>
+      <ILNContext.Provider value={client}>{children}</ILNContext.Provider>
     </QueryClientProvider>
   );
 }

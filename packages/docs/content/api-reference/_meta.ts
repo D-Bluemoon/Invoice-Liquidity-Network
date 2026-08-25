@@ -1,6 +1,5 @@
 export default {
   horizon: 'Horizon API',
   'soroban-rpc': 'Soroban RPC',
-  notifications: 'Webhooks'
-}
-
+  notifications: 'Webhooks',
+};

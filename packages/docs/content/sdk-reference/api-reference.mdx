@@ -45,7 +45,7 @@ Creates a new invoice on-chain.
 Parameters:
 
 | Property       | Type     | Description                               |
-| -------------- | -------- | ------------------------------------------ |
+| -------------- | -------- | ----------------------------------------- |
 | `payer`        | `string` | Stellar address of the invoice payer      |
 | `amount`       | `number` | Invoice amount in stroops (smallest unit) |
 | `discountRate` | `number` | Discount rate in basis points (1 = 0.01%) |
@@ -60,7 +60,7 @@ Example:
 const invoiceId = await client.submitInvoice({
   payer: 'GDRMKYQMTNZ3XPRF7K7L3PFBJQI2S2Y2E3KJQF3KHKY3XT3LZXG3G5X2',
   amount: 100_0000000, // 100 USDC
-  discountRate: 300,   // 3%
+  discountRate: 300, // 3%
   dueDate: 1735689600,
   token: 'USDC_CONTRACT_ID',
 });
@@ -77,7 +77,7 @@ Funds a pending invoice as a liquidity provider.
 Parameters:
 
 | Property    | Type     | Description               |
-| ----------- | -------- | -------------------------- |
+| ----------- | -------- | ------------------------- |
 | `invoiceId` | `number` | ID of the invoice to fund |
 
 Returns: `Promise<TransactionResult>`
@@ -164,7 +164,7 @@ enum InvoiceStatus {
 ### Error Types
 
 | Error                    | Description                              |
-| ------------------------ | ------------------------------------------ |
+| ------------------------ | ---------------------------------------- |
 | `InvoiceNotFoundError`   | Invoice ID does not exist                |
 | `InvalidStatusError`     | Operation not allowed in current state   |
 | `InsufficientFundsError` | Wallet balance too low                   |

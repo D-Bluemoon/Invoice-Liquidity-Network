@@ -39,7 +39,9 @@ describe('Federation', () => {
 
     it('should throw FederationResolutionError if address not registered', async () => {
       vi.mocked(Federation.Server.resolve).mockResolvedValueOnce({} as any);
-      await expect(resolveFederationAddress('bob*iln.finance')).rejects.toThrow('Address not registered');
+      await expect(resolveFederationAddress('bob*iln.finance')).rejects.toThrow(
+        'Address not registered'
+      );
     });
   });
 
@@ -81,7 +83,7 @@ describe('FederationRecordManager', () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       'https://fed.example.com/records',
-      expect.objectContaining({ method: 'POST' }),
+      expect.objectContaining({ method: 'POST' })
     );
     const init = fetchMock.mock.calls[0][1];
     const body = JSON.parse(init.body);
@@ -98,16 +100,23 @@ describe('FederationRecordManager', () => {
   });
 
   it('createRecord throws FederationResolutionError on non-2xx response', async () => {
-    fetchMock.mockResolvedValueOnce({ ok: false, status: 409, statusText: 'Conflict', text: async () => 'Already exists' });
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 409,
+      statusText: 'Conflict',
+      text: async () => 'Already exists',
+    });
     const mgr = new FederationRecordManager('https://fed.example.com');
-    await expect(mgr.createRecord({ name: 'alice', stellarAddress: 'GABC' }))
-      .rejects.toThrow(FederationResolutionError);
+    await expect(mgr.createRecord({ name: 'alice', stellarAddress: 'GABC' })).rejects.toThrow(
+      FederationResolutionError
+    );
   });
 
   it('createRecord throws on missing name', async () => {
     const mgr = new FederationRecordManager('https://fed.example.com');
-    await expect(mgr.createRecord({ name: '', stellarAddress: 'GABC' }))
-      .rejects.toThrow(FederationResolutionError);
+    await expect(mgr.createRecord({ name: '', stellarAddress: 'GABC' })).rejects.toThrow(
+      FederationResolutionError
+    );
   });
 
   it('getByAddress delegates to resolveFederationAddress', async () => {
@@ -126,7 +135,7 @@ describe('FederationRecordManager', () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       'https://fed.example.com/records/alice',
-      expect.objectContaining({ method: 'PUT' }),
+      expect.objectContaining({ method: 'PUT' })
     );
     const init = fetchMock.mock.calls[0][1];
     const body = JSON.parse(init.body);
@@ -135,8 +144,9 @@ describe('FederationRecordManager', () => {
 
   it('updateRecord throws on missing name', async () => {
     const mgr = new FederationRecordManager('https://fed.example.com');
-    await expect(mgr.updateRecord('', { stellarAddress: 'GNEW' }))
-      .rejects.toThrow(FederationResolutionError);
+    await expect(mgr.updateRecord('', { stellarAddress: 'GNEW' })).rejects.toThrow(
+      FederationResolutionError
+    );
   });
 
   it('deleteRecord sends DELETE to correct URL', async () => {
@@ -145,12 +155,17 @@ describe('FederationRecordManager', () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       'https://fed.example.com/records/alice',
-      expect.objectContaining({ method: 'DELETE' }),
+      expect.objectContaining({ method: 'DELETE' })
     );
   });
 
   it('deleteRecord throws FederationResolutionError on non-2xx', async () => {
-    fetchMock.mockResolvedValueOnce({ ok: false, status: 404, statusText: 'Not Found', text: async () => '' });
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+      text: async () => '',
+    });
     const mgr = new FederationRecordManager('https://fed.example.com');
     await expect(mgr.deleteRecord('unknown')).rejects.toThrow(FederationResolutionError);
   });

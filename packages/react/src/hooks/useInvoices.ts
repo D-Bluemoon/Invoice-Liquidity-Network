@@ -23,8 +23,7 @@ export interface UseInvoicesResult {
 
 const invoicesKeys = {
   all: ['invoices', 'paginated'] as const,
-  list: (address: string, role: InvoiceRole) =>
-    [...invoicesKeys.all, address, role] as const,
+  list: (address: string, role: InvoiceRole) => [...invoicesKeys.all, address, role] as const,
 };
 
 /**
@@ -58,7 +57,11 @@ export function useInvoices(address: string, options: UseInvoicesOptions = {}): 
   const { role = 'issuer', page = 1, pageSize = 10 } = options;
   const client = useILNClient();
 
-  const { data: allData, isLoading, error } = useQuery({
+  const {
+    data: allData,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: invoicesKeys.list(address, role),
     queryFn: async () => {
       switch (role) {

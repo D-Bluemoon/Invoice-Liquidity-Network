@@ -7,12 +7,12 @@
  *   import { renderFundedEmail, buildFundedSubject } from "./templates";
  */
 
-export { renderFundedEmail, buildFundedSubject } from "./funded.template";
+export { renderFundedEmail, buildFundedSubject } from './funded.template';
 
-export { renderPaymentEmail, buildPaymentSubject } from "./payment.template";
+export { renderPaymentEmail, buildPaymentSubject } from './payment.template';
 
-export { renderDisputeEmail, buildDisputeSubject } from "./dispute.template";
+export { renderDisputeEmail, buildDisputeSubject } from './dispute.template';
 
-export { renderDueWarningEmail, buildDueWarningSubject } from "./due-warning.template";
+export { renderDueWarningEmail, buildDueWarningSubject } from './due-warning.template';
 
-export { emailShell, escapeHtml } from "./helpers";
+export { emailShell, escapeHtml } from './helpers';

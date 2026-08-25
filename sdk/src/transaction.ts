@@ -1,14 +1,10 @@
-import {
-  TransactionBuilder,
-  Networks,
-  Transaction,
-} from '@stellar/stellar-sdk';
+import { TransactionBuilder, Networks, Transaction } from '@stellar/stellar-sdk';
 import { SimulationError } from './errors.js';
 
 // Derived from TransactionBuilder's own method signature (rather than the
 // standalone `Operation` type) to avoid nominal type mismatches when
 // multiple @stellar/stellar-base versions are present in the workspace.
-type TxOperation = Parameters<TransactionBuilder["addOperation"]>[0];
+type TxOperation = Parameters<TransactionBuilder['addOperation']>[0];
 
 export interface TransactionConfig {
   baseFee?: number;
@@ -120,7 +116,7 @@ export class ILNTransactionBuilder {
       networkPassphrase,
     });
 
-    operations.forEach(op => txBuilder.addOperation(op));
+    operations.forEach((op) => txBuilder.addOperation(op));
     txBuilder.setTimeout(timeout);
 
     let transaction = txBuilder.build();
@@ -128,10 +124,7 @@ export class ILNTransactionBuilder {
     const simulation = await this.simulateWithCache(transaction);
 
     if (simulation.success) {
-      const adjustedFee = Math.min(
-        Math.max(baseFee, simulation.minResourceFee),
-        maxFee,
-      );
+      const adjustedFee = Math.min(Math.max(baseFee, simulation.minResourceFee), maxFee);
       transaction = TransactionBuilder.cloneFrom(transaction, {
         fee: adjustedFee.toString(),
         networkPassphrase,
@@ -160,7 +153,7 @@ export class ILNTransactionBuilder {
   ): Promise<{
     baseFee: number;
     estimatedFee: number;
-    resources: SimulationResult["resources"];
+    resources: SimulationResult['resources'];
     withinBudget: boolean;
   }> {
     const baseFee = config.baseFee ?? 100;
@@ -197,7 +190,7 @@ export class ILNTransactionBuilder {
       networkPassphrase,
     });
 
-    operations.forEach(op => txBuilder.addOperation(op));
+    operations.forEach((op) => txBuilder.addOperation(op));
     txBuilder.setTimeout(timeout);
 
     const transaction = txBuilder.build();
@@ -206,9 +199,9 @@ export class ILNTransactionBuilder {
 
     if (!simulation.success) {
       throw new SimulationError(
-        `Transaction simulation failed: ${simulation.error ?? "Unknown error"}. ` +
-        `Use forceSubmit to bypass simulation checks.`,
-        "Review transaction parameters or use forceSubmit to skip simulation."
+        `Transaction simulation failed: ${simulation.error ?? 'Unknown error'}. ` +
+          `Use forceSubmit to bypass simulation checks.`,
+        'Review transaction parameters or use forceSubmit to skip simulation.'
       );
     }
 
@@ -218,9 +211,9 @@ export class ILNTransactionBuilder {
   validateBeforeSubmit(simulation: SimulationResult): void {
     if (!simulation.success) {
       throw new SimulationError(
-        `Transaction would fail: ${simulation.error ?? "Simulation indicated failure"}. ` +
-        `Fix the issue before submitting.`,
-        "Check transaction parameters, account balances, and contract state."
+        `Transaction would fail: ${simulation.error ?? 'Simulation indicated failure'}. ` +
+          `Fix the issue before submitting.`,
+        'Check transaction parameters, account balances, and contract state.'
       );
     }
   }

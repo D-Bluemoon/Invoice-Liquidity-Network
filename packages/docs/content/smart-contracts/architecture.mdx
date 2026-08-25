@@ -9,11 +9,11 @@ ILN consists of three core Soroban smart contracts deployed on Stellar. Each con
 
 ## Contract Overview
 
-| Contract | Purpose | Language |
-|----------|---------|----------|
-| `InvoiceLiquidity` | Core invoice lifecycle | Rust |
-| `ILNDistribution` | Yield distribution & fee management | Rust |
-| `ILNGovernance` | Protocol parameter governance | Rust |
+| Contract           | Purpose                             | Language |
+| ------------------ | ----------------------------------- | -------- |
+| `InvoiceLiquidity` | Core invoice lifecycle              | Rust     |
+| `ILNDistribution`  | Yield distribution & fee management | Rust     |
+| `ILNGovernance`    | Protocol parameter governance       | Rust     |
 
 ## InvoiceLiquidity Contract
 
@@ -90,7 +90,7 @@ Handles fee collection and yield distribution.
 ### Fee Structure
 
 | Fee Type     | Rate     | Recipient               |
-| ------------ | -------- | ------------------------ |
+| ------------ | -------- | ----------------------- |
 | Protocol fee | 0.5%     | Treasury                |
 | LP yield     | Variable | Liquidity Provider      |
 | Late fee     | 1% / day | LP (after grace period) |
