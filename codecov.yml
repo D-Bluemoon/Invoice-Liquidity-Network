@@ -25,7 +25,6 @@ flags:
   cli:
     paths:
       - cli/
-      - packages/cli/
   shared:
     paths:
       - packages/shared/

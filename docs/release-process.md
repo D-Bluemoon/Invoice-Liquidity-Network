@@ -357,13 +357,11 @@ they resolve from the workspace instead.
 
 | Local Name | Published Name | Status |
 |---|---|---|
-| `packages/cli` | `@iln/cli` | Unpublished |
 | `packages/test-utils` | `@iln/test-utils` | Unpublished |
 | `packages/scripts` | `@iln/scripts` | Unpublished |
 | `packages/sdk` | `@iln/sdk-next` | Unpublished |
 | `packages/mock-backend` | `@iln/mock-backend` | Unpublished |
 | `packages/indexer` | `@iln/indexer` | Unpublished |
-| `packages/invoice-sdk` | `@iln/invoice-sdk` | Unpublished |
 | `packages/eslint-config` | `@iln/eslint-config` | Unpublished |
 | `packages/upgrade-tests` | `@iln/upgrade-tests` | Unpublished |
 | `packages/shared` | `@iln/shared` | Unpublished |

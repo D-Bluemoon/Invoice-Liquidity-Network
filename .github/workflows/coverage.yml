@@ -43,7 +43,6 @@ jobs:
               - 'packages/shared/**'
             cli:
               - 'cli/**'
-              - 'packages/cli/**'
             indexer:
               - 'indexer/**'
               - 'packages/indexer/**'

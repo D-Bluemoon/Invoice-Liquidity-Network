@@ -94,10 +94,11 @@ iln status --id 1
 
 See [`cli/README.md`](./cli/README.md) for setup and usage.
 
-This is the canonical CLI. `packages/cli` (`@iln/cli`) is a separate,
-experimental package with a smaller command set — see
-[`docs/cli-vs-cli-next.md`](./docs/cli-vs-cli-next.md) for the full
-comparison and which one to use.
+This is the one and only CLI in this repository. `packages/cli` (`@iln/cli`)
+was an experimental duplicate with a smaller command set and has been
+removed — see [`docs/cli-vs-cli-next.md`](./docs/cli-vs-cli-next.md) for how
+its unique commands (`watch`, `export`, `stats`, `reputation`, `network
+switch`) were folded in here.
 
 **Development vs Production CLI:**
 - The published CLI package (`@invoice-liquidity/cli`) installs the `iln` binary — this is the public-facing tool for interacting with the ILN contract.
@@ -168,11 +169,9 @@ The table below lists every workspace package, its directory, npm package name, 
 | Directory | Package name | Role |
 |---|---|---|
 | `packages/sdk/` | `@iln/sdk` | SDK package variant (experimental / next iteration) |
-| `packages/cli/` | `@iln/cli` | CLI package variant (experimental) — see [`docs/cli-vs-cli-next.md`](./docs/cli-vs-cli-next.md) |
 | `packages/docs/` | `@invoice-liquidity/docs-next` | **Canonical deployed docs site** (Nextra 3, Next.js 15 App Router) — [docs.iln.finance](https://docs.iln.finance) |
 | `packages/shared/` | `@iln/shared` | Shared utilities consumed by SDK, CLI, and other packages |
 | `packages/indexer/` | `@iln/indexer` | Horizon-based event indexer utility library (stateless, publishable) |
-| `packages/invoice-sdk/` | `@iln/invoice-sdk` | Invoice SDK variant |
 | `packages/react/` | `@iln/react` | React component library for ILN protocol interactions |
 | `packages/opentelemetry/` | `@iln/opentelemetry` | OpenTelemetry instrumentation helpers |
 | `packages/mock-backend/` | `@iln/mock-backend` | Mock backend for local testing without a live Stellar node |
