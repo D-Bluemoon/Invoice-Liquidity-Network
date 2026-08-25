@@ -1,5 +1,4 @@
-import { execSync } from 'child_process';
-import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync, readFileSync } from 'fs';
+import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync, readFileSync, copyFileSync } from 'fs';
 import { join } from 'path';
 import Database from 'better-sqlite3';
 import { CONFIG } from './config';
@@ -360,8 +359,8 @@ export class BackupManager {
 
     console.log(`[backup] Restoring from ${backupPath} to ${targetPath}`);
 
-    // Copy the backup file to the target location
-    execSync(`cp "${backupPath}" "${targetPath}"`, { stdio: 'pipe' });
+    // Copy the backup file to the target location without invoking a shell
+    copyFileSync(backupPath, targetPath);
 
     console.log('[backup] Restore complete');
   }
