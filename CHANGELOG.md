@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > `.github/workflows/docs-changelog.yml` workflow on every push to `main`.
 > **Edit this file only.** See [docs/ci-cd.md](docs/ci-cd.md) for details.
 
+## [Unreleased]
+
+### Removed
+- Removed `packages/invoice-sdk` (`@iln/invoice-sdk`). It was a zero-source,
+  build-time re-export alias for `@iln/sdk` kept for an older import name; a
+  prior workspace audit confirmed it had no remaining consumers and it had
+  been flagged for removal in its own README. Resolves the "third SDK-shaped
+  package" ambiguity between `sdk/`, `packages/sdk`, and `packages/invoice-sdk`
+  (#848).
+
 ## [1.0.0] - 2026-05-11
 
 ### Added

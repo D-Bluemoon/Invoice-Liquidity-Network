@@ -172,7 +172,6 @@ The table below lists every workspace package, its directory, npm package name, 
 | `packages/docs/` | `@invoice-liquidity/docs-next` | **Canonical deployed docs site** (Nextra 3, Next.js 15 App Router) — [docs.iln.finance](https://docs.iln.finance) |
 | `packages/shared/` | `@iln/shared` | Shared utilities consumed by SDK, CLI, and other packages |
 | `packages/indexer/` | `@iln/indexer` | Horizon-based event indexer utility library (stateless, publishable) |
-| `packages/invoice-sdk/` | `@iln/invoice-sdk` | Invoice SDK variant |
 | `packages/react/` | `@iln/react` | React component library for ILN protocol interactions |
 | `packages/opentelemetry/` | `@iln/opentelemetry` | OpenTelemetry instrumentation helpers |
 | `packages/mock-backend/` | `@iln/mock-backend` | Mock backend for local testing without a live Stellar node |

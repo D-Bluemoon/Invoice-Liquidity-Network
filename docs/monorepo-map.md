@@ -33,8 +33,7 @@ Every workspace in the ILN monorepo, its purpose, status, and key dependencies.
 | `packages/eslint-config/` | `@iln/eslint-config` | Stable | Shared ESLint configuration for all monorepo packages. | — |
 | `packages/test-utils/` | `@iln/test-utils` | Stable | Test helper utilities used across SDK and service test suites. | — |
 | `packages/indexer/` | `@iln/indexer` | Next | Horizon event indexer utility library — lower-level than `indexer/` service; suitable for embedding. | `@iln/shared` |
-| `packages/invoice-sdk/` | `@iln/invoice-sdk` | Experimental | Invoice SDK variant exploring alternative API surfaces. Not for production use. | `@iln/shared` |
-| `packages/sdk/` | `@iln/sdk-next` | Experimental | SDK variant exploring breaking changes for the next major version. See [cli-vs-cli-next.md](cli-vs-cli-next.md). | `@iln/shared` |
+| `packages/sdk/` | `@iln/sdk-next` | Next | Browser-first, modular rewrite of `@iln/sdk`, on a path to becoming `@iln/sdk` v2. See [sdk-next-migration.md](sdk-next-migration.md) and the Resolution Plans section below. | `@iln/shared` |
 | `packages/cli/` | `@iln/cli` | Experimental | CLI package variant (experimental). See [cli-vs-cli-next.md](cli-vs-cli-next.md). | — |
 | `packages/docs/` | `@invoice-liquidity/docs-next` | Next | Canonical deployed docs site (Nextra 2). Replaces `docs/`. | — |
 | `packages/mock-backend/` | `@iln/mock-backend` | Next | In-memory mock backend for frontend development without a live Stellar node. | `@iln/shared` |
