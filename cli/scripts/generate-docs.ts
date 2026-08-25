@@ -29,9 +29,12 @@ ${program.description()}
 |--------|-------------|---------|
 `;
 
+  const escapeMarkdownTableCell = (value: string) =>
+    value.replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
+
   program.options.forEach((opt: Option) => {
-    const flags = opt.flags.replace(/\|/g, '\\|');
-    const desc = opt.description.replace(/\|/g, '\\|');
+    const flags = escapeMarkdownTableCell(opt.flags);
+    const desc = escapeMarkdownTableCell(opt.description);
     const def = opt.defaultValue ? `\`${opt.defaultValue}\`` : '';
     md += `| \`${flags}\` | ${desc} | ${def} |\n`;
   });
