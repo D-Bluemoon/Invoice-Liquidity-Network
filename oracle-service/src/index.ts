@@ -1,3 +1,5 @@
+import type { Server } from 'node:http';
+
 import express, { type Request, type Response } from 'express';
 import { Address } from '@stellar/stellar-sdk';
 
@@ -164,6 +166,9 @@ export async function createOracleApp(
     cache: cache.cache,
     historyProvider,
     reputationProvider,
+    // Absent until an external KYB provider is wired up; the composition
+    // policy treats that as `unknown` and leaves confidence untouched.
+    externalProvider: options.externalProvider,
     cacheTtlSeconds: resolved.cacheTtlSeconds,
     maxOracleAgeMs: resolved.maxOracleAgeMs,
   });
@@ -212,6 +217,25 @@ export async function createOracleApp(
     res.status(405).json({ error: 'Use POST /v1/verify' });
   });
 
+  /**
+   * Drop every cached verdict for a payer.
+   *
+   * The indexer calls this when it observes new activity for a payer, so a
+   * cached clean verdict cannot outlive the behaviour it was computed from.
+   */
+  app.post('/v1/cache/invalidate', async (req: Request, res: Response) => {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const payer = String(body.payer ?? '').trim();
+
+    if (!payer || !isValidStellarAddress(payer)) {
+      res.status(400).json({ error: 'payer must be a valid Stellar address' });
+      return;
+    }
+
+    const invalidated = await verifier.invalidatePayer(payer);
+    res.json({ payer, invalidated });
+  });
+
   async function handleVerification(req: Request, res: Response): Promise<void> {
     const body = (req.body ?? {}) as Partial<OracleVerificationRequest> & Record<string, unknown>;
     const payer = String(body.payer ?? '').trim();
@@ -254,6 +278,16 @@ export async function createOracleApp(
         metrics.staleResponsesTotal.inc();
       }
 
+      // Outcome distribution is what the fraud-spike alert watches: a sudden
+      // shift toward rejected-fraud-signals means either an attack or a broken
+      // heuristic, and both need to be seen immediately.
+      metrics.recordVerificationOutcome({
+        outcome: response.composition.outcome,
+        fraudSignals: response.fraudSignals,
+        externalStatus: response.composition.external.status,
+        cacheHit: response.cacheHit,
+      });
+
       lastVerificationAt = response.generatedAt;
       res.json(response);
     } catch (error) {
@@ -286,13 +320,25 @@ export async function createOracleApp(
   };
 }
 
+/**
+ * Boot the HTTP server.
+ *
+ * Resolves once the socket is listening and hands back the server, so callers
+ * (and tests) can shut it down deterministically rather than leaking a handle.
+ */
 export async function startOracleService(
   options: Partial<OracleServiceOptions> = {}
-): Promise<void> {
+): Promise<Server> {
   const { app } = await createOracleApp(options);
   const resolved = createDefaultOptions(options);
-  app.listen(resolved.port, () => {
-    console.log(`[oracle] listening on http://0.0.0.0:${resolved.port}`);
+
+  return new Promise<Server>((resolve) => {
+    const server = app.listen(resolved.port, () => {
+      const address = server.address();
+      const port = typeof address === 'object' && address ? address.port : resolved.port;
+      console.log(`[oracle] listening on http://0.0.0.0:${port}`);
+      resolve(server);
+    });
   });
 }
 
@@ -305,5 +351,12 @@ if (shouldAutostart) {
   });
 }
 
-export type { OracleServiceOptions, OracleVerificationRequest } from './types';
+export type {
+  ExternalVerificationProvider,
+  ExternalVerificationResult,
+  OracleServiceOptions,
+  OracleSignalComposition,
+  OracleVerificationRequest,
+} from './types';
+export { composeVerdict, COMPOSITION_POLICY_VERSION } from './composition';
 export { assessOracleRequest, normalizeAmountToNumber, normalizeTimestampToMs } from './verifier';

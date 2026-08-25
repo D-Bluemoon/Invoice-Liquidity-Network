@@ -21,12 +21,21 @@ import type {
   ReputationSnapshot,
   OracleVerifierDependencies,
 } from './types';
-import type { OracleCacheReaderWriter } from './types';
-import { buildOracleCacheKey } from './cache';
+import type {
+  ExternalVerificationProvider,
+  ExternalVerificationResult,
+  OracleCacheReaderWriter,
+} from './types';
+import {
+  buildOracleCacheKey,
+  buildOraclePayerKeyPrefix,
+  resolveCacheTtlSeconds,
+} from './cache';
+import { composeVerdict, confidenceLevelFromScore } from './composition';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const MAX_FRAUD_WINDOW_MS = 30 * DAY_MS;
-const RAPID_SUCCESSION_WINDOW_MS = 24 * 60 * 60 * 1000;
+export const MAX_FRAUD_WINDOW_MS = 30 * DAY_MS;
+export const RAPID_SUCCESSION_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -78,16 +87,6 @@ function variance(values: number[]): number {
 
 function standardDeviation(values: number[]): number {
   return Math.sqrt(variance(values));
-}
-
-function confidenceLevelFromScore(confidence: number): OracleConfidenceLevel {
-  if (confidence < 0.4) {
-    return 'low';
-  }
-  if (confidence < 0.75) {
-    return 'medium';
-  }
-  return 'high';
 }
 
 function successRateFromHistory(history: IndexerInvoiceHistoryEntry[]): number {
@@ -309,17 +308,41 @@ function computeTrustScore(
   };
 }
 
+/**
+ * Whether the payer has on-chain activity inside the rapid-succession window.
+ *
+ * Drives the volatile cache TTL: a clean verdict for an actively-invoicing
+ * payer is the one most likely to be overtaken by their next invoice.
+ */
+export function hasRecentActivity(
+  history: IndexerInvoiceHistoryEntry[],
+  nowMs: number,
+  windowMs: number = RAPID_SUCCESSION_WINDOW_MS
+): boolean {
+  return history.some((entry) => {
+    const created = normalizeTimestampToMs(entry.created_at);
+    const updated = normalizeTimestampToMs(entry.updated_at);
+    const latest = Math.max(created, updated);
+    return latest > 0 && nowMs - latest <= windowMs;
+  });
+}
+
 export function assessOracleRequest(input: OracleAssessmentInput): OracleAssessment {
   const requestAmount = normalizeAmountToNumber(input.request.amount);
   const computed = computeTrustScore(input.reputation, input.history, requestAmount, input.nowMs);
   const generatedAt = new Date(input.nowMs).toISOString();
   const dataAgeMs = Math.max(0, input.nowMs - computed.sourceTimestampMs);
   const isFresh = input.maxOracleAgeMs <= 0 || dataAgeMs <= input.maxOracleAgeMs;
-  const isVerified =
-    computed.trustScore >= 70 &&
-    computed.confidence >= 0.55 &&
-    computed.fraudSignals.length === 0 &&
-    isFresh;
+
+  // The verdict is no longer decided here — `composeVerdict` owns the policy
+  // that combines the heuristic signal with the external provider signal.
+  const verdict = composeVerdict({
+    trustScore: computed.trustScore,
+    baseConfidence: computed.confidence,
+    fraudSignals: computed.fraudSignals,
+    isFresh,
+    external: input.external,
+  });
 
   return {
     sourceTimestampMs: computed.sourceTimestampMs,
@@ -333,9 +356,9 @@ export function assessOracleRequest(input: OracleAssessmentInput): OracleAssessm
         BigInt(Math.max(0, Math.trunc(Number.isFinite(requestAmount) ? requestAmount : 0)))
       ),
       trustScore: computed.trustScore,
-      confidence: computed.confidence,
-      confidenceLevel: computed.confidenceLevel,
-      isVerified,
+      confidence: verdict.confidence,
+      confidenceLevel: verdict.confidenceLevel,
+      isVerified: verdict.isVerified,
       generatedAt,
       dataAgeMs,
       cacheHit: false,
@@ -346,7 +369,8 @@ export function assessOracleRequest(input: OracleAssessmentInput): OracleAssessm
       amountDeviation: round(computed.amountDeviation, 2),
       settlementVarianceDays: round(computed.settlementVarianceDays, 4),
       fraudSignals: computed.fraudSignals,
-      evidence: computed.evidence,
+      evidence: [...computed.evidence, ...verdict.evidence],
+      composition: verdict.composition,
     },
   };
 }
@@ -371,6 +395,7 @@ export class OracleVerifier {
   private readonly historyProvider: OracleHistoryProvider;
   private readonly reputationProvider: OracleReputationProvider;
   private readonly maxOracleAgeMs: number;
+  private readonly externalProvider?: ExternalVerificationProvider;
   private readonly inflight = new Map<string, Promise<OracleVerificationResponse>>();
 
   constructor(options: OracleVerifierOptions) {
@@ -380,6 +405,21 @@ export class OracleVerifier {
     this.historyProvider = options.historyProvider;
     this.reputationProvider = options.reputationProvider;
     this.maxOracleAgeMs = options.maxOracleAgeMs ?? 5 * 60 * 1000;
+    this.externalProvider = options.externalProvider;
+  }
+
+  /**
+   * Drop every cached verdict for a payer.
+   *
+   * Called when new activity is observed for that payer, so a clean verdict
+   * cannot outlive the behaviour it was computed from. Returns the number of
+   * entries removed, or 0 when the cache does not support invalidation.
+   */
+  async invalidatePayer(payer: string): Promise<number> {
+    if (!this.cache?.invalidateByPrefix) {
+      return 0;
+    }
+    return this.cache.invalidateByPrefix(buildOraclePayerKeyPrefix(payer.trim()));
   }
 
   async verify(request: OracleVerificationRequest): Promise<OracleVerificationResponse> {
@@ -435,9 +475,12 @@ export class OracleVerifier {
       rank: 0,
     };
 
-    const [historyResult, reputationResult] = await Promise.allSettled([
+    const [historyResult, reputationResult, externalResult] = await Promise.allSettled([
       this.historyProvider(request.payer),
       this.reputationProvider(request.payer),
+      this.externalProvider
+        ? this.externalProvider(request.payer)
+        : Promise.resolve(undefined),
     ]);
 
     if (historyResult.status === 'fulfilled') {
@@ -448,12 +491,26 @@ export class OracleVerifier {
       reputation = reputationResult.value;
     }
 
+    // A provider that threw yields `unknown`, never `unverified`: an outage
+    // must not be reported as a failed identity check.
+    let external: ExternalVerificationResult | undefined;
+    if (externalResult.status === 'fulfilled') {
+      external = externalResult.value;
+    } else if (this.externalProvider) {
+      external = {
+        status: 'unknown',
+        provider: 'unavailable',
+        reasons: ['External verification provider did not respond'],
+      };
+    }
+
     const assessment = assessOracleRequest({
       request,
       history,
       reputation,
       nowMs,
       maxOracleAgeMs: request.maxOracleAgeMs ?? this.maxOracleAgeMs,
+      external,
     });
 
     const response: OracleVerificationResponse = {
@@ -461,7 +518,15 @@ export class OracleVerifier {
       cacheHit: false,
     };
 
-    await this.cache?.set(cacheKey, response, this.cacheTtlSeconds);
+    // Clean verdicts for actively-invoicing payers get a short TTL so the
+    // cache cannot mask fraud patterns that emerge moments later.
+    const ttlSeconds = resolveCacheTtlSeconds(
+      response,
+      this.cacheTtlSeconds,
+      hasRecentActivity(history, nowMs)
+    );
+
+    await this.cache?.set(cacheKey, response, ttlSeconds);
     return response;
   }
 }
