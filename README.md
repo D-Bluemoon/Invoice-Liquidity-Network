@@ -152,6 +152,19 @@ Deployment and development helper scripts.
 
 This is a **pnpm workspace** (see `pnpm-workspace.yaml`). For a complete table with status, purpose, and dependency information for every workspace, see [docs/monorepo-map.md](docs/monorepo-map.md).
 
+### Which package should I use?
+
+If you are a new integrator, use this quick decision guide to find what you need:
+
+| If you are building... | You should use... | NPM Package |
+| --- | --- | --- |
+| A command-line integration | `cli/` | `@invoice-liquidity/cli` |
+| A TypeScript/Node.js app | `sdk/` | `@invoice-liquidity/sdk` |
+| A React frontend | `packages/react/` | `@iln/react` |
+| Direct Horizon queries | `packages/indexer/` | `@iln/indexer` |
+
+> Note: The legacy CLI (`@iln/cli`) and experimental SDK (`@iln/sdk`) have been consolidated. Always use the top-level `cli/` and `sdk/` directories for new integrations.
+
 The table below lists every workspace package, its directory, npm package name, and role. `pnpm-workspace.yaml` is the single source of truth — the `workspaces` field has been removed from `package.json` because pnpm ignores it.
 
 ### Top-level service packages
