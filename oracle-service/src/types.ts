@@ -125,4 +125,7 @@ export interface OracleServiceOptions {
   cache?: OracleCacheReaderWriter;
   historyProvider?: (payer: string) => Promise<IndexerInvoiceHistoryEntry[]>;
   reputationProvider?: (payer: string) => Promise<ReputationSnapshot>;
+  rateLimitWindowMs?: number;
+  rateLimitMaxRequests?: number;
+  enableRateLimit?: boolean;
 }
