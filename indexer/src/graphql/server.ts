@@ -4,12 +4,11 @@ import { makeExecutableSchema } from '@graphql-tools/schema';
 import { useServer } from 'graphql-ws/lib/use/ws';
 import { WebSocketServer } from 'ws';
 import type { Server } from 'http';
+import type { RequestHandler } from 'express';
 import { typeDefs } from './schema';
 import { resolvers } from './resolvers';
 
-const KEEP_ALIVE_MS = 30_000;
-
-export async function createGraphQLServer(httpServer: Server) {
+export async function createGraphQLServer(httpServer: Server): Promise<RequestHandler> {
   const schema = makeExecutableSchema({ typeDefs, resolvers });
 
   const wss = new WebSocketServer({ server: httpServer, path: '/graphql' });
@@ -17,7 +16,6 @@ export async function createGraphQLServer(httpServer: Server) {
   useServer(
     {
       schema,
-      keepAlive: KEEP_ALIVE_MS,
       onConnect: (ctx) => {
         console.log(`[graphql-ws] Client connected from ${ctx.extra.request.socket.remoteAddress}`);
       },

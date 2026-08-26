@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
-import { getDb } from './db';
-import type { Invoice, ILNEvent, InvoiceFilter } from './types';
+import { getDb, type InvoiceFilter } from './db';
+import type { Invoice, ILNEvent } from './types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
