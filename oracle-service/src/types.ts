@@ -32,6 +32,26 @@ export interface OracleVerificationRequest {
   maxOracleAgeMs?: number;
 }
 
+export interface KYBVerificationResult {
+  provider: string;
+  isVerified: boolean;
+  businessName?: string;
+  registrationNumber?: string;
+  jurisdiction?: string;
+  riskScore?: number;
+  verifiedAt?: string;
+  signals?: string[];
+  rawDetails?: Record<string, unknown>;
+}
+
+export interface VerificationProvider {
+  name: string;
+  verifyPayer(
+    payerAddress: string,
+    metadata?: Record<string, unknown>
+  ): Promise<KYBVerificationResult>;
+}
+
 export type OracleConfidenceLevel = 'low' | 'medium' | 'high';
 
 export interface OracleVerificationResponse {
@@ -54,6 +74,7 @@ export interface OracleVerificationResponse {
   settlementVarianceDays: number;
   fraudSignals: string[];
   evidence: string[];
+  kybResult?: KYBVerificationResult;
 }
 
 export interface OracleAssessmentInput {
@@ -62,6 +83,7 @@ export interface OracleAssessmentInput {
   history: IndexerInvoiceHistoryEntry[];
   nowMs: number;
   maxOracleAgeMs: number;
+  kybResult?: KYBVerificationResult;
 }
 
 export interface OracleAssessment {
@@ -102,6 +124,7 @@ export interface OracleServiceMetricsSnapshot {
 export interface OracleVerifierDependencies {
   historyProvider: (payer: string) => Promise<IndexerInvoiceHistoryEntry[]>;
   reputationProvider: (payer: string) => Promise<ReputationSnapshot>;
+  kybProvider?: VerificationProvider;
   cache?: OracleCacheReaderWriter;
   now?: () => number;
   cacheTtlSeconds?: number;
@@ -125,6 +148,7 @@ export interface OracleServiceOptions {
   cache?: OracleCacheReaderWriter;
   historyProvider?: (payer: string) => Promise<IndexerInvoiceHistoryEntry[]>;
   reputationProvider?: (payer: string) => Promise<ReputationSnapshot>;
+  kybProvider?: VerificationProvider;
   rateLimitWindowMs?: number;
   rateLimitMaxRequests?: number;
   enableRateLimit?: boolean;
