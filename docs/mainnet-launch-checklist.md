@@ -34,7 +34,7 @@ Status values:
 | Indexer deployed | Deploy the indexer with rate limiting, backups, replay procedure, and public API health checks. | Infrastructure lead | In progress | [Indexer deployment](indexer/deployment.md) |
 | Monitoring configured | Configure alerts for RPC health, indexer lag, notification failures, webhook delivery errors, and CI release failures. | Infrastructure lead | Done | [Monitoring configuration](monitoring.md) |
 | Backups verified | Restore indexer backup artifacts in a clean environment and document recovery time. | Infrastructure lead | Not started | [Infrastructure deployment](deployment/infrastructure.md) |
-| Release provenance verified | Verify npm package provenance and GitHub release artifacts before mainnet announcement. | Release lead | In progress | [Security provenance](security.md#package-provenance) |
+| Release provenance verified | Verify npm package provenance and GitHub release artifacts before mainnet announcement. | Release lead | Done | [Provenance audit & procedure](release-process.md#package-provenance-verification-issue-878) |
 
 ## Documentation
 
