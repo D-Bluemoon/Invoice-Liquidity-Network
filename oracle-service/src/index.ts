@@ -1,4 +1,4 @@
-import express, { type Request, type Response } from 'express';
+import express, { type Request, type Response, type NextFunction } from 'express';
 import { Address } from '@stellar/stellar-sdk';
 
 import { createOracleCache } from './cache';
@@ -17,6 +17,8 @@ const DEFAULT_INDEXER_BASE_URL = 'http://localhost:3001';
 const DEFAULT_REQUEST_TIMEOUT_MS = 3500;
 const DEFAULT_CACHE_TTL_SECONDS = 300;
 const DEFAULT_MAX_ORACLE_AGE_MS = 5 * 60 * 1000;
+const DEFAULT_RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const DEFAULT_RATE_LIMIT_MAX_REQUESTS = 100; // 100 requests per minute
 
 function stripTrailingSlash(value: string): string {
   return value.replace(/\/+$/, '');
@@ -27,6 +29,41 @@ function createAbortSignal(timeoutMs: number): AbortSignal {
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   timer.unref?.();
   return controller.signal;
+}
+
+interface RateLimitStore {
+  windowStart: number;
+  count: number;
+}
+
+function createRateLimitMiddleware(
+  windowMs: number = DEFAULT_RATE_LIMIT_WINDOW_MS,
+  maxRequests: number = DEFAULT_RATE_LIMIT_MAX_REQUESTS
+) {
+  const store = new Map<string, RateLimitStore>();
+
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const clientIp = (req.ip || req.socket.remoteAddress || 'unknown').toString();
+    const now = Date.now();
+    const storedEntry = store.get(clientIp);
+
+    if (!storedEntry || now - storedEntry.windowStart > windowMs) {
+      store.set(clientIp, { windowStart: now, count: 1 });
+      next();
+      return;
+    }
+
+    storedEntry.count += 1;
+    if (storedEntry.count > maxRequests) {
+      res.status(429).json({
+        error: 'Rate limit exceeded',
+        retryAfter: Math.ceil((storedEntry.windowStart + windowMs - now) / 1000),
+      });
+      return;
+    }
+
+    next();
+  };
 }
 
 async function fetchJson<T>(url: string, timeoutMs: number): Promise<T> {
@@ -92,6 +129,13 @@ function createDefaultOptions(options: Partial<OracleServiceOptions> = {}): Orac
       options.maxOracleAgeMs ??
       Number(process.env.ORACLE_MAX_ORACLE_AGE_MS ?? DEFAULT_MAX_ORACLE_AGE_MS),
     redisUrl: options.redisUrl ?? process.env.REDIS_URL,
+    rateLimitWindowMs:
+      options.rateLimitWindowMs ??
+      Number(process.env.ORACLE_RATE_LIMIT_WINDOW_MS ?? DEFAULT_RATE_LIMIT_WINDOW_MS),
+    rateLimitMaxRequests:
+      options.rateLimitMaxRequests ??
+      Number(process.env.ORACLE_RATE_LIMIT_MAX_REQUESTS ?? DEFAULT_RATE_LIMIT_MAX_REQUESTS),
+    enableRateLimit: options.enableRateLimit ?? process.env.ORACLE_ENABLE_RATE_LIMIT !== 'false',
   };
 }
 
@@ -106,7 +150,13 @@ async function createHistoryProvider(baseUrl: string, timeoutMs: number) {
         return [];
       }
       return payload.map((entry) => normalizeHistoryEntry(entry as Record<string, unknown>));
-    } catch {
+    } catch (error) {
+      // Gracefully degrade when indexer is unavailable
+      // Log the error for monitoring but don't fail the entire verification
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      // In production, this should be sent to monitoring/logging service
+      // eslint-disable-next-line no-console
+      console.warn(`[oracle] indexer unavailable for payer ${payer}: ${errorMessage}`);
       return [];
     }
   };
@@ -174,6 +224,12 @@ export async function createOracleApp(
 
   const app = express();
   app.set('trust proxy', 1);
+
+  // Apply rate limiting middleware if enabled
+  if (resolved.enableRateLimit) {
+    app.use(createRateLimitMiddleware(resolved.rateLimitWindowMs, resolved.rateLimitMaxRequests));
+  }
+
   app.use(express.json({ limit: '256kb' }));
 
   app.get('/health', async (_req: Request, res: Response) => {

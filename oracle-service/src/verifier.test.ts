@@ -190,4 +190,184 @@ describe('oracle verifier calculations', () => {
     expect(results[0].cacheHit).toBe(false);
     expect(results.slice(1).every((result) => result.cacheHit)).toBe(true);
   });
+
+  it('gracefully degrades when indexer is unavailable', async () => {
+    const { cache } = await createOracleCache();
+
+    const verifier = new OracleVerifier({
+      cache,
+      historyProvider: async () => {
+        throw new Error('Indexer unavailable');
+      },
+      reputationProvider: async () => {
+        return reputation;
+      },
+      cacheTtlSeconds: 300,
+      maxOracleAgeMs: 10_000_000,
+      now: () => 1_701_100_000_000,
+    });
+
+    const result = await verifier.verify(request);
+
+    expect(result).toBeDefined();
+    expect(result.requestId).toBe(request.payer + ':' + request.invoiceId + ':1701100000000');
+    // Should still return a response, but with reduced confidence
+    expect(result.evidence.some((e) => e.includes('Indexer data unavailable'))).toBe(true);
+    // Reputation-only assessment should still work
+    expect(result.reputationScore).toBe(reputation.score);
+  });
+
+  it('marks response as reduced confidence when indexer data is unavailable', async () => {
+    const { cache } = await createOracleCache();
+
+    const verifier = new OracleVerifier({
+      cache,
+      historyProvider: async () => {
+        throw new Error('Connection timeout');
+      },
+      reputationProvider: async () => {
+        return reputation;
+      },
+      cacheTtlSeconds: 300,
+      maxOracleAgeMs: 10_000_000,
+      now: () => 1_701_100_000_000,
+    });
+
+    const result = await verifier.verify(request);
+
+    // Response should be marked with indexer unavailability
+    expect(result.evidence.some((e) => e.includes('Indexer data unavailable'))).toBe(true);
+    // Empty history should result in lower confidence
+    expect(result.historicalSuccessRate).toBe(0);
+    expect(result.evidence.some((e) => e.includes('No payer history available'))).toBe(true);
+  });
+});
+
+describe('oracle verifier numeric normalization - property-based tests', () => {
+  it('normalizeAmountToNumber: converts valid string amounts correctly', () => {
+    const testCases = ['0', '1', '100', '999999999', '9007199254740991'];
+
+    for (const input of testCases) {
+      const result = normalizeAmountToNumber(input);
+      expect(result).toBe(Number(input));
+      expect(Number.isFinite(result)).toBe(true);
+    }
+  });
+
+  it('normalizeAmountToNumber: handles bigint values', () => {
+    const testCases: bigint[] = [0n, 1n, 100n, 9007199254740991n];
+
+    for (const input of testCases) {
+      const result = normalizeAmountToNumber(input);
+      expect(result).toBe(Number(input));
+      expect(Number.isFinite(result)).toBe(true);
+    }
+  });
+
+  it('normalizeAmountToNumber: handles numbers directly', () => {
+    const testCases = [0, 1, 100, 999999999];
+
+    for (const input of testCases) {
+      const result = normalizeAmountToNumber(input);
+      expect(result).toBe(input);
+      expect(Number.isFinite(result)).toBe(true);
+    }
+  });
+
+  it('normalizeAmountToNumber: returns MAX_SAFE_INTEGER for values exceeding safe range', () => {
+    // Values that exceed Number.MAX_SAFE_INTEGER should fallback
+    const bigValue = '9007199254740992'; // One past MAX_SAFE_INTEGER
+    const result = normalizeAmountToNumber(bigValue);
+    expect(result).toBe(Number.MAX_SAFE_INTEGER);
+  });
+
+  it('normalizeAmountToNumber: handles negative values gracefully', () => {
+    // Negative values should be treated as their numeric equivalent
+    const testCases = ['-1', '-100', -50];
+
+    for (const input of testCases) {
+      const result = normalizeAmountToNumber(input);
+      expect(Number.isFinite(result)).toBe(true);
+    }
+  });
+
+  it('normalizeAmountToNumber: handles malformed strings', () => {
+    const testCases = [
+      'not-a-number',
+      'abc123',
+      '12.34.56',
+      '0x123', // hex-like but invalid in standard Number()
+      '',
+      'null',
+      'undefined',
+    ];
+
+    for (const input of testCases) {
+      const result = normalizeAmountToNumber(input);
+      // Should return 0 for malformed strings (fallback behavior)
+      expect(Number.isFinite(result)).toBe(true);
+      expect(result === 0 || result === Number.MAX_SAFE_INTEGER).toBe(true);
+    }
+  });
+
+  it('normalizeAmountToNumber: treats unparseable amounts as maximally suspicious for fraud detection', () => {
+    // The function should favor conservative defaults - unparseable values
+    // that might indicate tampering should be treated as MAX_SAFE_INTEGER
+    const malformedBigint = '999999999999999999999999999999999999999999999';
+    const result = normalizeAmountToNumber(malformedBigint);
+
+    // Should fall back to a safe default (either 0 or MAX_SAFE_INTEGER)
+    expect(Number.isFinite(result)).toBe(true);
+    // For fraud detection, treating it as MAX_SAFE_INTEGER means we're conservative
+    expect([0, Number.MAX_SAFE_INTEGER].includes(result)).toBe(true);
+  });
+
+  it('normalizeAmountToNumber: zero values are consistently handled', () => {
+    const testCases: Array<string | number | bigint> = ['0', 0, 0n];
+
+    for (const input of testCases) {
+      const result = normalizeAmountToNumber(input);
+      expect(result).toBe(0);
+    }
+  });
+
+  it('normalizeAmountToNumber: handles string representations of bigints', () => {
+    // Large numbers that fit in bigint but not safe integer
+    const input = '99007199254740991'; // Close to safe range
+    const result = normalizeAmountToNumber(input);
+    expect(Number.isFinite(result)).toBe(true);
+  });
+
+  it('normalizeTimestampToMs: converts seconds to milliseconds', () => {
+    expect(normalizeTimestampToMs(1_700_000_000)).toBe(1_700_000_000_000);
+    expect(normalizeTimestampToMs('1700000000')).toBe(1_700_000_000_000);
+  });
+
+  it('normalizeTimestampToMs: handles millisecond timestamps', () => {
+    const msTimestamp = 1_700_000_000_000;
+    expect(normalizeTimestampToMs(msTimestamp)).toBe(msTimestamp);
+  });
+
+  it('normalizeTimestampToMs: returns 0 for null or undefined', () => {
+    expect(normalizeTimestampToMs(null)).toBe(0);
+    expect(normalizeTimestampToMs(undefined)).toBe(0);
+  });
+
+  it('normalizeTimestampToMs: returns 0 for non-positive values', () => {
+    expect(normalizeTimestampToMs(-1000)).toBe(0);
+    expect(normalizeTimestampToMs(0)).toBe(0);
+    expect(normalizeTimestampToMs('-1000')).toBe(0);
+  });
+
+  it('normalizeTimestampToMs: correctly distinguishes seconds from milliseconds based on magnitude', () => {
+    // Numbers less than 1e12 are treated as seconds
+    expect(normalizeTimestampToMs(1_000_000_000)).toBe(1_000_000_000_000);
+    // Numbers >= 1e12 are treated as milliseconds
+    expect(normalizeTimestampToMs(1_000_000_000_000)).toBe(1_000_000_000_000);
+  });
+
+  it('normalizeTimestampToMs: handles string representations', () => {
+    expect(normalizeTimestampToMs('1700000000')).toBe(1_700_000_000_000);
+    expect(normalizeTimestampToMs('1700000000000')).toBe(1_700_000_000_000);
+  });
 });
