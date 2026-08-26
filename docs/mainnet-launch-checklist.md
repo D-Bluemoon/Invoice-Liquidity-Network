@@ -24,8 +24,8 @@ Status values:
 | --- | --- | --- | --- | --- |
 | Upgrade path tested | Prove contract upgrade flow works on a local network and testnet without storage collision or authorization regressions. | Protocol lead | In progress | [`packages/upgrade-tests`](../packages/upgrade-tests) |
 | Multi-sig admin configured | Configure production admin keys with multi-sig, quorum, timelock, and emergency response procedures. | Governance lead | Done | [Governance guide](governance-guide.md#production-multi-sig-admin-configuration) |
-| Circuit breaker tested | Exercise pause and recovery paths for funding, settlement, indexing, and notification delivery. | Security lead | Not started | [Security policy](security.md) |
-| Mainnet deployment dry run | Run deployment automation against a non-production target and record contract IDs, asset IDs, and rollback notes. | Release lead | Not started | [Deployment guide](../DEPLOYMENT_GUIDE.md) |
+| Circuit breaker tested | Exercise pause and recovery paths for funding, settlement, indexing, and notification delivery. | Security lead | In progress | [Emergency pause rehearsal](emergency-pause-rehearsal.md) ([#879](https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network/issues/879)) |
+| Mainnet deployment dry run | Run deployment automation against a non-production target and record contract IDs, asset IDs, and rollback notes. | Release lead | Done | [Dry run record](mainnet-deployment-dry-run.md) ([#877](https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network/issues/877)) |
 
 ## Infrastructure
 
