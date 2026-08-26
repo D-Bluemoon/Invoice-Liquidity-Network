@@ -1,5 +1,6 @@
 import express, { Request, Response, Router, RequestHandler } from 'express';
 import swaggerUi from 'swagger-ui-express';
+import crypto from 'crypto';
 import {
   getDb,
   getFreelancerStats,
@@ -150,7 +151,11 @@ export function createApp(): express.Application {
     const pa = typeof payer === 'string' ? payer : '';
     const fu = typeof funder === 'string' ? funder : '';
     const limit = typeof rawLimit === 'string' ? Math.min(parseInt(rawLimit, 10) || 100, 100) : 100;
-    const cacheKey = `invoices:${s}:${fl}:${pa}:${fu}:limit=${limit}:cursor=${cursor ?? ''}`;
+    
+    // Hash query parameters to prevent cache key collisions and poisoning
+    const params = { s, fl, pa, fu, limit, cursor: cursor ?? '' };
+    const hash = crypto.createHash('sha256').update(JSON.stringify(params)).digest('hex');
+    const cacheKey = `invoices:${hash}`;
 
     const cached = await cacheGet(cacheKey);
     if (cached) {
