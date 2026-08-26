@@ -50,6 +50,14 @@ The ILN Indexer is configured via environment variables. This document describes
 | `RATE_LIMIT_MAX` | `100` | Maximum requests per IP per window |
 | `RATE_LIMIT_WHITELIST` | - | Comma-separated list of IPs to exempt |
 
+### GraphQL Subscriptions
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SUBSCRIPTION_AUTH_TOKEN` | - | Optional bearer token required on WebSocket subscription connections (unset = public) |
+| `SUBSCRIPTION_MAX_CONNECTIONS` | `100` | Max concurrent WebSocket connections (`0` = unlimited) |
+| `SUBSCRIPTION_MAX_CONNECTIONS_PER_IP` | `10` | Max concurrent WebSocket connections per client IP (`0` = unlimited) |
+
 ## Configuration Examples
 
 ### Basic Testnet Setup
@@ -174,6 +182,27 @@ RATE_LIMIT_MAX=100
 # Exempt internal IPs
 RATE_LIMIT_WHITELIST=10.0.0.1,10.0.0.2
 ```
+
+### GraphQL Subscription Variables
+
+The GraphQL WebSocket transport can be rate-limited per connection and
+optionally authenticated:
+
+```env
+# Require clients to present this token as `Authorization: Bearer <token>`
+# in the connection_init handshake. When unset, subscriptions are public.
+SUBSCRIPTION_AUTH_TOKEN=change-me
+
+# At most 100 concurrent WebSocket connections total.
+SUBSCRIPTION_MAX_CONNECTIONS=100
+
+# At most 10 concurrent WebSocket connections per client IP.
+SUBSCRIPTION_MAX_CONNECTIONS_PER_IP=10
+```
+
+Connections beyond the global or per-IP cap are closed immediately with code
+`1008` (`Too many connections`). This prevents a single client from
+exhausting sockets or event-bus subscriptions.
 
 ## Validation
 
