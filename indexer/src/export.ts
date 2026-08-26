@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
-import { getDb } from './db';
-import type { Invoice, ILNEvent, InvoiceFilter } from './types';
+import { getDb, type InvoiceFilter } from './db';
+import type { Invoice, ILNEvent } from './types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -122,7 +122,6 @@ export async function processExportJob(jobId: string): Promise<void> {
     entry.job.status = 'failed';
     entry.job.error = err instanceof Error ? err.message : 'Unknown error';
   }
-}
 }
 
 // ─── Sync count helpers ───────────────────────────────────────────────────────

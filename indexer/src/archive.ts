@@ -7,7 +7,7 @@ let archiveAttached = false;
  * Return the database connection with the archive database attached.
  * Configured via process.env.ARCHIVE_DB_PATH (defaults to "archive.db").
  */
-export function getArchiveDbConnection() {
+export function getArchiveDbConnection(): ReturnType<typeof getDb> {
   const db = getDb();
   if (!archiveAttached) {
     const archivePath = process.env.ARCHIVE_DB_PATH || 'archive.db';

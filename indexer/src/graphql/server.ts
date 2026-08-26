@@ -4,11 +4,10 @@ import { makeExecutableSchema } from '@graphql-tools/schema';
 import { useServer } from 'graphql-ws/lib/use/ws';
 import { WebSocketServer } from 'ws';
 import type { Server } from 'http';
+import type { RequestHandler } from 'express';
 import { typeDefs } from './schema';
 import { resolvers } from './resolvers';
 import { CONFIG } from '../config';
-
-const KEEP_ALIVE_MS = 30_000;
 
 /** Normalize an IPv4-mapped IPv6 address (e.g. ::ffff:127.0.0.1) to a plain IP. */
 function normalizeIp(ip: string): string {
@@ -71,7 +70,10 @@ class ConnectionLimiter {
   }
 }
 
-export async function createGraphQLServer(httpServer: Server, wsOptions: GraphQLWSOptions = {}) {
+export async function createGraphQLServer(
+  httpServer: Server,
+  wsOptions: GraphQLWSOptions = {}
+): Promise<RequestHandler> {
   const schema = makeExecutableSchema({ typeDefs, resolvers });
 
   const authToken = wsOptions.authToken ?? CONFIG.subscriptionAuthToken;
@@ -100,7 +102,6 @@ export async function createGraphQLServer(httpServer: Server, wsOptions: GraphQL
   useServer(
     {
       schema,
-      keepAlive: KEEP_ALIVE_MS,
       onConnect: (ctx) => {
         // Optional shared-secret auth: when SUBSCRIPTION_AUTH_TOKEN is set,
         // require the client to present it in the Authorization header during
