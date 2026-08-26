@@ -81,7 +81,8 @@ The SDK provides its stated security properties only when all of the following a
 
 - **Oracle or external data**
   - Any off-chain evidence, price feeds, or external validation required by business logic is outside the SDK.
-  - The SDK only packages the transaction and relies on the contract and network to evaluate observable state.
+  - The SDK only packages the transaction and relies on the contract, off-chain oracle service (`oracle-service/`), and network to evaluate observable state.
+  - For detailed trust boundaries and honest scoping regarding what the oracle verifies (on-chain payment behavior, default frequency, rapid succession fraud signals) versus what it does not verify (real-world corporate entity existence, legal KYB), refer to [docs/oracle-service.md](./oracle-service.md).
 
 - **Contract policy rules and token allowlists**
   - The SDK does not independently maintain the contract token allowlist or business rule enforcement.

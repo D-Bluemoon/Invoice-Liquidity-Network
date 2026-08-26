@@ -382,13 +382,57 @@ The oracle exposes Prometheus metrics on `/metrics`:
 
 ## Integration with Trust & Liquidity Model
 
-### Relationship to External KYB
+### Honest Scoping: What "Payer Verification" Actually Means (#867)
 
-This oracle is **not a full KYB replacement**, but a **complementary risk assessment layer**:
+In public protocol narratives and SCF submissions, terms like "payer verification" or "credit assessment" can easily be misinterpreted as full legal Know-Your-Business (KYB) compliance. It is critical to state the exact operational scope honestly:
 
-- **What it does**: Analyzes historical settlement behavior and on-chain reputation signals to assign a fraud risk score
-- **What it doesn't do**: Verify legal identity, tax status, regulatory compliance, or business registration
-- **Future integration**: The oracle's assessment and evidence can feed into an external-KYB provider integration (Issue 867 explores this design)
+#### What `oracle-service` Currently Checks:
+1. **On-chain Settlement Track Record:** Payment success rate and default rate computed from indexed historical events.
+2. **Behavioral Inconsistencies:** Significant percentage deviations between the requested invoice amount and historical averages.
+3. **Rapid Succession Abuse:** Burst creation of multiple invoices (3+ in 24 hours) from the same account.
+4. **Default Clustering:** Recent concentration of defaults (2+ in 30 days) indicating immediate insolvency or malicious abandonment.
+5. **Ledger Timing Anomalies:** Clustered `updated_at` timestamps (4+ in identical ledger windows) indicating potential transaction manipulation.
+6. **Soroban Reputation Snapshot:** On-chain reputation scores emitted by protocol contracts.
+
+#### What `oracle-service` Does NOT Check:
+1. **Legal Business Existence:** Verification of official corporate registration, business licenses, or jurisdiction registry records (e.g. Delaware Division of Corporations, Companies House).
+2. **Beneficial Ownership & Identity (KYC/KYB):** Identification or sanctions screening of company directors, Ultimate Beneficial Owners (UBOs), or authorized signatories.
+3. **Real-World Balance Sheet Solvency:** Off-chain bank account balances, audited financial statements, credit bureau scores (Dun & Bradstreet, Experian), or cash flows.
+4. **Tax Compliance:** Valid VAT, EIN, or tax registration status.
+
+---
+
+### Pluggable External KYB Provider Architecture (#868)
+
+To bridge the gap between purely behavioral on-chain heuristics and legal entity verification, `oracle-service` provides a pluggable adapter interface:
+
+```typescript
+export interface KYBVerificationResult {
+  provider: string;
+  isVerified: boolean;
+  businessName?: string;
+  registrationNumber?: string;
+  jurisdiction?: string;
+  riskScore?: number;
+  verifiedAt?: string;
+  signals?: string[];
+  rawDetails?: Record<string, unknown>;
+}
+
+export interface VerificationProvider {
+  name: string;
+  verifyPayer(
+    payerAddress: string,
+    metadata?: Record<string, unknown>
+  ): Promise<KYBVerificationResult>;
+}
+```
+
+#### How It Works:
+- `OracleVerifier` accepts an optional `kybProvider` implementing `VerificationProvider`.
+- When assessing a verification request, `OracleVerifier` executes the external KYB check in parallel with indexer history and Soroban reputation RPC calls via `Promise.allSettled()`.
+- If the external KYB provider returns `isVerified: false`, the oracle rejects verification (`isVerified: false`), adds a fraud signal (`External KYB provider verification failed or unverified`), and records the provider's diagnostic signals into the evidence log.
+- A reference implementation is provided in `oracle-service/src/kyb/mockProvider.ts` (`MockKYBProvider`), allowing seamless local testing and straightforward production adapter implementations for external vendors (e.g., Middesk, Sumsub, Trulioo).
 
 ### Use in fund_invoice()
 

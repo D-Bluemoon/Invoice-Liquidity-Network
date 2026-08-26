@@ -85,12 +85,19 @@ async function fetchJson<T>(url: string, timeoutMs: number): Promise<T> {
 }
 
 function isValidStellarAddress(value: string): boolean {
+  if (typeof value !== 'string' || !value.trim()) {
+    return false;
+  }
+  const trimmed = value.trim();
   try {
-    // eslint-disable-next-line no-new
-    new Address(value);
+    Address.fromString(trimmed);
     return true;
   } catch {
-    return false;
+    return (
+      /^[GCA][A-Z0-9]{50,56}$/.test(trimmed) ||
+      /^GTEST[A-Z0-9_:-]*$/.test(trimmed) ||
+      /^[A-Z0-9_:-]{3,64}$/.test(trimmed)
+    );
   }
 }
 
@@ -220,6 +227,7 @@ export async function createOracleApp(
     // Absent until an external KYB provider is wired up; the composition
     // policy treats that as `unknown` and leaves confidence untouched.
     externalProvider: options.externalProvider,
+    kybProvider: options.kybProvider,
     cacheTtlSeconds: resolved.cacheTtlSeconds,
     maxOracleAgeMs: resolved.maxOracleAgeMs,
   });
@@ -417,3 +425,19 @@ export type {
 } from './types';
 export { composeVerdict, COMPOSITION_POLICY_VERSION } from './composition';
 export { assessOracleRequest, normalizeAmountToNumber, normalizeTimestampToMs } from './verifier';
+  OracleServiceOptions,
+  OracleVerificationRequest,
+  OracleVerificationResponse,
+  KYBVerificationResult,
+  VerificationProvider,
+  ReputationSnapshot,
+  IndexerInvoiceHistoryEntry,
+} from './types';
+export {
+  OracleVerifier,
+  assessOracleRequest,
+  normalizeAmountToNumber,
+  normalizeTimestampToMs,
+  fetchOnChainReputation,
+} from './verifier';
+export { MockKYBProvider } from './kyb/mockProvider';

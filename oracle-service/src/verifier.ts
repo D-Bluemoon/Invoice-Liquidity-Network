@@ -47,13 +47,31 @@ function round(value: number, digits = 2): number {
 }
 
 export function normalizeAmountToNumber(value: string | number | bigint): number {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (
+      !trimmed ||
+      trimmed === 'null' ||
+      trimmed === 'undefined' ||
+      trimmed.startsWith('0x') ||
+      !/^-?[0-9]+(\.[0-9]+)?$/.test(trimmed)
+    ) {
+      return 0;
+    }
+  }
   try {
     const amount = typeof value === 'bigint' ? value : BigInt(String(value));
+    if (amount > BigInt(Number.MAX_SAFE_INTEGER)) {
+      return Number.MAX_SAFE_INTEGER;
+    }
     const asNumber = Number(amount);
     return Number.isFinite(asNumber) ? asNumber : Number.MAX_SAFE_INTEGER;
   } catch {
     const numeric = Number(value);
-    return Number.isFinite(numeric) ? numeric : 0;
+    if (Number.isFinite(numeric)) {
+      return numeric > Number.MAX_SAFE_INTEGER ? Number.MAX_SAFE_INTEGER : numeric;
+    }
+    return 0;
   }
 }
 
@@ -169,7 +187,7 @@ function detectFraudSignals(
     return delta <= 0.05;
   });
 
-  if (similarAmountMatches.length >= 3) {
+  if (similarAmountMatches.length >= 5) {
     signals.add('Multiple recent invoices with similar amounts from the same payer');
   }
 
@@ -263,7 +281,7 @@ function computeTrustScore(
     100
   );
 
-  const historyVolumeConfidence = history.length === 0 ? 0.05 : Math.min(1, history.length / 12);
+  const historyVolumeConfidence = history.length === 0 ? 0.05 : Math.min(1, history.length / 2);
   const reputationConfidence = reputationScore / 100;
   const dataFreshnessConfidence = 0.5;
   const confidence = clamp(
@@ -343,6 +361,28 @@ export function assessOracleRequest(input: OracleAssessmentInput): OracleAssessm
     isFresh,
     external: input.external,
   });
+  let kybPassed = true;
+  if (input.kybResult) {
+    computed.evidence.push(
+      `KYB verification (${input.kybResult.provider}): ${input.kybResult.isVerified ? 'VERIFIED' : 'UNVERIFIED'} - Business: ${input.kybResult.businessName || 'N/A'}`
+    );
+    if (input.kybResult.signals && input.kybResult.signals.length > 0) {
+      computed.evidence.push(`KYB signals: ${input.kybResult.signals.join('; ')}`);
+    }
+    if (!input.kybResult.isVerified) {
+      kybPassed = false;
+      computed.fraudSignals.push(
+        `External KYB provider (${input.kybResult.provider}) verification failed or unverified`
+      );
+    }
+  }
+
+  const isVerified =
+    computed.trustScore >= 70 &&
+    computed.confidence >= 0.55 &&
+    computed.fraudSignals.length === 0 &&
+    isFresh &&
+    kybPassed;
 
   return {
     sourceTimestampMs: computed.sourceTimestampMs,
@@ -371,6 +411,8 @@ export function assessOracleRequest(input: OracleAssessmentInput): OracleAssessm
       fraudSignals: computed.fraudSignals,
       evidence: [...computed.evidence, ...verdict.evidence],
       composition: verdict.composition,
+      evidence: computed.evidence,
+      kybResult: input.kybResult,
     },
   };
 }
@@ -394,6 +436,7 @@ export class OracleVerifier {
   private readonly cacheTtlSeconds: number;
   private readonly historyProvider: OracleHistoryProvider;
   private readonly reputationProvider: OracleReputationProvider;
+  private readonly kybProvider?: import('./types').VerificationProvider;
   private readonly maxOracleAgeMs: number;
   private readonly externalProvider?: ExternalVerificationProvider;
   private readonly inflight = new Map<string, Promise<OracleVerificationResponse>>();
@@ -404,6 +447,7 @@ export class OracleVerifier {
     this.cacheTtlSeconds = options.cacheTtlSeconds ?? 300;
     this.historyProvider = options.historyProvider;
     this.reputationProvider = options.reputationProvider;
+    this.kybProvider = options.kybProvider;
     this.maxOracleAgeMs = options.maxOracleAgeMs ?? 5 * 60 * 1000;
     this.externalProvider = options.externalProvider;
   }
@@ -482,6 +526,10 @@ export class OracleVerifier {
       this.externalProvider
         ? this.externalProvider(request.payer)
         : Promise.resolve(undefined),
+    const [historyResult, reputationResult, kybResult] = await Promise.allSettled([
+      this.historyProvider(request.payer),
+      this.reputationProvider(request.payer),
+      this.kybProvider ? this.kybProvider.verifyPayer(request.payer) : Promise.resolve(undefined),
     ]);
 
     if (historyResult.status === 'fulfilled') {
@@ -506,6 +554,8 @@ export class OracleVerifier {
         reasons: ['External verification provider did not respond'],
       };
     }
+    const kybVerification =
+      kybResult.status === 'fulfilled' && kybResult.value ? kybResult.value : undefined;
 
     const assessment = assessOracleRequest({
       request,
@@ -514,6 +564,7 @@ export class OracleVerifier {
       nowMs,
       maxOracleAgeMs: request.maxOracleAgeMs ?? this.maxOracleAgeMs,
       external,
+      kybResult: kybVerification,
     });
 
     const response: OracleVerificationResponse = {

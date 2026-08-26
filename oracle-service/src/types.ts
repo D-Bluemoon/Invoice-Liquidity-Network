@@ -32,6 +32,26 @@ export interface OracleVerificationRequest {
   maxOracleAgeMs?: number;
 }
 
+export interface KYBVerificationResult {
+  provider: string;
+  isVerified: boolean;
+  businessName?: string;
+  registrationNumber?: string;
+  jurisdiction?: string;
+  riskScore?: number;
+  verifiedAt?: string;
+  signals?: string[];
+  rawDetails?: Record<string, unknown>;
+}
+
+export interface VerificationProvider {
+  name: string;
+  verifyPayer(
+    payerAddress: string,
+    metadata?: Record<string, unknown>
+  ): Promise<KYBVerificationResult>;
+}
+
 export type OracleConfidenceLevel = 'low' | 'medium' | 'high';
 
 // ── External verification provider (KYB / identity attestation) ──────────────
@@ -136,6 +156,7 @@ export interface OracleVerificationResponse {
    * distinctly.
    */
   composition: OracleSignalComposition;
+  kybResult?: KYBVerificationResult;
 }
 
 export interface OracleAssessmentInput {
@@ -146,6 +167,7 @@ export interface OracleAssessmentInput {
   maxOracleAgeMs: number;
   /** Omitted when no external provider is configured — treated as `unknown`. */
   external?: ExternalVerificationResult;
+  kybResult?: KYBVerificationResult;
 }
 
 export interface OracleAssessment {
@@ -186,6 +208,7 @@ export interface OracleServiceMetricsSnapshot {
 export interface OracleVerifierDependencies {
   historyProvider: (payer: string) => Promise<IndexerInvoiceHistoryEntry[]>;
   reputationProvider: (payer: string) => Promise<ReputationSnapshot>;
+  kybProvider?: VerificationProvider;
   cache?: OracleCacheReaderWriter;
   now?: () => number;
   cacheTtlSeconds?: number;
@@ -220,6 +243,7 @@ export interface OracleServiceOptions {
   historyProvider?: (payer: string) => Promise<IndexerInvoiceHistoryEntry[]>;
   reputationProvider?: (payer: string) => Promise<ReputationSnapshot>;
   externalProvider?: ExternalVerificationProvider;
+  kybProvider?: VerificationProvider;
   rateLimitWindowMs?: number;
   rateLimitMaxRequests?: number;
   enableRateLimit?: boolean;

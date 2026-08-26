@@ -150,6 +150,8 @@ describe('oracle verifier calculations', () => {
       history: healthyHistory,
       nowMs: HEALTHY_LATEST_MS + 60_000,
       maxOracleAgeMs: 10_000_000,
+      nowMs: 1_701_100_000_000,
+      maxOracleAgeMs: 150_000_000,
     });
 
     expect(assessment.response.trustScore).toBeGreaterThan(60);
@@ -382,3 +384,70 @@ describe('oracle verifier numeric normalization - property-based tests', () => {
     expect(normalizeTimestampToMs('1700000000000')).toBe(1_700_000_000_000);
   });
 });
+
+describe('pluggable KYB provider integration (#868)', () => {
+  it('composes external KYB provider results into oracle verification', async () => {
+    const { MockKYBProvider } = await import('./kyb/mockProvider');
+    const mockKyb = new MockKYBProvider({
+      knownBusinesses: {
+        [request.payer]: {
+          isVerified: true,
+          businessName: 'Acme Corp Technologies Inc.',
+          registrationNumber: 'US-DE-12345678',
+          jurisdiction: 'US-DE',
+          riskScore: 5,
+        },
+      },
+    });
+
+    const verifier = new OracleVerifier({
+      historyProvider: async () => healthyHistory,
+      reputationProvider: async () => reputation,
+      kybProvider: mockKyb,
+      now: () => 1_701_000_100_000,
+    });
+
+    const response = await verifier.verify(request);
+
+    expect(response.isVerified).toBe(true);
+    expect(response.kybResult).toBeDefined();
+    expect(response.kybResult?.provider).toBe('MockKYBProvider');
+    expect(response.kybResult?.isVerified).toBe(true);
+    expect(response.kybResult?.businessName).toBe('Acme Corp Technologies Inc.');
+    expect(
+      response.evidence.some((e) => e.includes('KYB verification (MockKYBProvider): VERIFIED'))
+    ).toBe(true);
+  });
+
+  it('fails verification when external KYB provider rejects business entity', async () => {
+    const { MockKYBProvider } = await import('./kyb/mockProvider');
+    const mockKyb = new MockKYBProvider({
+      knownBusinesses: {
+        [request.payer]: {
+          isVerified: false,
+          businessName: 'Suspicious Ghost Entity LLC',
+          registrationNumber: 'INVALID-000',
+          jurisdiction: 'XX',
+          signals: ['Registration revoked by corporate registrar'],
+        },
+      },
+    });
+
+    const verifier = new OracleVerifier({
+      historyProvider: async () => healthyHistory,
+      reputationProvider: async () => reputation,
+      kybProvider: mockKyb,
+      now: () => 1_701_000_100_000,
+    });
+
+    const response = await verifier.verify(request);
+
+    expect(response.isVerified).toBe(false);
+    expect(response.kybResult?.isVerified).toBe(false);
+    expect(response.fraudSignals.some((s) => s.includes('KYB provider'))).toBe(true);
+    expect(
+      response.evidence.some((e) => e.includes('KYB verification (MockKYBProvider): UNVERIFIED'))
+    ).toBe(true);
+  });
+});
+
