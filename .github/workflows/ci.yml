@@ -714,6 +714,12 @@ jobs:
       - name: Test
         run: pnpm exec turbo run test --cache-dir=.turbo
 
+      - name: Root node --test suites
+        run: |
+          npm run test:checklist
+          npm run test:audit
+          npm run test:provenance
+
   core-build:
     name: Core · build
     needs: core-test
