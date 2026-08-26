@@ -11,7 +11,7 @@ import {
   getEvents,
   getCursorUpdatedAt,
 } from './db';
-import { pubSub } from './pubsub';
+import { pubsub, LEGACY_INVOICE_CREATED, LEGACY_INVOICE_UPDATED } from './graphql/pubsub';
 import type { Invoice, ILNEvent } from './types';
 
 // ─── GraphQL schema ───────────────────────────────────────────────────────────
@@ -226,11 +226,11 @@ const resolvers = {
 
   Subscription: {
     invoiceCreated: {
-      subscribe: () => pubSub.subscribe('INVOICE_CREATED'),
+      subscribe: () => pubsub.asyncIterator<Invoice>(LEGACY_INVOICE_CREATED),
       resolve: (invoice: Invoice) => invoice,
     },
     invoiceUpdated: {
-      subscribe: () => pubSub.subscribe('INVOICE_UPDATED'),
+      subscribe: () => pubsub.asyncIterator<Invoice>(LEGACY_INVOICE_UPDATED),
       resolve: (invoice: Invoice) => invoice,
     },
   },
