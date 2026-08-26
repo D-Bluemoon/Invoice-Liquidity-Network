@@ -15,12 +15,15 @@ not external cron jobs.
 ## Archive
 
 The archive moves invoices older than a threshold out of the primary database
-into a separate archive file. This keeps the primary database lean.
+into a separate archive file. This keeps the primary database lean. Furthermore, the 
+indexer enforces a strict data-minimization and legal-hold lifecycle policy by permanently 
+purging data from the archive after a specified duration (e.g., 7 years).
 
 ```env
 ARCHIVE_ENABLED=true           # enabled by default
 ARCHIVE_INTERVAL_MS=86400000   # check once per day
 ARCHIVE_OLDER_THAN_DAYS=90     # archive invoices older than 90 days
+ARCHIVE_PURGE_OLDER_THAN_DAYS=2555 # permanently purge invoices older than 7 years (2555 days)
 ARCHIVE_DB_PATH=archive.db     # archive file path
 ```
 
