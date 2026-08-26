@@ -220,4 +220,7 @@ export interface OracleServiceOptions {
   historyProvider?: (payer: string) => Promise<IndexerInvoiceHistoryEntry[]>;
   reputationProvider?: (payer: string) => Promise<ReputationSnapshot>;
   externalProvider?: ExternalVerificationProvider;
+  rateLimitWindowMs?: number;
+  rateLimitMaxRequests?: number;
+  enableRateLimit?: boolean;
 }

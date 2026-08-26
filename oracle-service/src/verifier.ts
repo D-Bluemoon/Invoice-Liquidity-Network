@@ -474,6 +474,7 @@ export class OracleVerifier {
       lastActivity: 0,
       rank: 0,
     };
+    let indexerAvailable = true;
 
     const [historyResult, reputationResult, externalResult] = await Promise.allSettled([
       this.historyProvider(request.payer),
@@ -485,6 +486,8 @@ export class OracleVerifier {
 
     if (historyResult.status === 'fulfilled') {
       history = historyResult.value;
+    } else {
+      indexerAvailable = false;
     }
 
     if (reputationResult.status === 'fulfilled') {
@@ -527,6 +530,14 @@ export class OracleVerifier {
     );
 
     await this.cache?.set(cacheKey, response, ttlSeconds);
+    // Add evidence when indexer is unavailable
+    if (!indexerAvailable) {
+      response.evidence.push(
+        'Indexer data unavailable; assessment based on on-chain reputation only'
+      );
+    }
+
+    await this.cache?.set(cacheKey, response, this.cacheTtlSeconds);
     return response;
   }
 }
