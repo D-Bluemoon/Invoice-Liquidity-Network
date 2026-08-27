@@ -25,6 +25,22 @@ Response bodies are identical between versioned and unversioned routes.
 
 ---
 
+## Compatibility check scope
+
+`pnpm test:compatibility` runs the fixture-backed tests in
+`scripts/__tests__/check-compatibility.test.ts`. The check verifies that the
+contract, canonical `sdk/` package, and frontend versions form an exact tuple in
+`docs/cross-repo-dependencies.md`; it also verifies the docs version manifest,
+its mirrors, and versioning pages. The fixture tests cover successful parsing,
+malformed inputs, missing versions, empty matrices, mismatched tuples, and the
+end-to-end happy/failure paths.
+
+This is a release-metadata and documentation compatibility guard, not a complete
+TypeScript ABI checker. It will not detect every source-level breaking API change
+(such as removing an exported function parameter) unless that change also causes
+the checked versions or documented matrix to change. SDK/CLI API changes require
+package-level type tests, API review, and an intentional version/matrix update.
+
 ## Backward Compatibility
 
 The old unversioned routes (`/invoices`, `/health`, etc.) continue to work but will include two additional response headers:
