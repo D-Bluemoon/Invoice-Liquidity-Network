@@ -48,7 +48,20 @@ The ILN Indexer is configured via environment variables. This document describes
 |----------|---------|-------------|
 | `RATE_LIMIT_WINDOW_MS` | `60000` | Rate limit window in milliseconds |
 | `RATE_LIMIT_MAX` | `100` | Maximum requests per IP per window |
-| `RATE_LIMIT_WHITELIST` | - | Comma-separated list of IPs to exempt |
+| `RATE_LIMIT_WHITELIST` | - | Comma-separated list of exact client IP addresses to exempt; values are never usernames, API keys, or arbitrary identifiers |
+
+### Rate-limit whitelist threat model
+
+`RATE_LIMIT_WHITELIST` is an operational exception for trusted infrastructure such as a private monitoring agent. Entries are exact normalized IP addresses (IPv4, IPv6, or IPv4-mapped IPv6); they are not authentication credentials. The service must therefore run behind a correctly configured trusted proxy, and the proxy must overwrite—not append to—forwarded client-IP headers. Do not whitelist public users, shared NAT addresses, or values supplied by clients. An attacker who can reach the service from a whitelisted network can bypass the limiter, so network access control and authenticated infrastructure identity remain mandatory.
+
+The limiter rejects non-IP whitelist values and compares only the parsed `req.ip`, preventing spoofed arbitrary identifiers from matching an entry.
+
+### GraphQL query limits
+
+GraphQL requests are rejected before resolver execution when their calculated
+selection complexity exceeds 50 or their selection depth exceeds 2. These
+limits match the current schema's shallow, read-only query shape; clients
+should use pagination rather than large aliases or deeply nested selections.
 
 ### GraphQL Subscriptions
 

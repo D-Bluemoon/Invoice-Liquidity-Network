@@ -58,7 +58,7 @@ export function createApp(): express.Application {
 
   // ── GraphQL (queries, mutations, subscriptions via SSE + GraphiQL) ──────────
   const yoga = createGraphQLHandler();
-  app.use(yoga.graphqlEndpoint, yoga);
+  app.use('/graphql', yoga);
 
   // ── Swagger / OpenAPI docs ─────────────────────────────────────────────────
   app.use(
