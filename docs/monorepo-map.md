@@ -98,4 +98,5 @@ for full detail.
 - [docs/DOCS_SETUP.md](DOCS_SETUP.md) — `docs/` → `packages/docs/` migration checklist and dev setup
 - [docs/indexer/](indexer/) — indexer architecture, API, and deployment guide
 - [docs/notifications.md](notifications.md) — notification service setup and architecture
+- [docs/hardening-batch-coordination.md](hardening-batch-coordination.md) — cross-repo hardening batch coordination & de-duplication rules
 - [README.md](../README.md#workspace-layout) — workspace layout overview

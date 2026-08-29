@@ -301,5 +301,5 @@ Before merging, this document should be reviewed by at least two maintainers, wi
 - [Transactions and envelopes](https://developers.stellar.org/docs/learn/fundamentals/transactions/operations-and-transactions)
 - [Stellar RPC](https://developers.stellar.org/docs/data/apis/rpc)
 - [Horizon rate limiting](https://developers.stellar.org/docs/data/apis/horizon/api-reference/structure/rate-limiting)
-- [OWASP Content Security Policy Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html)
+- [OWASP Content Security Policy](https://owasp.org/www-community/controls/Content_Security_Policy)
 - [OWASP Clickjacking](https://owasp.org/www-community/attacks/Clickjacking)
