@@ -111,6 +111,50 @@ Is this a cross-package integration flow?
 
 ---
 
+## Enforcement — CI Scope Heuristic
+
+The scope rules above are enforced by a lightweight, dependency-free heuristic in
+`scripts/check-e2e-scope.mjs`, run automatically by the
+`E2E Scope Rule Check` workflow (`.github/workflows/e2e-scope.yml`) on every pull
+request and on pushes to `main`/`dev`.
+
+### What it does
+
+The check scans the per-package test directories (each top-level service package,
+`packages/*`, and `examples/*`) and, for every test file, collects the set of
+*distinct* stack "client" packages it imports (e.g. `@iln/sdk`,
+`@invoice-liquidity/cli`, `iln-indexer`, `@iln/react`). If a single per-package
+test imports **more than one** other stack client package, it is flagged with a
+message nudging the author to relocate the scenario into `tests/e2e/` (the root
+cross-package suite) or to split the test so each file stays single-package.
+
+### Why this heuristic
+
+During the pre-audit stub review it was clear how easily coverage can fragment: a
+contributor adding a "quick" cross-package assertion inside, say,
+`sdk/tests/browser/` would silently pull the SDK test suite out of scope and
+leave the root `tests/e2e/` suite blind to that flow. Flagging multi-client
+imports at CI time keeps each test in its documented home and preserves the clean
+scope split described in this document.
+
+### What is intentionally NOT flagged
+
+- The root `tests/e2e/` suite itself (it is the cross-package suite and is
+  excluded from the scan).
+- Support packages: `@iln/mock-backend`, `@iln/test-utils`, `@iln/shared`,
+  `@iln/scripts`, `@iln/opentelemetry`, `@iln/eslint-config`. Depending on test
+  plumbing is not a cross-package concern.
+- A test that imports exactly one other stack client (e.g. a CLI test that uses
+  `@iln/sdk` for fixtures) — that is still single-package in spirit.
+
+### Running it locally
+
+```bash
+node scripts/check-e2e-scope.mjs
+```
+
+Exit code `0` means clean; `1` means one or more files should be relocated.
+
 ## References
 
 - [CI/CD Pipeline](./ci-cd.md)
