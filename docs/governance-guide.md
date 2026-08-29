@@ -74,7 +74,7 @@ For mainnet production safety, all privileged administrator powers (such as emer
 ### Emergency Response & Timelock Procedure
 1. **Emergency Pause (Circuit Breaker)**: Requires 3-of-7 threshold to immediately halt funding and invoice creation without delay.
 2. **Unpause / Upgrade / Parameter Override**: Requires 4-of-7 threshold and enforces a mandatory 48-hour timelock to allow ecosystem participants to inspect proposed changes.
-3. **Cross-Repo Coordination**: Operational multi-sig runbooks and deployment execution scripts are maintained in the [ILN-Smart-Contract Multi-Sig Runbook](https://github.com/Invoice-Liquidity-Network/ILN-Smart-Contract/tree/main/docs/multisig-runbook.md) and cross-verified before each release.
+3. **Cross-Repo Coordination**: Operational multi-sig runbooks and deployment execution scripts are maintained in the [ILN-Smart-Contract repository](https://github.com/Invoice-Liquidity-Network/ILN-Smart-Contract) and cross-verified before each release.
 
 ---
 
