@@ -1,10 +1,11 @@
-import type { rpc as StellarRpc } from "@stellar/stellar-sdk";
-import { CONFIG } from "./config";
-import { getCursorLedger, setCursorLedger } from "./db";
-import { processEvent } from "./processor";
-import { server } from "./rpc";
+import type { rpc as StellarRpc } from '@stellar/stellar-sdk';
+import { CONFIG } from './config';
+import { getCursorLedger, setCursorLedger } from './db';
+import { processEvent } from './processor';
+import { server } from './rpc';
 
 const BATCH_SIZE = 200;
+const CONFIRMATION_DEPTH = 10;
 
 /**
  * Run one full polling cycle:
@@ -38,7 +39,7 @@ export async function pollOnce(): Promise<void> {
 
   // ── Page through events ───────────────────────────────────────────────────
   const filters: StellarRpc.Api.EventFilter[] = [
-    { type: "contract", contractIds: [CONFIG.contractId] },
+    { type: 'contract', contractIds: [CONFIG.contractId] },
   ];
   let paginationCursor: string | undefined;
   let highestEventLedger = stored;
@@ -53,6 +54,9 @@ export async function pollOnce(): Promise<void> {
     latestKnownLedger = response.latestLedger;
 
     for (const event of response.events) {
+      if (latestKnownLedger - event.ledger < CONFIRMATION_DEPTH) {
+        continue;
+      }
       await processEvent(event);
       if (event.ledger > highestEventLedger) {
         highestEventLedger = event.ledger;
@@ -61,17 +65,13 @@ export async function pollOnce(): Promise<void> {
 
     // The response always carries a cursor. Only follow it if we hit the full
     // page limit — otherwise we've consumed all available events.
-    paginationCursor =
-      response.events.length === BATCH_SIZE ? response.cursor : undefined;
+    paginationCursor = response.events.length === BATCH_SIZE ? response.cursor : undefined;
   } while (paginationCursor);
 
   // ── Advance cursor ────────────────────────────────────────────────────────
-  // Save up to (latestLedger - 1) so next poll starts one ledger before tip,
+  // Save up to (latestLedger - CONFIRMATION_DEPTH) so next poll starts from the confirmed tip,
   // giving a small overlap window for any in-flight events.
-  const newCursor = Math.max(
-    highestEventLedger,
-    Math.max(0, latestKnownLedger - 1)
-  );
+  const newCursor = Math.max(highestEventLedger, Math.max(0, latestKnownLedger - CONFIRMATION_DEPTH));
   if (newCursor > stored) {
     setCursorLedger(newCursor);
   }
@@ -91,7 +91,7 @@ export async function startPolling(): Promise<void> {
     try {
       await pollOnce();
     } catch (err) {
-      console.error("[poller] Error during poll:", err);
+      console.error('[poller] Error during poll:', err);
     }
     setTimeout(tick, CONFIG.pollIntervalMs);
   };

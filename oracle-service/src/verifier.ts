@@ -21,12 +21,21 @@ import type {
   ReputationSnapshot,
   OracleVerifierDependencies,
 } from './types';
-import type { OracleCacheReaderWriter } from './types';
-import { buildOracleCacheKey } from './cache';
+import type {
+  ExternalVerificationProvider,
+  ExternalVerificationResult,
+  OracleCacheReaderWriter,
+} from './types';
+import {
+  buildOracleCacheKey,
+  buildOraclePayerKeyPrefix,
+  resolveCacheTtlSeconds,
+} from './cache';
+import { composeVerdict, confidenceLevelFromScore } from './composition';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const MAX_FRAUD_WINDOW_MS = 30 * DAY_MS;
-const RAPID_SUCCESSION_WINDOW_MS = 24 * 60 * 60 * 1000;
+export const MAX_FRAUD_WINDOW_MS = 30 * DAY_MS;
+export const RAPID_SUCCESSION_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -38,13 +47,31 @@ function round(value: number, digits = 2): number {
 }
 
 export function normalizeAmountToNumber(value: string | number | bigint): number {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (
+      !trimmed ||
+      trimmed === 'null' ||
+      trimmed === 'undefined' ||
+      trimmed.startsWith('0x') ||
+      !/^-?[0-9]+(\.[0-9]+)?$/.test(trimmed)
+    ) {
+      return 0;
+    }
+  }
   try {
     const amount = typeof value === 'bigint' ? value : BigInt(String(value));
+    if (amount > BigInt(Number.MAX_SAFE_INTEGER)) {
+      return Number.MAX_SAFE_INTEGER;
+    }
     const asNumber = Number(amount);
     return Number.isFinite(asNumber) ? asNumber : Number.MAX_SAFE_INTEGER;
   } catch {
     const numeric = Number(value);
-    return Number.isFinite(numeric) ? numeric : 0;
+    if (Number.isFinite(numeric)) {
+      return numeric > Number.MAX_SAFE_INTEGER ? Number.MAX_SAFE_INTEGER : numeric;
+    }
+    return 0;
   }
 }
 
@@ -80,16 +107,6 @@ function standardDeviation(values: number[]): number {
   return Math.sqrt(variance(values));
 }
 
-function confidenceLevelFromScore(confidence: number): OracleConfidenceLevel {
-  if (confidence < 0.4) {
-    return 'low';
-  }
-  if (confidence < 0.75) {
-    return 'medium';
-  }
-  return 'high';
-}
-
 function successRateFromHistory(history: IndexerInvoiceHistoryEntry[]): number {
   if (history.length === 0) {
     return 0;
@@ -107,7 +124,9 @@ function defaultRateFromHistory(history: IndexerInvoiceHistoryEntry[]): number {
 }
 
 function averageHistoricalAmount(history: IndexerInvoiceHistoryEntry[]): number {
-  const values = history.map((entry) => normalizeAmountToNumber(entry.amount)).filter((value) => value > 0);
+  const values = history
+    .map((entry) => normalizeAmountToNumber(entry.amount))
+    .filter((value) => value > 0);
   return average(values);
 }
 
@@ -134,7 +153,7 @@ function settlementDurationsDays(history: IndexerInvoiceHistoryEntry[]): number[
 
 function latestSourceTimestampMs(
   history: IndexerInvoiceHistoryEntry[],
-  reputation: ReputationSnapshot,
+  reputation: ReputationSnapshot
 ): number {
   const historyMax = history.reduce((max, entry) => {
     const updated = normalizeTimestampToMs(entry.updated_at);
@@ -150,7 +169,7 @@ function latestSourceTimestampMs(
 function detectFraudSignals(
   history: IndexerInvoiceHistoryEntry[],
   requestAmount: number,
-  nowMs: number,
+  nowMs: number
 ): string[] {
   const signals = new Set<string>();
   const recentHistory = history
@@ -163,11 +182,12 @@ function detectFraudSignals(
     if (historicalAmount <= 0 || requestAmount <= 0) {
       return false;
     }
-    const delta = Math.abs(historicalAmount - requestAmount) / Math.max(historicalAmount, requestAmount);
+    const delta =
+      Math.abs(historicalAmount - requestAmount) / Math.max(historicalAmount, requestAmount);
     return delta <= 0.05;
   });
 
-  if (similarAmountMatches.length >= 3) {
+  if (similarAmountMatches.length >= 5) {
     signals.add('Multiple recent invoices with similar amounts from the same payer');
   }
 
@@ -216,7 +236,7 @@ function computeTrustScore(
   reputation: ReputationSnapshot,
   history: IndexerInvoiceHistoryEntry[],
   requestAmount: number,
-  nowMs: number,
+  nowMs: number
 ): {
   trustScore: number;
   confidence: number;
@@ -255,35 +275,37 @@ function computeTrustScore(
         amountFitScore * 0.17 +
         varianceFitScore * 0.12 -
         defaultPenalty -
-        fraudPenalty,
+        fraudPenalty
     ),
     0,
-    100,
+    100
   );
 
-  const historyVolumeConfidence = history.length === 0 ? 0.05 : Math.min(1, history.length / 12);
+  const historyVolumeConfidence = history.length === 0 ? 0.05 : Math.min(1, history.length / 2);
   const reputationConfidence = reputationScore / 100;
   const dataFreshnessConfidence = 0.5;
   const confidence = clamp(
     round(
-      historyVolumeConfidence * 0.45 +
-        reputationConfidence * 0.35 +
-        dataFreshnessConfidence * 0.2,
-      4,
+      historyVolumeConfidence * 0.45 + reputationConfidence * 0.35 + dataFreshnessConfidence * 0.2,
+      4
     ),
     0,
-    1,
+    1
   );
 
   evidence.push(`On-chain reputation score: ${reputationScore}/100`);
   evidence.push(`Historical payment success rate: ${(successRate * 100).toFixed(1)}%`);
   evidence.push(`Historical default rate: ${(defaultRate * 100).toFixed(1)}%`);
-  evidence.push(`Average historical invoice amount: ${Math.round(historicalAverageAmount).toString()}`);
+  evidence.push(
+    `Average historical invoice amount: ${Math.round(historicalAverageAmount).toString()}`
+  );
   evidence.push(`Requested amount deviation: ${amountDeviation.toFixed(1)}%`);
   evidence.push(`Settlement variance: ${settlementVarianceDays.toFixed(2)} days`);
 
   if (history.length === 0) {
-    evidence.push('No payer history available from the indexer; score weighted toward reputation only');
+    evidence.push(
+      'No payer history available from the indexer; score weighted toward reputation only'
+    );
   }
   if (fraudSignals.length > 0) {
     evidence.push(`Fraud signals: ${fraudSignals.join('; ')}`);
@@ -304,29 +326,79 @@ function computeTrustScore(
   };
 }
 
+/**
+ * Whether the payer has on-chain activity inside the rapid-succession window.
+ *
+ * Drives the volatile cache TTL: a clean verdict for an actively-invoicing
+ * payer is the one most likely to be overtaken by their next invoice.
+ */
+export function hasRecentActivity(
+  history: IndexerInvoiceHistoryEntry[],
+  nowMs: number,
+  windowMs: number = RAPID_SUCCESSION_WINDOW_MS
+): boolean {
+  return history.some((entry) => {
+    const created = normalizeTimestampToMs(entry.created_at);
+    const updated = normalizeTimestampToMs(entry.updated_at);
+    const latest = Math.max(created, updated);
+    return latest > 0 && nowMs - latest <= windowMs;
+  });
+}
+
 export function assessOracleRequest(input: OracleAssessmentInput): OracleAssessment {
   const requestAmount = normalizeAmountToNumber(input.request.amount);
   const computed = computeTrustScore(input.reputation, input.history, requestAmount, input.nowMs);
   const generatedAt = new Date(input.nowMs).toISOString();
   const dataAgeMs = Math.max(0, input.nowMs - computed.sourceTimestampMs);
   const isFresh = input.maxOracleAgeMs <= 0 || dataAgeMs <= input.maxOracleAgeMs;
+
+  // The verdict is no longer decided here — `composeVerdict` owns the policy
+  // that combines the heuristic signal with the external provider signal.
+  const verdict = composeVerdict({
+    trustScore: computed.trustScore,
+    baseConfidence: computed.confidence,
+    fraudSignals: computed.fraudSignals,
+    isFresh,
+    external: input.external,
+  });
+  let kybPassed = true;
+  if (input.kybResult) {
+    computed.evidence.push(
+      `KYB verification (${input.kybResult.provider}): ${input.kybResult.isVerified ? 'VERIFIED' : 'UNVERIFIED'} - Business: ${input.kybResult.businessName || 'N/A'}`
+    );
+    if (input.kybResult.signals && input.kybResult.signals.length > 0) {
+      computed.evidence.push(`KYB signals: ${input.kybResult.signals.join('; ')}`);
+    }
+    if (!input.kybResult.isVerified) {
+      kybPassed = false;
+      computed.fraudSignals.push(
+        `External KYB provider (${input.kybResult.provider}) verification failed or unverified`
+      );
+    }
+  }
+
   const isVerified =
     computed.trustScore >= 70 &&
     computed.confidence >= 0.55 &&
     computed.fraudSignals.length === 0 &&
-    isFresh;
+    isFresh &&
+    kybPassed;
 
   return {
     sourceTimestampMs: computed.sourceTimestampMs,
     response: {
-      requestId: input.request.requestId ?? `${input.request.payer}:${input.request.invoiceId}:${input.nowMs}`,
+      requestId:
+        input.request.requestId ??
+        `${input.request.payer}:${input.request.invoiceId}:${input.nowMs}`,
       payer: input.request.payer,
       invoiceId: String(input.request.invoiceId),
-      amount: String(BigInt(Math.max(0, Math.trunc(Number.isFinite(requestAmount) ? requestAmount : 0)))),
+      amount: String(
+        BigInt(Math.max(0, Math.trunc(Number.isFinite(requestAmount) ? requestAmount : 0)))
+      ),
       trustScore: computed.trustScore,
-      confidence: computed.confidence,
-      confidenceLevel: computed.confidenceLevel,
-      isVerified,
+      confidence: verdict.confidence,
+      confidenceLevel: verdict.confidenceLevel,
+      isVerified: verdict.isVerified,
       generatedAt,
       dataAgeMs,
       cacheHit: false,
@@ -337,7 +409,10 @@ export function assessOracleRequest(input: OracleAssessmentInput): OracleAssessm
       amountDeviation: round(computed.amountDeviation, 2),
       settlementVarianceDays: round(computed.settlementVarianceDays, 4),
       fraudSignals: computed.fraudSignals,
+      evidence: [...computed.evidence, ...verdict.evidence],
+      composition: verdict.composition,
       evidence: computed.evidence,
+      kybResult: input.kybResult,
     },
   };
 }
@@ -361,7 +436,9 @@ export class OracleVerifier {
   private readonly cacheTtlSeconds: number;
   private readonly historyProvider: OracleHistoryProvider;
   private readonly reputationProvider: OracleReputationProvider;
+  private readonly kybProvider?: import('./types').VerificationProvider;
   private readonly maxOracleAgeMs: number;
+  private readonly externalProvider?: ExternalVerificationProvider;
   private readonly inflight = new Map<string, Promise<OracleVerificationResponse>>();
 
   constructor(options: OracleVerifierOptions) {
@@ -370,7 +447,23 @@ export class OracleVerifier {
     this.cacheTtlSeconds = options.cacheTtlSeconds ?? 300;
     this.historyProvider = options.historyProvider;
     this.reputationProvider = options.reputationProvider;
+    this.kybProvider = options.kybProvider;
     this.maxOracleAgeMs = options.maxOracleAgeMs ?? 5 * 60 * 1000;
+    this.externalProvider = options.externalProvider;
+  }
+
+  /**
+   * Drop every cached verdict for a payer.
+   *
+   * Called when new activity is observed for that payer, so a clean verdict
+   * cannot outlive the behaviour it was computed from. Returns the number of
+   * entries removed, or 0 when the cache does not support invalidation.
+   */
+  async invalidatePayer(payer: string): Promise<number> {
+    if (!this.cache?.invalidateByPrefix) {
+      return 0;
+    }
+    return this.cache.invalidateByPrefix(buildOraclePayerKeyPrefix(payer.trim()));
   }
 
   async verify(request: OracleVerificationRequest): Promise<OracleVerificationResponse> {
@@ -413,7 +506,7 @@ export class OracleVerifier {
 
   private async computeVerification(
     request: OracleVerificationRequest,
-    cacheKey: string,
+    cacheKey: string
   ): Promise<OracleVerificationResponse> {
     const nowMs = this.now();
     let history: IndexerInvoiceHistoryEntry[] = [];
@@ -425,19 +518,44 @@ export class OracleVerifier {
       lastActivity: 0,
       rank: 0,
     };
+    let indexerAvailable = true;
 
-    const [historyResult, reputationResult] = await Promise.allSettled([
+    const [historyResult, reputationResult, externalResult] = await Promise.allSettled([
       this.historyProvider(request.payer),
       this.reputationProvider(request.payer),
+      this.externalProvider
+        ? this.externalProvider(request.payer)
+        : Promise.resolve(undefined),
+    const [historyResult, reputationResult, kybResult] = await Promise.allSettled([
+      this.historyProvider(request.payer),
+      this.reputationProvider(request.payer),
+      this.kybProvider ? this.kybProvider.verifyPayer(request.payer) : Promise.resolve(undefined),
     ]);
 
     if (historyResult.status === 'fulfilled') {
       history = historyResult.value;
+    } else {
+      indexerAvailable = false;
     }
 
     if (reputationResult.status === 'fulfilled') {
       reputation = reputationResult.value;
     }
+
+    // A provider that threw yields `unknown`, never `unverified`: an outage
+    // must not be reported as a failed identity check.
+    let external: ExternalVerificationResult | undefined;
+    if (externalResult.status === 'fulfilled') {
+      external = externalResult.value;
+    } else if (this.externalProvider) {
+      external = {
+        status: 'unknown',
+        provider: 'unavailable',
+        reasons: ['External verification provider did not respond'],
+      };
+    }
+    const kybVerification =
+      kybResult.status === 'fulfilled' && kybResult.value ? kybResult.value : undefined;
 
     const assessment = assessOracleRequest({
       request,
@@ -445,12 +563,30 @@ export class OracleVerifier {
       reputation,
       nowMs,
       maxOracleAgeMs: request.maxOracleAgeMs ?? this.maxOracleAgeMs,
+      external,
+      kybResult: kybVerification,
     });
 
     const response: OracleVerificationResponse = {
       ...assessment.response,
       cacheHit: false,
     };
+
+    // Clean verdicts for actively-invoicing payers get a short TTL so the
+    // cache cannot mask fraud patterns that emerge moments later.
+    const ttlSeconds = resolveCacheTtlSeconds(
+      response,
+      this.cacheTtlSeconds,
+      hasRecentActivity(history, nowMs)
+    );
+
+    await this.cache?.set(cacheKey, response, ttlSeconds);
+    // Add evidence when indexer is unavailable
+    if (!indexerAvailable) {
+      response.evidence.push(
+        'Indexer data unavailable; assessment based on on-chain reputation only'
+      );
+    }
 
     await this.cache?.set(cacheKey, response, this.cacheTtlSeconds);
     return response;
@@ -466,7 +602,7 @@ export interface LedgerRpcOracleOptions {
 
 export async function fetchOnChainReputation(
   options: LedgerRpcOracleOptions,
-  address: string,
+  address: string
 ): Promise<ReputationSnapshot> {
   try {
     const server = new SorobanRpc.Server(options.rpcUrl);
@@ -495,7 +631,9 @@ export async function fetchOnChainReputation(
       if (native instanceof Map) {
         return native.get(key);
       }
-      return native && typeof native === 'object' ? (native as Record<string, unknown>)[key] : undefined;
+      return native && typeof native === 'object'
+        ? (native as Record<string, unknown>)[key]
+        : undefined;
     };
 
     return {

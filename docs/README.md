@@ -55,4 +55,4 @@ pnpm --filter @invoice-liquidity/docs-next dev
 
 ## Security and Disclosures
 
-We take protocol security seriously. If you discover a vulnerability, please consult our unified [Vulnerability Disclosure Policy](docs/vulnerability-disclosure.md) before reporting.
+We take protocol security seriously. If you discover a vulnerability, please consult our unified [Vulnerability Disclosure Policy](vulnerability-disclosure.md) before reporting.
