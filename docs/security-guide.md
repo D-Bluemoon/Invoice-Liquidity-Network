@@ -32,9 +32,10 @@ ILN protects three classes of assets:
 
 The disclosure policy — how to report, what to include, severity classification, response
 timelines, safe harbour, and recognition — is defined once, canonically, in the repository root
-[`SECURITY.md`](../SECURITY.md). Report through one of the channels listed there (a private
-GitHub Security Advisory or `security@invoiceliquidity.network`) rather than a public issue or
-pull request.
+[`SECURITY.md`](../SECURITY.md). For the reporter-facing entryway, see the
+[Vulnerability Disclosure Policy](./vulnerability-disclosure.md). Report through one of the
+channels listed there (a private GitHub Security Advisory or
+`security@invoiceliquidity.network`) rather than a public issue or pull request.
 
 ---
 
