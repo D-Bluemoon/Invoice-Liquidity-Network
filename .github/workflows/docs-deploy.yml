@@ -27,14 +27,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-
+          
       - name: Install Documentation Toolchain Dependencies
         run: |
-          if [ -f "packages/docs/package-json" ] || [ -f "packages/docs/package.json" ]; then
-            cd packages/docs && npm install
+          if [ -f "packages/docs/package.json" ]; then
+            cd packages/docs && npm install --no-audit --no-fund
           else
-            npm install
+            npm install --no-audit --no-fund
           fi
+
 
       - name: Audit Content Inventory and Consolidate Build Directories
         run: |
