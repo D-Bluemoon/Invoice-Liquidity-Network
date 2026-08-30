@@ -16,21 +16,24 @@
  *   pnpm check-compatibility
  */
 
-import { readFileSync } from "fs";
-import { resolve } from "path";
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 
-const ROOT = resolve(import.meta.dirname ?? __dirname, "..");
+const ROOT = resolve(import.meta.dirname ?? __dirname, '..');
 
 type ReadFile = (fullPath: string) => string;
 
-const defaultReadFile: ReadFile = (fullPath) => readFileSync(fullPath, "utf-8");
+const defaultReadFile: ReadFile = (fullPath) => readFileSync(fullPath, 'utf-8');
 
 // ---------------------------------------------------------------------------
 // 1. Read current versions from source files
 // ---------------------------------------------------------------------------
 
-export function readContractVersion(root: string = ROOT, readFile: ReadFile = defaultReadFile): string {
-  const cargoPath = resolve(root, "backend/contracts/invoice_liquidity/Cargo.toml");
+export function readContractVersion(
+  root: string = ROOT,
+  readFile: ReadFile = defaultReadFile
+): string {
+  const cargoPath = resolve(root, 'backend/contracts/invoice_liquidity/Cargo.toml');
   const content = readFile(cargoPath);
   const match = content.match(/^\s*version\s*=\s*"([^"]+)"/m);
   if (!match) {
@@ -42,7 +45,7 @@ export function readContractVersion(root: string = ROOT, readFile: ReadFile = de
 export function readJsonVersion(
   relativePath: string,
   root: string = ROOT,
-  readFile: ReadFile = defaultReadFile,
+  readFile: ReadFile = defaultReadFile
 ): string {
   const fullPath = resolve(root, relativePath);
   const content = readFile(fullPath);
@@ -65,13 +68,13 @@ export interface MatrixRow {
 
 export function parseCompatibilityMatrix(
   root: string = ROOT,
-  readFile: ReadFile = defaultReadFile,
+  readFile: ReadFile = defaultReadFile
 ): MatrixRow[] {
-  const docPath = resolve(root, "docs/cross-repo-dependencies.md");
+  const docPath = resolve(root, 'docs/cross-repo-dependencies.md');
   const content = readFile(docPath);
 
-  const startMarker = "<!-- COMPATIBILITY_MATRIX_START -->";
-  const endMarker = "<!-- COMPATIBILITY_MATRIX_END -->";
+  const startMarker = '<!-- COMPATIBILITY_MATRIX_START -->';
+  const endMarker = '<!-- COMPATIBILITY_MATRIX_END -->';
 
   const startIdx = content.indexOf(startMarker);
   const endIdx = content.indexOf(endMarker);
@@ -79,12 +82,12 @@ export function parseCompatibilityMatrix(
   if (startIdx === -1 || endIdx === -1) {
     throw new Error(
       `Could not find compatibility matrix markers in ${docPath}. ` +
-      `Expected ${startMarker} and ${endMarker}.`
+        `Expected ${startMarker} and ${endMarker}.`
     );
   }
 
   const matrixBlock = content.slice(startIdx + startMarker.length, endIdx);
-  const lines = matrixBlock.split("\n").filter((line) => line.trim().startsWith("|"));
+  const lines = matrixBlock.split('\n').filter((line) => line.trim().startsWith('|'));
 
   // Skip header row and separator row (lines starting with |---)
   const dataLines = lines.filter((line) => {
@@ -92,7 +95,7 @@ export function parseCompatibilityMatrix(
     // Skip separator rows like |---|---|---|---|
     if (/^\|[\s-|]+\|$/.test(trimmed)) return false;
     // Skip header row (first non-separator row with column names)
-    if (trimmed.includes("Contract") && trimmed.includes("SDK") && trimmed.includes("Frontend")) {
+    if (trimmed.includes('Contract') && trimmed.includes('SDK') && trimmed.includes('Frontend')) {
       return false;
     }
     return true;
@@ -102,7 +105,7 @@ export function parseCompatibilityMatrix(
 
   for (const line of dataLines) {
     const cells = line
-      .split("|")
+      .split('|')
       .map((cell) => cell.trim())
       .filter((cell) => cell.length > 0);
 
@@ -136,7 +139,7 @@ interface VersionManifest {
 }
 
 /** The declaration the docs banner renders. Canonical copy. */
-const MANIFEST_PATH = "docs/version-manifest.json";
+const MANIFEST_PATH = 'docs/version-manifest.json';
 
 /**
  * Files that mirror the manifest because they are consumed by a site build that
@@ -145,27 +148,27 @@ const MANIFEST_PATH = "docs/version-manifest.json";
  */
 const MANIFEST_MIRRORS: { path: string; constants: Record<string, keyof FlatManifest> }[] = [
   {
-    path: "packages/docs/lib/docs-version.ts",
+    path: 'packages/docs/lib/docs-version.ts',
     constants: {
-      NETWORK: "network",
-      CONTRACT_VERSION: "contractVersion",
-      CONTRACT_ID: "contractId",
-      CONTRACT_VERSION_METHOD: "versionMethod",
-      SDK_VERSION: "sdkVersion",
+      NETWORK: 'network',
+      CONTRACT_VERSION: 'contractVersion',
+      CONTRACT_ID: 'contractId',
+      CONTRACT_VERSION_METHOD: 'versionMethod',
+      SDK_VERSION: 'sdkVersion',
     },
   },
   {
-    path: "docs/theme.config.jsx",
+    path: 'docs/theme.config.jsx',
     constants: {
-      DOCS_CONTRACT_VERSION: "contractVersion",
-      DOCS_CONTRACT_ID: "contractId",
-      DOCS_SDK_VERSION: "sdkVersion",
+      DOCS_CONTRACT_VERSION: 'contractVersion',
+      DOCS_CONTRACT_ID: 'contractId',
+      DOCS_SDK_VERSION: 'sdkVersion',
     },
   },
 ];
 
 /** Versioning pages that quote the declared values in prose readers copy from. */
-const VERSIONING_PAGES = ["docs/versioning.md", "packages/docs/content/versioning.mdx"];
+const VERSIONING_PAGES = ['docs/versioning.md', 'packages/docs/content/versioning.mdx'];
 
 interface FlatManifest {
   network: string;
@@ -176,19 +179,19 @@ interface FlatManifest {
 }
 
 function readManifest(): { manifest: VersionManifest; flat: FlatManifest } {
-  const raw = readFileSync(resolve(ROOT, MANIFEST_PATH), "utf-8");
+  const raw = readFileSync(resolve(ROOT, MANIFEST_PATH), 'utf-8');
   const manifest = JSON.parse(raw) as VersionManifest;
 
   const missing = [
-    !manifest.contract?.version && "contract.version",
-    !manifest.contract?.contractId && "contract.contractId",
-    !manifest.contract?.versionMethod && "contract.versionMethod",
-    !manifest.sdk?.version && "sdk.version",
-    !manifest.network && "network",
+    !manifest.contract?.version && 'contract.version',
+    !manifest.contract?.contractId && 'contract.contractId',
+    !manifest.contract?.versionMethod && 'contract.versionMethod',
+    !manifest.sdk?.version && 'sdk.version',
+    !manifest.network && 'network',
   ].filter(Boolean);
 
   if (missing.length > 0) {
-    throw new Error(`${MANIFEST_PATH} is missing required field(s): ${missing.join(", ")}`);
+    throw new Error(`${MANIFEST_PATH} is missing required field(s): ${missing.join(', ')}`);
   }
 
   return {
@@ -220,7 +223,7 @@ function checkDocsVersionDeclaration(matrix: MatrixRow[]): string[] {
   const { flat } = readManifest();
 
   for (const mirror of MANIFEST_MIRRORS) {
-    const source = readFileSync(resolve(ROOT, mirror.path), "utf-8");
+    const source = readFileSync(resolve(ROOT, mirror.path), 'utf-8');
     for (const [constantName, manifestKey] of Object.entries(mirror.constants)) {
       const actual = readStringConstant(source, constantName);
       const expected = flat[manifestKey];
@@ -235,12 +238,14 @@ function checkDocsVersionDeclaration(matrix: MatrixRow[]): string[] {
   }
 
   for (const page of VERSIONING_PAGES) {
-    const content = readFileSync(resolve(ROOT, page), "utf-8");
+    const content = readFileSync(resolve(ROOT, page), 'utf-8');
     if (!content.includes(flat.contractId)) {
       errors.push(`${page}: does not mention the declared contract ID ${flat.contractId}`);
     }
     if (!content.includes(flat.contractVersion)) {
-      errors.push(`${page}: does not mention the declared contract version ${flat.contractVersion}`);
+      errors.push(
+        `${page}: does not mention the declared contract version ${flat.contractVersion}`
+      );
     }
   }
 
@@ -265,21 +270,19 @@ export function validate(
   contractVersion: string,
   sdkVersion: string,
   frontendVersion: string,
-  matrix: MatrixRow[],
+  matrix: MatrixRow[]
 ): { ok: true } | { ok: false; message: string } {
   if (matrix.length === 0) {
     return {
       ok: false,
       message:
-        "❌ Compatibility matrix is empty! Add at least one row to docs/cross-repo-dependencies.md.",
+        '❌ Compatibility matrix is empty! Add at least one row to docs/cross-repo-dependencies.md.',
     };
   }
 
   const match = matrix.find(
     (row) =>
-      row.contract === contractVersion &&
-      row.sdk === sdkVersion &&
-      row.frontend === frontendVersion,
+      row.contract === contractVersion && row.sdk === sdkVersion && row.frontend === frontendVersion
   );
 
   if (match) {
@@ -288,7 +291,7 @@ export function validate(
 
   const rows = matrix
     .map((r) => `     Contract: ${r.contract} | SDK: ${r.sdk} | Frontend: ${r.frontend}`)
-    .join("\n");
+    .join('\n');
 
   return {
     ok: false,
@@ -300,12 +303,14 @@ export function validate(
 }
 
 function main(): void {
-  console.log("🔍 Checking cross-repo version compatibility...\n");
+  console.log('🔍 Checking cross-repo version compatibility...\n');
 
   const matrix = parseCompatibilityMatrix();
 
   if (matrix.length === 0) {
-    console.error("❌ Compatibility matrix is empty! Add at least one row to docs/cross-repo-dependencies.md.");
+    console.error(
+      '❌ Compatibility matrix is empty! Add at least one row to docs/cross-repo-dependencies.md.'
+    );
     process.exit(1);
   }
 
@@ -314,21 +319,21 @@ function main(): void {
   const docsErrors = checkDocsVersionDeclaration(matrix);
 
   if (docsErrors.length > 0) {
-    console.error("❌ Docs site version banner is out of sync:\n");
+    console.error('❌ Docs site version banner is out of sync:\n');
     for (const error of docsErrors) {
       console.error(`     ${error}`);
     }
     console.error(
-      "\n   Update docs/version-manifest.json and its mirrors together. See docs/versioning.md.\n"
+      '\n   Update docs/version-manifest.json and its mirrors together. See docs/versioning.md.\n'
     );
     process.exit(1);
   }
 
-  console.log("✅ Docs version banner matches the manifest and the compatibility matrix.\n");
+  console.log('✅ Docs version banner matches the manifest and the compatibility matrix.\n');
 
   const contractVersion = readContractVersion();
-  const sdkVersion = readJsonVersion("sdk/package.json");
-  const frontendVersion = readJsonVersion("frontend/package.json");
+  const sdkVersion = readJsonVersion('sdk/package.json');
+  const frontendVersion = readJsonVersion('frontend/package.json');
 
   console.log(`  Contract (invoice_liquidity): ${contractVersion}`);
   console.log(`  SDK (@invoice-liquidity/sdk): ${sdkVersion}`);
@@ -340,7 +345,7 @@ function main(): void {
   const result = validate(contractVersion, sdkVersion, frontendVersion, matrix);
 
   if (result.ok) {
-    console.log("✅ Current version combination found in the compatibility matrix.");
+    console.log('✅ Current version combination found in the compatibility matrix.');
     process.exit(0);
   } else {
     console.error(result.message);
@@ -349,6 +354,6 @@ function main(): void {
 }
 
 // Only run main() when executed directly (not when imported by tests).
-if (process.argv[1]?.includes("check-compatibility")) {
+if (process.argv[1]?.includes('check-compatibility')) {
   main();
 }

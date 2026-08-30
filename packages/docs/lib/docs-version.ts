@@ -17,9 +17,6 @@
  * compatibility checker parses this file textually.
  */
 
-/** Which documentation track this site publishes. Only `latest` exists today. */
-export const DOCS_TRACK = 'latest';
-
 /** Stellar network the documented deployment lives on. */
 export const NETWORK = 'testnet';
 
@@ -34,10 +31,6 @@ export const CONTRACT_VERSION_METHOD = 'get_version';
 
 /** Version of `@invoice-liquidity/sdk` these docs describe. */
 export const SDK_VERSION = '0.1.0';
-
-/** Compatibility matrix that pins contract/SDK/frontend versions to each other. */
-export const COMPATIBILITY_MATRIX_URL =
-  'https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network/blob/main/docs/cross-repo-dependencies.md#compatibility-matrix';
 
 /**
  * Abbreviate a Stellar contract ID for display, keeping enough of both ends to
