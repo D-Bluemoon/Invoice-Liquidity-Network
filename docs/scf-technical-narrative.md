@@ -36,7 +36,7 @@ state-machine sections, and validated by the fuzz suite covering
 state from canonical network data, recording ledger/cursor markers and exposing
 freshness metadata so consumers can tell final state from stale state. The
 oracle service consumes the indexer's history to detect behavioural signals
-around invoice creation (see [Default handling](#5-default-handling)). The SDK
+around invoice creation (see [Default handling](#3-default-handling)). The SDK
 validates invoice payload shape and address format before encoding, and
 supports offline queuing with tamper-evident re-validation guidance.
 
