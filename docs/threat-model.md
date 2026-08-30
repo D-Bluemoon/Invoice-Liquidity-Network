@@ -4,6 +4,12 @@ This document covers the protocol-wide attack surface for Invoice Liquidity Netw
 
 It complements the smart contract threat model maintained with the Soroban contracts. Contract-specific risks such as authorization logic, state transitions, and on-chain invariants should be reviewed alongside this document before audit.
 
+This document is part of a deliberately structured set of security-adjacent
+documents. For the security documentation map, the unified disclosure policy,
+and the reporter-facing entryway, see [Security](../SECURITY.md),
+[Security Guide](./security-guide.md), [Security](./security.md), and
+[Vulnerability Disclosure](./vulnerability-disclosure.md).
+
 ## Scope
 
 In scope:
