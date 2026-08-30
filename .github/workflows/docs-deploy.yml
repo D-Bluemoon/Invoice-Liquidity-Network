@@ -8,6 +8,13 @@ on:
       - 'docs/**'
       - 'packages/docs/**'
       - '.github/workflows/docs-deploy.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - 'packages/docs/**'
+      - '.github/workflows/docs-deploy.yml'
 
 jobs:
   deploy-docs:
@@ -20,14 +27,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
       - name: Install Documentation Toolchain Dependencies
         run: |
-          if [ -f "packages/docs/package.json" ]; then
-            npm ci --prefix packages/docs
+          if [ -f "packages/docs/package-json" ] || [ -f "packages/docs/package.json" ]; then
+            cd packages/docs && npm install
           else
-            npm ci
+            npm install
           fi
 
       - name: Audit Content Inventory and Consolidate Build Directories
@@ -45,14 +51,14 @@ jobs:
         run: |
           if [ -f "packages/docs/package.json" ]; then
             npm run build --prefix packages/docs
-          else
+          --else
             npm run build
           fi
 
       - name: Verify Completeness of Output Inventory Artifacts
         run: |
           echo "📊 Verifying final build asset distribution footprint..."
-          if [ ! -d "packages/docs/dist" ] && [ ! -d "packages/docs/.vuepress/dist" ] && [ ! -d "packages/docs/build" ]; then
+          if [ ! -d "packages/docs/dist" ] && [ ! -d "packages/docs/.vuepress/dist" ] && [ ! -d "packages/docs/build" ] && [ ! -d "packages/docs/.next" ]; then
             echo "❌ Error: Build output directory not detected. Pipeline incomplete."
             exit 1
           fi
