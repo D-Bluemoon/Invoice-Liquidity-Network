@@ -39,6 +39,7 @@ groups:
             oracle_fraud_signal_total to see which heuristic is firing — a
             single signal dominating points at a bug, a spread points at an
             attack.
+          runbook_url: https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network/blob/main/docs/incident-response.md#oraclefraudflagratehigh
 
       - alert: OracleFraudFlagRateCritical
         expr: avg_over_time(oracle_fraud_flag_ratio[5m]) > 0.6
@@ -54,6 +55,7 @@ groups:
           description: >-
             At this rate legitimate funding is almost certainly being blocked.
             Treat as a heuristic regression until proven otherwise.
+          runbook_url: https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network/blob/main/docs/incident-response.md#oraclefraudflagratecritical
 
       # ── Nothing is being verified ─────────────────────────────────────────
       # A flat verdict counter while the service is up means verification is
@@ -73,6 +75,7 @@ groups:
           description: >-
             The service is up but has verified nothing. Either upstream traffic
             has stopped or requests are failing before they reach the verifier.
+          runbook_url: https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network/blob/main/docs/incident-response.md#oraclenoverifications
 
       # ── Everything rejected ───────────────────────────────────────────────
       - alert: OracleAllVerificationsRejected
@@ -94,6 +97,7 @@ groups:
             closed. Check the outcome breakdown: rejected-stale-data points at
             a broken indexer feed, rejected-low-trust at a reputation lookup
             failure.
+          runbook_url: https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network/blob/main/docs/incident-response.md#oracleallverificationsrejected
 
       # ── Stale upstream data ───────────────────────────────────────────────
       - alert: OracleStaleResponsesRising
@@ -108,6 +112,7 @@ groups:
           description: >-
             Source data is older than ORACLE_MAX_ORACLE_AGE_MS. Usually the
             indexer has fallen behind or the reputation contract is unreachable.
+          runbook_url: https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network/blob/main/docs/incident-response.md#oraclestaleresponsesrising
 
   - name: oracle-service-availability
     interval: 30s
@@ -129,6 +134,7 @@ groups:
           description: >-
             Callers time out well before the oracle does. Check the indexer and
             the Soroban RPC endpoint.
+          runbook_url: https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network/blob/main/docs/incident-response.md#oracleverificationlatencyhigh
 
       # ── Cache effectiveness ───────────────────────────────────────────────
       # A collapsed hit rate means every verification is hitting the indexer and
@@ -151,6 +157,7 @@ groups:
             Expected to be low right after a deploy or a Redis restart. Sustained
             low hit rate suggests the cache backend is unreachable and every
             request is recomputing.
+          runbook_url: https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network/blob/main/docs/incident-response.md#oraclecachehitratelow
 
       - alert: OracleExternalProviderUnavailable
         expr: |
@@ -170,3 +177,4 @@ groups:
             The provider is likely down. Verdicts still resolve — the composition
             policy treats unknown as inert — but they lose the corroborating
             signal, so confidence is lower across the board.
+          runbook_url: https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network/blob/main/docs/incident-response.md#oracleexternalproviderunavailable
