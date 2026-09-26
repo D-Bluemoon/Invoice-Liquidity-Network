@@ -63,6 +63,7 @@ export interface LoadTestReport {
   metadata: {
     timestamp: string;
     service: string;
+    trafficShape: TrafficShape;
     durationSeconds: number;
     concurrency: number;
     totalRequests: number;
@@ -93,6 +94,14 @@ export interface LoadTestReport {
   }>;
 }
 
+/**
+ * `uniform` is the original closed-loop, fixed-5ms-gap behavior (default,
+ * fully backward compatible). `realistic` models mainnet-like traffic:
+ * bursts correlated with Stellar ledger close (see LEDGER_CLOSE_INTERVAL_MS)
+ * plus a diurnal load cycle, instead of a flat request rate.
+ */
+export type TrafficShape = 'uniform' | 'realistic';
+
 export interface LoadTestConfig {
   service: 'indexer' | 'notifications' | 'both';
   duration: number;
@@ -103,6 +112,99 @@ export interface LoadTestConfig {
   errorThreshold: number;
   avgThreshold: number;
   rpsThreshold: number;
+  /** @default 'uniform' */
+  trafficShape?: TrafficShape;
+  /** Simulated day length for the diurnal cycle, compressed to fit test duration. @default REALISTIC_DIURNAL_PERIOD_MS */
+  diurnalPeriodMs?: number;
+}
+
+// ── Realistic traffic-shape model (Issue #1091) ────────────────────────────
+
+/**
+ * Base inter-request gap used by 'uniform' mode — unchanged from the
+ * original hardcoded closed-loop delay.
+ */
+export const BASE_INTER_REQUEST_DELAY_MS = 5;
+
+/**
+ * Stellar ledger close time, ~5-6s in practice; the indexer polls at this
+ * cadence (indexer/src/config.ts `pollIntervalMs`, default 5000ms via
+ * POLL_INTERVAL_MS). Real mainnet traffic bursts around each ledger close —
+ * event ingestion and the resulting webhook/notification fan-out land in a
+ * short window rather than trickling in uniformly — so this is the period
+ * used to correlate bursts to on-chain events.
+ */
+export const LEDGER_CLOSE_INTERVAL_MS = 5000;
+
+/** Fraction of each ledger interval treated as the "burst window" right after close. */
+export const REALISTIC_BURST_WINDOW_MS = 750;
+
+/** Effective request-rate multiplier applied inside the burst window. */
+export const REALISTIC_BURST_RATE_MULTIPLIER = 6;
+
+/** Effective request-rate multiplier applied in the quiet period between bursts. */
+export const REALISTIC_BACKGROUND_RATE_MULTIPLIER = 0.4;
+
+/** Peak-to-trough swing of the diurnal cycle around the baseline rate. */
+export const REALISTIC_DIURNAL_AMPLITUDE = 0.5;
+
+/**
+ * Simulated "day" length. Real diurnal patterns play out over 24h; load
+ * tests run for seconds-to-minutes, so the cycle is compressed into this
+ * period by default (a 120s test then shows ~2 full day/night cycles).
+ * Override via `LoadTestConfig.diurnalPeriodMs` for a slower/faster cycle.
+ */
+export const REALISTIC_DIURNAL_PERIOD_MS = 60_000;
+
+/** `1 + amplitude * sin(2π * phase)` — where the test-elapsed time falls on the diurnal cycle. */
+export function diurnalMultiplier(
+  elapsedMs: number,
+  periodMs: number = REALISTIC_DIURNAL_PERIOD_MS,
+  amplitude: number = REALISTIC_DIURNAL_AMPLITUDE
+): number {
+  const phase = (elapsedMs % periodMs) / periodMs;
+  return 1 + amplitude * Math.sin(2 * Math.PI * phase);
+}
+
+/** Whether `elapsedMs` falls inside the burst window following a simulated ledger close. */
+export function isLedgerBurstWindow(
+  elapsedMs: number,
+  ledgerIntervalMs: number = LEDGER_CLOSE_INTERVAL_MS,
+  burstWindowMs: number = REALISTIC_BURST_WINDOW_MS
+): boolean {
+  return elapsedMs % ledgerIntervalMs < burstWindowMs;
+}
+
+/** Inter-arrival gap for a Poisson process at `ratePerMs` (events/ms). */
+export function sampleExponentialDelayMs(ratePerMs: number): number {
+  const u = Math.random();
+  return -Math.log(1 - u) / ratePerMs;
+}
+
+/**
+ * The delay a worker waits before its next request. `uniform` reproduces
+ * the original fixed 5ms gap exactly (no behavior change for existing
+ * callers). `realistic` samples a Poisson inter-arrival gap whose rate is
+ * modulated by the ledger-close burst window and the diurnal cycle, so
+ * traffic clusters around on-chain events and day/night load swings instead
+ * of arriving uniformly.
+ */
+export function getInterRequestDelayMs(config: LoadTestConfig, elapsedMs: number): number {
+  if ((config.trafficShape ?? 'uniform') === 'uniform') {
+    return BASE_INTER_REQUEST_DELAY_MS;
+  }
+
+  const baseRatePerMs = 1 / BASE_INTER_REQUEST_DELAY_MS;
+  const diurnal = diurnalMultiplier(elapsedMs, config.diurnalPeriodMs);
+  const burstFactor = isLedgerBurstWindow(elapsedMs)
+    ? REALISTIC_BURST_RATE_MULTIPLIER
+    : REALISTIC_BACKGROUND_RATE_MULTIPLIER;
+  const ratePerMs = Math.max(baseRatePerMs * diurnal * burstFactor, 1e-6);
+  const delay = sampleExponentialDelayMs(ratePerMs);
+
+  // Clamp so a pathological sample can't stall a worker indefinitely or
+  // fire requests faster than the event loop can realistically schedule.
+  return Math.min(Math.max(delay, 0), BASE_INTER_REQUEST_DELAY_MS * 20);
 }
 
 // ── 10× Peak Notification Volume — Validated Ceiling Constants ────────────────
@@ -419,6 +521,8 @@ export function analyzeBottleneck(report: LoadTestReport): BottleneckAnalysis {
 export function getTenXNotificationConfig(overrides: Partial<LoadTestConfig> = {}): LoadTestConfig {
   return {
     service: 'notifications',
+    trafficShape: overrides.trafficShape ?? 'uniform',
+    diurnalPeriodMs: overrides.diurnalPeriodMs,
     duration: overrides.duration ?? TEN_X_NOTIFICATION_DURATION_S,
     concurrency: overrides.concurrency ?? TEN_X_NOTIFICATION_CONCURRENCY,
     indexerUrl: overrides.indexerUrl ?? 'http://localhost:3001',
@@ -439,6 +543,7 @@ export async function runLoadTest(config: LoadTestConfig): Promise<LoadTestRepor
 
   const runWorker = async (workerId: number) => {
     while (Date.now() < testEndTime) {
+      const elapsedMs = Date.now() - testStartTime;
       const pool: TestRequest[] = [];
       if (config.service === 'indexer' || config.service === 'both') {
         pool.push(...getIndexerRequests(config.indexerUrl));
@@ -467,7 +572,7 @@ export async function runLoadTest(config: LoadTestConfig): Promise<LoadTestRepor
         timestamp: reqStart,
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 5));
+      await new Promise((resolve) => setTimeout(resolve, getInterRequestDelayMs(config, elapsedMs)));
     }
   };
 
@@ -574,6 +679,7 @@ export async function runLoadTest(config: LoadTestConfig): Promise<LoadTestRepor
     metadata: {
       timestamp: new Date().toISOString(),
       service: config.service,
+      trafficShape: config.trafficShape ?? 'uniform',
       durationSeconds: testActualDurationSec,
       concurrency: config.concurrency,
       totalRequests,
@@ -611,6 +717,7 @@ export function printReport(report: LoadTestReport): void {
   const { metadata, thresholds, latencies, endpoints } = report;
 
   console.log(`${colors.bright}${colors.cyan}=== LOAD TEST SUMMARY ===${colors.reset}`);
+  console.log(`Traffic Shape:         ${metadata.trafficShape}`);
   console.log(`Elapsed Time:          ${metadata.durationSeconds.toFixed(2)}s`);
   console.log(`Total Requests:        ${metadata.totalRequests}`);
   console.log(`Successful Requests:   ${metadata.successCount}`);
@@ -726,6 +833,7 @@ This report summarizes stress testing metrics collected during simulated client 
 ## Test Metadata
 - **Date/Time:** ${metadata.timestamp}
 - **Target Service:** \`${metadata.service}\`
+- **Traffic Shape:** \`${metadata.trafficShape}\`
 - **Configured Duration:** ${metadata.durationSeconds.toFixed(2)} seconds
 - **Concurrent Workers (VUs):** ${metadata.concurrency}
 - **Total Requests Sent:** ${metadata.totalRequests}
