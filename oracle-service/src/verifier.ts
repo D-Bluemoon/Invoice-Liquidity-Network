@@ -26,6 +26,8 @@ import type {
   ExternalVerificationResult,
   OracleCacheReaderWriter,
 } from './types';
+import type { OracleMetrics } from './metrics';
+import { AGGREGATE_SLO_MS, FETCH_SLO_MS, PUBLISH_SLO_MS } from './metrics';
 import {
   buildOracleCacheKey,
   buildOraclePayerKeyPrefix,
@@ -417,7 +419,6 @@ export function assessOracleRequest(input: OracleAssessmentInput): OracleAssessm
       fraudSignals: computed.fraudSignals,
       evidence: [...computed.evidence, ...verdict.evidence],
       composition: verdict.composition,
-      evidence: computed.evidence,
       kybResult: input.kybResult,
     },
   };
@@ -504,6 +505,7 @@ export class OracleVerifier {
   private readonly kybProvider?: import('./types').VerificationProvider;
   private readonly maxOracleAgeMs: number;
   private readonly externalProvider?: ExternalVerificationProvider;
+  private readonly metrics?: OracleMetrics;
   private readonly inflight = new Map<string, Promise<OracleVerificationResponse>>();
   /** Feed-movement guard shared across all payers (issue #1052). */
   readonly deltaGuard: DeltaBoundsGuard;
@@ -522,6 +524,7 @@ export class OracleVerifier {
     this.kybProvider = options.kybProvider;
     this.maxOracleAgeMs = options.maxOracleAgeMs ?? 5 * 60 * 1000;
     this.externalProvider = options.externalProvider;
+    this.metrics = options.metrics;
     this.deltaGuard = new DeltaBoundsGuard(
       options.deltaBounds ?? defaultDeltaBoundsConfig()
     );
@@ -696,6 +699,7 @@ export class OracleVerifier {
     };
     let indexerAvailable = true;
 
+    const fetchStart = this.now();
     const [historyResult, reputationResult, externalResult, kybResult] = await Promise.allSettled([
       this.historyProvider(request.payer),
       this.reputationProvider(request.payer),
@@ -762,6 +766,7 @@ export class OracleVerifier {
     const kybVerification =
       kybResult.status === 'fulfilled' && kybResult.value ? kybResult.value : undefined;
 
+    const aggregateStart = this.now();
     const assessment = assessOracleRequest({
       request,
       history,
@@ -804,7 +809,9 @@ export class OracleVerifier {
       );
     }
 
+    const publishStart = this.now();
     await this.cache?.set(cacheKey, response, ttlSeconds);
+    this.observeStage('publish', this.now() - publishStart);
     return response;
   }
 }
