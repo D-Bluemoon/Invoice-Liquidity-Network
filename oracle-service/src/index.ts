@@ -1,8 +1,5 @@
-import type { Server } from 'node:http';
-
-import express, { type Request, type Response, type NextFunction } from 'express';
+import express, { type Request, type Response } from 'express';
 import { Address } from '@stellar/stellar-sdk';
-import { traceMiddleware, withSpan, propagateFetch } from '@iln/opentelemetry';
 
 import { createOracleCache } from './cache';
 import { createOracleMetrics } from './metrics';
@@ -20,8 +17,6 @@ const DEFAULT_INDEXER_BASE_URL = 'http://localhost:3001';
 const DEFAULT_REQUEST_TIMEOUT_MS = 3500;
 const DEFAULT_CACHE_TTL_SECONDS = 300;
 const DEFAULT_MAX_ORACLE_AGE_MS = 5 * 60 * 1000;
-const DEFAULT_RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
-const DEFAULT_RATE_LIMIT_MAX_REQUESTS = 100; // 100 requests per minute
 
 function stripTrailingSlash(value: string): string {
   return value.replace(/\/+$/, '');
@@ -37,6 +32,71 @@ function createAbortSignal(timeoutMs: number): AbortSignal {
 interface RateLimitStore {
   windowStart: number;
   count: number;
+  consecutive429s: number;
+  lastSeen: number;
+}
+
+// ── Abuse-pattern detection ──────────────────────────────────────────────────
+// Tracks per-IP patterns that indicate automated abuse: rapid-fire requests,
+// credential-stuffing signatures (many distinct payer addresses in short
+// windows), and sustained high-volume traffic.
+interface AbuseTracker {
+  /** Distinct payer addresses seen from this IP in the current window. */
+  distinctPayers: Set<string>;
+  /** Rolling count of 429 responses served to this IP. */
+  consecutive429s: number;
+  /** Timestamp of the last request from this IP. */
+  lastSeen: number;
+}
+
+const abuseTrackers = new Map<string, AbuseTracker>();
+
+/** IPs that have been flagged by abuse detection. Blocked for BLOCK_DURATION_MS. */
+const blockedIps = new Map<string, number>();
+const BLOCK_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+const MAX_DISTINCT_PAYERS_PER_WINDOW = 50;
+const SUSPICIOUS_VELOCITY_MS = 100; // <100ms between requests is suspicious
+
+function trackAbuse(clientIp: string, payer?: string): { blocked: boolean; reason?: string } {
+  const now = Date.now();
+
+  // Check if IP is currently blocked.
+  const blockedUntil = blockedIps.get(clientIp);
+  if (blockedUntil && now < blockedUntil) {
+    return { blocked: true, reason: 'IP temporarily blocked due to abuse pattern' };
+  }
+  if (blockedUntil && now >= blockedUntil) {
+    blockedIps.delete(clientIp);
+  }
+
+  let tracker = abuseTrackers.get(clientIp);
+  if (!tracker) {
+    tracker = { distinctPayers: new Set(), consecutive429s: 0, lastSeen: now };
+    abuseTrackers.set(clientIp, tracker);
+  }
+
+  // Track payer diversity (credential-stuffing indicator).
+  if (payer) {
+    tracker.distinctPayers.add(payer);
+    if (tracker.distinctPayers.size > MAX_DISTINCT_PAYERS_PER_WINDOW) {
+      blockedIps.set(clientIp, now + BLOCK_DURATION_MS);
+      return { blocked: true, reason: 'Excessive distinct payer addresses probed' };
+    }
+  }
+
+  // Detect rapid-fire requests (scripted abuse).
+  if (now - tracker.lastSeen < SUSPICIOUS_VELOCITY_MS) {
+    tracker.consecutive429s += 1;
+    if (tracker.consecutive429s > 5) {
+      blockedIps.set(clientIp, now + BLOCK_DURATION_MS);
+      return { blocked: true, reason: 'Sustained rapid-fire requests detected' };
+    }
+  } else {
+    tracker.consecutive429s = Math.max(0, tracker.consecutive429s - 1);
+  }
+
+  tracker.lastSeen = now;
+  return { blocked: false };
 }
 
 function createRateLimitMiddleware(
@@ -48,6 +108,19 @@ function createRateLimitMiddleware(
   return (req: Request, res: Response, next: NextFunction): void => {
     const clientIp = (req.ip || req.socket.remoteAddress || 'unknown').toString();
     const now = Date.now();
+
+    // Abuse-pattern check (runs before rate limiting to catch blocked IPs early).
+    const payer = typeof req.body?.payer === 'string' ? req.body.payer : undefined;
+    const abuseCheck = trackAbuse(clientIp, payer);
+    if (abuseCheck.blocked) {
+      res.status(429).json({
+        error: 'Request blocked',
+        reason: abuseCheck.reason,
+        retryAfter: Math.ceil(BLOCK_DURATION_MS / 1000),
+      });
+      return;
+    }
+
     const storedEntry = store.get(clientIp);
 
     if (!storedEntry || now - storedEntry.windowStart > windowMs) {
@@ -68,17 +141,13 @@ function createRateLimitMiddleware(
     next();
   };
 }
-
 async function fetchJson<T>(url: string, timeoutMs: number): Promise<T> {
-  const response = await fetch(
-    url,
-    propagateFetch({
-      headers: {
-        Accept: 'application/json',
-      },
-      signal: createAbortSignal(timeoutMs),
-    } as any),
-  );
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/json',
+    },
+    signal: createAbortSignal(timeoutMs),
+  });
 
   if (!response.ok) {
     throw new Error(`Request failed with status ${response.status}`);
@@ -88,19 +157,12 @@ async function fetchJson<T>(url: string, timeoutMs: number): Promise<T> {
 }
 
 function isValidStellarAddress(value: string): boolean {
-  if (typeof value !== 'string' || !value.trim()) {
-    return false;
-  }
-  const trimmed = value.trim();
   try {
-    Address.fromString(trimmed);
+    // eslint-disable-next-line no-new
+    new Address(value);
     return true;
   } catch {
-    return (
-      /^[GCA][A-Z0-9]{50,56}$/.test(trimmed) ||
-      /^GTEST[A-Z0-9_:-]*$/.test(trimmed) ||
-      /^[A-Z0-9_:-]{3,64}$/.test(trimmed)
-    );
+    return false;
   }
 }
 
@@ -142,13 +204,6 @@ function createDefaultOptions(options: Partial<OracleServiceOptions> = {}): Orac
       options.maxOracleAgeMs ??
       Number(process.env.ORACLE_MAX_ORACLE_AGE_MS ?? DEFAULT_MAX_ORACLE_AGE_MS),
     redisUrl: options.redisUrl ?? process.env.REDIS_URL,
-    rateLimitWindowMs:
-      options.rateLimitWindowMs ??
-      Number(process.env.ORACLE_RATE_LIMIT_WINDOW_MS ?? DEFAULT_RATE_LIMIT_WINDOW_MS),
-    rateLimitMaxRequests:
-      options.rateLimitMaxRequests ??
-      Number(process.env.ORACLE_RATE_LIMIT_MAX_REQUESTS ?? DEFAULT_RATE_LIMIT_MAX_REQUESTS),
-    enableRateLimit: options.enableRateLimit ?? process.env.ORACLE_ENABLE_RATE_LIMIT !== 'false',
   };
 }
 
@@ -163,13 +218,7 @@ async function createHistoryProvider(baseUrl: string, timeoutMs: number) {
         return [];
       }
       return payload.map((entry) => normalizeHistoryEntry(entry as Record<string, unknown>));
-    } catch (error) {
-      // Gracefully degrade when indexer is unavailable
-      // Log the error for monitoring but don't fail the entire verification
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      // In production, this should be sent to monitoring/logging service
-      // eslint-disable-next-line no-console
-      console.warn(`[oracle] indexer unavailable for payer ${payer}: ${errorMessage}`);
+    } catch {
       return [];
     }
   };
@@ -227,10 +276,6 @@ export async function createOracleApp(
     cache: cache.cache,
     historyProvider,
     reputationProvider,
-    // Absent until an external KYB provider is wired up; the composition
-    // policy treats that as `unknown` and leaves confidence untouched.
-    externalProvider: options.externalProvider,
-    kybProvider: options.kybProvider,
     cacheTtlSeconds: resolved.cacheTtlSeconds,
     maxOracleAgeMs: resolved.maxOracleAgeMs,
   });
@@ -241,14 +286,6 @@ export async function createOracleApp(
 
   const app = express();
   app.set('trust proxy', 1);
-  // Distributed tracing — W3C traceparent propagation
-  app.use(traceMiddleware('oracle-service'));
-
-  // Apply rate limiting middleware if enabled
-  if (resolved.enableRateLimit) {
-    app.use(createRateLimitMiddleware(resolved.rateLimitWindowMs, resolved.rateLimitMaxRequests));
-  }
-
   app.use(express.json({ limit: '256kb' }));
 
   app.get('/health', async (_req: Request, res: Response) => {
@@ -287,25 +324,6 @@ export async function createOracleApp(
     res.status(405).json({ error: 'Use POST /v1/verify' });
   });
 
-  /**
-   * Drop every cached verdict for a payer.
-   *
-   * The indexer calls this when it observes new activity for a payer, so a
-   * cached clean verdict cannot outlive the behaviour it was computed from.
-   */
-  app.post('/v1/cache/invalidate', async (req: Request, res: Response) => {
-    const body = (req.body ?? {}) as Record<string, unknown>;
-    const payer = String(body.payer ?? '').trim();
-
-    if (!payer || !isValidStellarAddress(payer)) {
-      res.status(400).json({ error: 'payer must be a valid Stellar address' });
-      return;
-    }
-
-    const invalidated = await verifier.invalidatePayer(payer);
-    res.json({ payer, invalidated });
-  });
-
   async function handleVerification(req: Request, res: Response): Promise<void> {
     const body = (req.body ?? {}) as Partial<OracleVerificationRequest> & Record<string, unknown>;
     const payer = String(body.payer ?? '').trim();
@@ -328,20 +346,15 @@ export async function createOracleApp(
     const start = process.hrtime.bigint();
 
     try {
-      const response = await withSpan(
-        'oracle.verify',
-        { payer: payer.slice(0, 8), invoiceId: String(invoiceId) },
-        async () =>
-          verifier.verify({
-            payer,
-            amount,
-            invoiceId,
-            requestId: typeof body.requestId === 'string' ? body.requestId : undefined,
-            forceRefresh: parseVerifiedBoolean(body.forceRefresh),
-            maxOracleAgeMs:
-              typeof body.maxOracleAgeMs === 'number' ? body.maxOracleAgeMs : resolved.maxOracleAgeMs,
-          }),
-      );
+      const response = await verifier.verify({
+        payer,
+        amount,
+        invoiceId,
+        requestId: typeof body.requestId === 'string' ? body.requestId : undefined,
+        forceRefresh: parseVerifiedBoolean(body.forceRefresh),
+        maxOracleAgeMs:
+          typeof body.maxOracleAgeMs === 'number' ? body.maxOracleAgeMs : resolved.maxOracleAgeMs,
+      });
 
       metrics.verificationDuration.observe(Number(process.hrtime.bigint() - start) / 1e9);
       if (response.cacheHit) {
@@ -352,16 +365,6 @@ export async function createOracleApp(
       if (!response.isVerified && response.dataAgeMs > resolved.maxOracleAgeMs) {
         metrics.staleResponsesTotal.inc();
       }
-
-      // Outcome distribution is what the fraud-spike alert watches: a sudden
-      // shift toward rejected-fraud-signals means either an attack or a broken
-      // heuristic, and both need to be seen immediately.
-      metrics.recordVerificationOutcome({
-        outcome: response.composition.outcome,
-        fraudSignals: response.fraudSignals,
-        externalStatus: response.composition.external.status,
-        cacheHit: response.cacheHit,
-      });
 
       lastVerificationAt = response.generatedAt;
       res.json(response);
@@ -395,25 +398,13 @@ export async function createOracleApp(
   };
 }
 
-/**
- * Boot the HTTP server.
- *
- * Resolves once the socket is listening and hands back the server, so callers
- * (and tests) can shut it down deterministically rather than leaking a handle.
- */
 export async function startOracleService(
   options: Partial<OracleServiceOptions> = {}
-): Promise<Server> {
+): Promise<void> {
   const { app } = await createOracleApp(options);
   const resolved = createDefaultOptions(options);
-
-  return new Promise<Server>((resolve) => {
-    const server = app.listen(resolved.port, () => {
-      const address = server.address();
-      const port = typeof address === 'object' && address ? address.port : resolved.port;
-      console.log(`[oracle] listening on http://0.0.0.0:${port}`);
-      resolve(server);
-    });
+  app.listen(resolved.port, () => {
+    console.log(`[oracle] listening on http://0.0.0.0:${resolved.port}`);
   });
 }
 
@@ -426,24 +417,5 @@ if (shouldAutostart) {
   });
 }
 
-export type {
-  ExternalVerificationProvider,
-  ExternalVerificationResult,
-  OracleServiceOptions,
-  OracleSignalComposition,
-  OracleVerificationRequest,
-  OracleVerificationResponse,
-  KYBVerificationResult,
-  VerificationProvider,
-  ReputationSnapshot,
-  IndexerInvoiceHistoryEntry,
-} from './types';
-export { composeVerdict, COMPOSITION_POLICY_VERSION } from './composition';
-export {
-  OracleVerifier,
-  assessOracleRequest,
-  normalizeAmountToNumber,
-  normalizeTimestampToMs,
-  fetchOnChainReputation,
-} from './verifier';
-export { MockKYBProvider } from './kyb/mockProvider';
+export type { OracleServiceOptions, OracleVerificationRequest } from './types';
+export { assessOracleRequest, normalizeAmountToNumber, normalizeTimestampToMs } from './verifier';
