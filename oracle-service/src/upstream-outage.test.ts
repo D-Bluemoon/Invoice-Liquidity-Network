@@ -73,6 +73,11 @@ async function startHarness(
     cacheTtlSeconds: 300,
     requestTimeoutMs: REQUEST_TIMEOUT_MS,
     maxOracleAgeMs: FRESHNESS_WINDOW_MS,
+    // These cases are about upstream failure handling, not admission control,
+    // and the abuse tracker is process-global per IP: on a fast runner the
+    // loopback requests land inside its velocity window and the whole suite
+    // starts answering 429. `index.test.ts` covers the limiter itself.
+    enableRateLimit: false,
     // The reputation feed is on-chain and out of scope for these cases, so it is
     // pinned to a healthy value. The two RPC tests below deliberately drop this
     // and drive a real `SorobanRpc.Server` at the harness instead.

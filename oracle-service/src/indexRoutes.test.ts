@@ -28,6 +28,10 @@ async function build(overrides: Parameters<typeof createOracleApp>[0] = {}) {
     indexerBaseUrl: 'http://indexer.local',
     historyProvider: async () => healthyHistory(NOW),
     reputationProvider: async () => makeReputation(NOW, { score: 90 }),
+    // These cases assert route behaviour, and supertest issues requests far
+    // faster than the per-IP abuse detector's velocity threshold. Admission
+    // control itself is covered in `index.test.ts`.
+    enableRateLimit: false,
     ...overrides,
   });
   return created;
@@ -73,6 +77,7 @@ describe('health', () => {
         get: async () => {
           throw new Error('cache exploded');
         },
+        getStale: async () => null,
         set: async () => {},
       },
     });

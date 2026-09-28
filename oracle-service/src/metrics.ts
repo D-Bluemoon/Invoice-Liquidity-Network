@@ -37,6 +37,17 @@ export interface OracleMetrics {
   cacheMissesTotal: client.Counter<string>;
   staleResponsesTotal: client.Counter<string>;
   verificationDuration: client.Histogram<string>;
+  /** Per-stage pipeline latency (#1054): fetch, aggregate, publish. */
+  fetchDuration: client.Histogram<string>;
+  aggregateDuration: client.Histogram<string>;
+  publishDuration: client.Histogram<string>;
+  /** Executions breaching `FETCH/AGGREGATE/PUBLISH_SLO_MS`. */
+  fetchSloViolationsTotal: client.Counter<string>;
+  aggregateSloViolationsTotal: client.Counter<string>;
+  publishSloViolationsTotal: client.Counter<string>;
+  /** Last-known-good verdicts served while every source was down (#1057). */
+  degradedResponsesTotal: client.Counter<string>;
+  lastKnownGoodAgeSeconds: client.Gauge<string>;
   /** Verdicts partitioned by composition outcome — the alerting signal. */
   verificationOutcomeTotal: client.Counter<string>;
   /** Individual fraud heuristics as they fire, by signal name. */
@@ -120,6 +131,57 @@ export function createOracleMetrics(): OracleMetrics {
     name: 'oracle_verification_duration_seconds',
     help: 'Oracle verification latency in seconds',
     buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+    registers: [registry],
+  });
+
+  const fetchDuration = new client.Histogram({
+    name: 'oracle_fetch_duration_seconds',
+    help: 'Oracle source-fetch stage latency in seconds (indexer history + on-chain reputation)',
+    buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+    registers: [registry],
+  });
+
+  const aggregateDuration = new client.Histogram({
+    name: 'oracle_aggregate_duration_seconds',
+    help: 'Oracle aggregate stage latency in seconds (trust-score computation)',
+    buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+    registers: [registry],
+  });
+
+  const publishDuration = new client.Histogram({
+    name: 'oracle_publish_duration_seconds',
+    help: 'Oracle publish stage latency in seconds (cache write + response serialization)',
+    buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+    registers: [registry],
+  });
+
+  const fetchSloViolationsTotal = new client.Counter({
+    name: 'oracle_fetch_slo_violations_total',
+    help: 'Total number of fetch-stage executions breaching FETCH_SLO_MS',
+    registers: [registry],
+  });
+
+  const aggregateSloViolationsTotal = new client.Counter({
+    name: 'oracle_aggregate_slo_violations_total',
+    help: 'Total number of aggregate-stage executions breaching AGGREGATE_SLO_MS',
+    registers: [registry],
+  });
+
+  const publishSloViolationsTotal = new client.Counter({
+    name: 'oracle_publish_slo_violations_total',
+    help: 'Total number of publish-stage executions breaching PUBLISH_SLO_MS',
+    registers: [registry],
+  });
+
+  const degradedResponsesTotal = new client.Counter({
+    name: 'oracle_degraded_responses_total',
+    help: 'Total number of degraded-mode (last-known-good) responses served',
+    registers: [registry],
+  });
+
+  const lastKnownGoodAgeSeconds = new client.Gauge({
+    name: 'oracle_last_known_good_age_seconds',
+    help: 'Age in seconds of the last-known-good cached response served in degraded mode',
     registers: [registry],
   });
 
@@ -261,6 +323,14 @@ export function createOracleMetrics(): OracleMetrics {
     cacheMissesTotal,
     staleResponsesTotal,
     verificationDuration,
+    fetchDuration,
+    aggregateDuration,
+    publishDuration,
+    fetchSloViolationsTotal,
+    aggregateSloViolationsTotal,
+    publishSloViolationsTotal,
+    degradedResponsesTotal,
+    lastKnownGoodAgeSeconds,
     verificationOutcomeTotal,
     fraudSignalTotal,
     fraudFlagRatio,
