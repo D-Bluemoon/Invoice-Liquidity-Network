@@ -164,6 +164,35 @@ The notifications service processes user subscriptions and dispatches webhooks, 
 
 ---
 
+### Scenario F: Simultaneous Multi-Service Outage (Indexer + Oracle Service) (#1105)
+
+#### 1. Blast Radius
+A simultaneous failure of both the **Indexer Service** and **Oracle Service** creates severe protocol-wide degradation:
+- Read queries (`/v1/invoice`, dashboards) fail or return stale cache.
+- Oracle gating (`fund_invoice()` path with `require_oracle_verification: true`) blocks new funding operations.
+
+#### 2. Emergency Containment & Feature Flag Priority
+As validated during the multi-service outage game-day (`docs/game-days/2026-09-multi-service-outage-game-day.md`), execute containment in exact priority order:
+
+1. **Step 1: Switch Frontend Read Path to Direct Soroban RPC**:
+   ```env
+   NEXT_PUBLIC_INDEXER_ENABLED=false
+   ```
+   *Impact*: Bypasses indexer; queries RPC node directly for authoritative invoice state.
+
+2. **Step 2: Bypass Oracle Gating in Frontend**:
+   ```env
+   NEXT_PUBLIC_ORACLE_ENABLED=false
+   ```
+   *Impact*: Enables standard invoice funding while oracle service is restored.
+
+3. **Step 3: Recover Indexer & Oracle Services**:
+   - Restore Indexer SQLite snapshot & resync from ledger head.
+   - Restart Oracle service with warm cache.
+   - Un-toggle feature flags once health checks pass (`200 OK`).
+
+---
+
 ## 4. Post-Incident Review & Cross-Repo Sync
 
 Following containment of any SEV-1 or SEV-2 incident:
@@ -180,6 +209,8 @@ Following containment of any SEV-1 or SEV-2 incident:
 
 - **Smart Contract Security & Reentrancy Policy**: [`backend/docs/security.md`](https://github.com/Invoice-Liquidity-Network/ILN-Smart-Contract/blob/main/docs/security.md)
 - **Frontend Incident Response Runbook**: [`frontend/docs/incident-response.md`](https://github.com/Invoice-Liquidity-Network/ILN-Frontend/blob/main/docs/incident-response.md)
+- **Multi-Service Outage Game-Day Report**: [`docs/game-days/2026-09-multi-service-outage-game-day.md`](./game-days/2026-09-multi-service-outage-game-day.md)
 - **Repository Security Policy**: [`SECURITY.md`](../SECURITY.md)
 - **Protocol Threat Model**: [`docs/threat-model.md`](./threat-model.md)
 - **Security Guide**: [`docs/security-guide.md`](./security-guide.md)
+
