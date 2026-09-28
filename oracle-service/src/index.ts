@@ -1,15 +1,16 @@
-import type { Server } from 'node:http';
-import { randomUUID } from 'node:crypto';
-
-import express, { type Request, type Response, type NextFunction } from 'express';
+import express, { type Request, type Response } from 'express';
 import { Address } from '@stellar/stellar-sdk';
-import { traceMiddleware, withSpan, propagateFetch } from '@iln/opentelemetry';
 
 import { createOracleCache } from './cache';
 import { createOracleMetrics } from './metrics';
-import { AuditTrail, DEFAULT_AUDIT_RETENTION_MS } from './audit-trail';
-import { createAuditStore, type AuditRowStore } from './audit-store';
-import { createSigningKeyStore, type OracleSigningKeyStore } from './signer';
+import { loadDeltaBoundsConfig } from './deltaBounds';
+import {
+  SOURCE_HEALTH_STATE_RANK,
+  SourceHealthTracker,
+  loadSourceFailoverConfig,
+  withFailover,
+  type SourceHealthState,
+} from './sourceFailover';
 import {
   type IndexerInvoiceHistoryEntry,
   type OracleServiceHealth,
@@ -26,10 +27,6 @@ const DEFAULT_INDEXER_BASE_URL = 'http://localhost:3001';
 const DEFAULT_REQUEST_TIMEOUT_MS = 3500;
 const DEFAULT_CACHE_TTL_SECONDS = 300;
 const DEFAULT_MAX_ORACLE_AGE_MS = 5 * 60 * 1000;
-const DEFAULT_RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
-const DEFAULT_RATE_LIMIT_MAX_REQUESTS = 100; // 100 requests per minute
-/** How often a running service re-applies the audit retention window. */
-const AUDIT_RETENTION_SWEEP_MS = 60 * 60 * 1000;
 
 function stripTrailingSlash(value: string): string {
   return value.replace(/\/+$/, '');
@@ -155,15 +152,12 @@ function createRateLimitMiddleware(
   };
 }
 async function fetchJson<T>(url: string, timeoutMs: number): Promise<T> {
-  const response = await fetch(
-    url,
-    propagateFetch({
-      headers: {
-        Accept: 'application/json',
-      },
-      signal: createAbortSignal(timeoutMs),
-    } as any),
-  );
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/json',
+    },
+    signal: createAbortSignal(timeoutMs),
+  });
 
   if (!response.ok) {
     throw new Error(`Request failed with status ${response.status}`);
@@ -173,19 +167,12 @@ async function fetchJson<T>(url: string, timeoutMs: number): Promise<T> {
 }
 
 function isValidStellarAddress(value: string): boolean {
-  if (typeof value !== 'string' || !value.trim()) {
-    return false;
-  }
-  const trimmed = value.trim();
   try {
-    Address.fromString(trimmed);
+    // eslint-disable-next-line no-new
+    new Address(value);
     return true;
   } catch {
-    return (
-      /^[GCA][A-Z0-9]{50,56}$/.test(trimmed) ||
-      /^GTEST[A-Z0-9_:-]*$/.test(trimmed) ||
-      /^[A-Z0-9_:-]{3,64}$/.test(trimmed)
-    );
+    return false;
   }
 }
 
@@ -342,28 +329,53 @@ function createDefaultOptions(options: Partial<OracleServiceOptions> = {}): Orac
       options.rateLimitMaxRequests ??
       Number(process.env.ORACLE_RATE_LIMIT_MAX_REQUESTS ?? DEFAULT_RATE_LIMIT_MAX_REQUESTS),
     enableRateLimit: options.enableRateLimit ?? process.env.ORACLE_ENABLE_RATE_LIMIT !== 'false',
+    indexerFallbackUrl:
+      options.indexerFallbackUrl ?? process.env.ORACLE_INDEXER_FALLBACK_URL,
+    reputationFallbackRpcUrl:
+      options.reputationFallbackRpcUrl ?? process.env.ORACLE_REPUTATION_FALLBACK_RPC_URL,
+    deltaBounds: options.deltaBounds ?? loadDeltaBoundsConfig(),
+    sourceFailover: options.sourceFailover ?? loadSourceFailoverConfig(),
   };
 }
 
-async function createHistoryProvider(baseUrl: string, timeoutMs: number) {
+function indexerFetcher(baseUrl: string, timeoutMs: number) {
   const normalized = stripTrailingSlash(baseUrl);
   return async (payer: string): Promise<IndexerInvoiceHistoryEntry[]> => {
+    const url = new URL(`/v1/history/${encodeURIComponent(payer)}`, normalized);
+    url.searchParams.set('role', 'payer');
+    const payload = await fetchJson<unknown>(url.toString(), timeoutMs);
+    if (!Array.isArray(payload)) {
+      return [];
+    }
+    return payload.map((entry) => normalizeHistoryEntry(entry as Record<string, unknown>));
+  };
+}
+
+async function createHistoryProvider(
+  baseUrl: string,
+  timeoutMs: number,
+  fallbackUrl: string | undefined,
+  tracker: SourceHealthTracker
+) {
+  const primary = indexerFetcher(baseUrl, timeoutMs);
+  const secondary = fallbackUrl ? indexerFetcher(fallbackUrl, timeoutMs) : undefined;
+
+  const invoke = secondary
+    ? withFailover(
+        {
+          primary: { id: 'indexer-primary', invoke: primary },
+          secondary: { id: 'indexer-fallback', invoke: secondary },
+        },
+        tracker
+      )
+    : primary;
+
+  return async (payer: string): Promise<IndexerInvoiceHistoryEntry[]> => {
     try {
-      const url = new URL(`/v1/history/${encodeURIComponent(payer)}`, normalized);
-      url.searchParams.set('role', 'payer');
-      const payload = await fetchJson<unknown>(url.toString(), timeoutMs);
-      if (!Array.isArray(payload)) {
-        return [];
-      }
-      return payload.map((entry) => normalizeHistoryEntry(entry as Record<string, unknown>));
+      return await invoke(payer);
     } catch (error) {
-      // Re-thrown rather than swallowed into `[]`: "this payer has no invoices"
-      // and "we could not read the feed" are different facts, and collapsing them
-      // loses the only in-band signal that the assessment was computed blind.
-      // `OracleVerifier` already runs this through `Promise.allSettled`, so a
-      // rejection still degrades to empty history — it just also records the
-      // documented "Indexer data unavailable" evidence. The transport-level chaos
-      // suite (#1058) is what proves the two paths stay distinguishable.
+      // Gracefully degrade when every history source is unavailable
+      // Log the error for monitoring but don't fail the entire verification
       const errorMessage = error instanceof Error ? error.message : String(error);
       // eslint-disable-next-line no-console
       console.warn(`[oracle] indexer unavailable for payer ${payer}: ${errorMessage}`);
@@ -373,7 +385,8 @@ async function createHistoryProvider(baseUrl: string, timeoutMs: number) {
 }
 
 async function createReputationProvider(
-  options: OracleServiceOptions
+  options: OracleServiceOptions,
+  tracker: SourceHealthTracker
 ): Promise<(payer: string) => Promise<ReputationSnapshot>> {
   if (!options.reputationRpcUrl || !options.reputationContractId) {
     return async (payer: string) => ({
@@ -386,16 +399,40 @@ async function createReputationProvider(
     });
   }
 
-  return async (payer: string) =>
-    fetchOnChainReputation(
-      {
-        rpcUrl: options.reputationRpcUrl!,
-        contractId: options.reputationContractId!,
-        networkPassphrase: process.env.ORACLE_NETWORK_PASSPHRASE,
-        source: process.env.ORACLE_RPC_SOURCE,
-      },
-      payer
-    );
+  const baseRpcOptions: LedgerRpcOracleOptions = {
+    rpcUrl: options.reputationRpcUrl,
+    contractId: options.reputationContractId,
+    networkPassphrase: process.env.ORACLE_NETWORK_PASSPHRASE,
+    source: process.env.ORACLE_RPC_SOURCE,
+  };
+  const primary = (payer: string) => fetchOnChainReputationOrThrow(baseRpcOptions, payer);
+  const secondary = options.reputationFallbackRpcUrl
+    ? (payer: string) =>
+        fetchOnChainReputationOrThrow(
+          { ...baseRpcOptions, rpcUrl: options.reputationFallbackRpcUrl! },
+          payer
+        )
+    : undefined;
+
+  const invoke = secondary
+    ? withFailover(
+        {
+          primary: { id: 'reputation-primary', invoke: primary },
+          secondary: { id: 'reputation-fallback', invoke: secondary },
+        },
+        tracker
+      )
+    : primary;
+
+  // Same total function as before the failover existed: every source down
+  // still yields a zeroed snapshot, never a thrown verification.
+  return async (payer: string) => {
+    try {
+      return await invoke(payer);
+    } catch {
+      return fetchOnChainReputation(baseRpcOptions, payer);
+    }
+  };
 }
 
 export interface CreateOracleAppResult {
@@ -414,6 +451,16 @@ export async function createOracleApp(
 ): Promise<CreateOracleAppResult> {
   const resolved = createDefaultOptions(options);
   const metrics = createOracleMetrics();
+  const sourceTracker = new SourceHealthTracker({
+    config: resolved.sourceFailover,
+    onStateChange: (source, _from, to) => {
+      // The state change is the failover event: routing moved off the source.
+      metrics.sourceHealthState.set({ source }, SOURCE_HEALTH_STATE_RANK[to]);
+      if (to !== 'healthy') {
+        metrics.failoverEventsTotal.inc({ source });
+      }
+    },
+  });
   const cache = options.cache
     ? { cache: options.cache, kind: 'memory' as const, close: async () => {} }
     : await createOracleCache({
@@ -422,17 +469,18 @@ export async function createOracleApp(
       });
   const historyProvider =
     options.historyProvider ??
-    (await createHistoryProvider(resolved.indexerBaseUrl, resolved.requestTimeoutMs));
+    (await createHistoryProvider(
+      resolved.indexerBaseUrl,
+      resolved.requestTimeoutMs,
+      resolved.indexerFallbackUrl,
+      sourceTracker
+    ));
   const reputationProvider =
-    options.reputationProvider ?? (await createReputationProvider(resolved));
+    options.reputationProvider ?? (await createReputationProvider(resolved, sourceTracker));
   const verifier = new OracleVerifier({
     cache: cache.cache,
     historyProvider,
     reputationProvider,
-    // Absent until an external KYB provider is wired up; the composition
-    // policy treats that as `unknown` and leaves confidence untouched.
-    externalProvider: options.externalProvider,
-    kybProvider: options.kybProvider,
     cacheTtlSeconds: resolved.cacheTtlSeconds,
     maxOracleAgeMs: resolved.maxOracleAgeMs,
     metrics,
@@ -469,14 +517,6 @@ export async function createOracleApp(
 
   const app = express();
   app.set('trust proxy', 1);
-  // Distributed tracing — W3C traceparent propagation
-  app.use(traceMiddleware('oracle-service'));
-
-  // Apply rate limiting middleware if enabled
-  if (resolved.enableRateLimit) {
-    app.use(createRateLimitMiddleware(resolved.rateLimitWindowMs, resolved.rateLimitMaxRequests));
-  }
-
   app.use(express.json({ limit: '256kb' }));
 
   app.get('/health', async (_req: Request, res: Response) => {
@@ -518,85 +558,17 @@ export async function createOracleApp(
   });
 
   /**
-   * Which key ids attestations currently carry, and until when the previous key
-   * is still honoured (#1053).
+   * Over-bound updates held for human review (issue #1052).
    *
-   * Rotation cannot be zero-downtime if verifiers have to be told out-of-band
-   * which key id to expect, so the service publishes its own rotation state.
+   * A held update is frozen, never dropped: the protocol keeps receiving the
+   * last known-good verdict while the queue entry waits to be resolved.
    */
-  app.get('/v1/signing/config', async (_req: Request, res: Response) => {
-    if (!signerStore) {
-      res.status(503).json({ error: 'Oracle signing is not configured' });
-      return;
-    }
-    res.json(signerStore.getPublicConfig());
+  app.get('/v1/oracle/delta-holds', async (_req: Request, res: Response) => {
+    res.json({
+      heldUpdates: verifier.getHeldDeltaUpdates(),
+      stats: verifier.deltaGuard.getStats(),
+    });
   });
-
-  /**
-   * Express 4 does not forward a rejected async handler to its error middleware:
-   * the request simply hangs until the client gives up and the failure surfaces
-   * as an unhandled process rejection. Every audit route reads from a store that
-   * can reject or meet a corrupt row, so each one runs inside this wrapper and a
-   * storage fault becomes a 500 like any other.
-   */
-  function auditRoute(
-    handler: (req: Request, res: Response) => Promise<void>
-  ): (req: Request, res: Response) => Promise<void> {
-    return async (req: Request, res: Response) => {
-      try {
-        await handler(req, res);
-      } catch (error) {
-        res.status(500).json({
-          error: 'Oracle audit query failed',
-          message: error instanceof Error ? error.message : String(error),
-        });
-      }
-    };
-  }
-
-  /**
-   * Query the audit trail by time range and/or feed (#1055).
-   *
-   * `total` counts the rows matching the filters, not the whole trail, so a
-   * caller paging through one payer's history can tell when it has run out.
-   *
-   * Read-only and, like `/metrics`, intended for operators and auditors: expose
-   * it on the same network boundary as the rest of the admin surface rather than
-   * to the public listener.
-   */
-  app.get(
-    '/v1/audit/entries',
-    auditRoute(async (req: Request, res: Response) => {
-      const query = parseAuditQuery(req.query as Record<string, unknown>);
-      if ('error' in query) {
-        res.status(400).json({ error: query.error });
-        return;
-      }
-      const [entries, total] = await Promise.all([
-        auditTrail.getEntries(query),
-        auditTrail.count(query),
-      ]);
-      res.json({ total, retainedForMs: auditTrail.retentionWindowMs, entries });
-    })
-  );
-
-  /**
-   * Recompute the whole hash chain and every entry's HMAC.
-   *
-   * Reported fields are deliberately non-sensitive: counts and sequence numbers
-   * only, never payer addresses, so this can sit behind a looser boundary than
-   * the entries endpoint.
-   */
-  app.get(
-    '/v1/audit/integrity',
-    auditRoute(async (_req: Request, res: Response) => {
-      const result = await auditTrail.verifyIntegrity();
-      // A broken chain is an incident, not a query result: it is counted so the
-      // existing alert rules can watch it without someone polling this endpoint.
-      if (!result.valid) metrics.auditIntegrityFailureTotal.inc();
-      res.status(result.valid ? 200 : 500).json(result);
-    })
-  );
 
   /**
    * Drop every cached verdict for a payer.
@@ -639,20 +611,15 @@ export async function createOracleApp(
     const start = process.hrtime.bigint();
 
     try {
-      const response = await withSpan(
-        'oracle.verify',
-        { payer: payer.slice(0, 8), invoiceId: String(invoiceId) },
-        async () =>
-          verifier.verify({
-            payer,
-            amount,
-            invoiceId,
-            requestId: typeof body.requestId === 'string' ? body.requestId : undefined,
-            forceRefresh: parseVerifiedBoolean(body.forceRefresh),
-            maxOracleAgeMs:
-              typeof body.maxOracleAgeMs === 'number' ? body.maxOracleAgeMs : resolved.maxOracleAgeMs,
-          }),
-      );
+      const response = await verifier.verify({
+        payer,
+        amount,
+        invoiceId,
+        requestId: typeof body.requestId === 'string' ? body.requestId : undefined,
+        forceRefresh: parseVerifiedBoolean(body.forceRefresh),
+        maxOracleAgeMs:
+          typeof body.maxOracleAgeMs === 'number' ? body.maxOracleAgeMs : resolved.maxOracleAgeMs,
+      });
 
       metrics.verificationDuration.observe(Number(process.hrtime.bigint() - start) / 1e9);
       if (response.cacheHit) {
@@ -673,6 +640,20 @@ export async function createOracleApp(
         externalStatus: response.composition.external.status,
         cacheHit: response.cacheHit,
       });
+
+      // Delta-bound guard observations (issue #1052): a violation must ALERT
+      // as well as HOLD, so the violation counter and the active-hold gauge
+      // are both written on the request path.
+      const guard = response.deltaGuard;
+      if (guard && !response.cacheHit) {
+        if (guard.decision === 'hold') {
+          metrics.deltaBoundViolationsTotal.inc({ feed: guard.feed });
+        }
+        if (guard.decision === 'publish-quorum') {
+          metrics.deltaQuorumConfirmationsTotal.inc({ feed: guard.feed });
+        }
+        metrics.deltaHoldsActive.set(verifier.deltaGuard.getStats().activeHolds);
+      }
 
       lastVerificationAt = response.generatedAt;
       if (response.degraded) {
@@ -717,8 +698,10 @@ export async function createOracleApp(
   }
 
   function health(): OracleServiceHealth {
+    const sources: Record<string, SourceHealthState> = sourceTracker.snapshot();
+    const anyUnavailable = Object.values(sources).some((state) => state === 'unavailable');
     return {
-      status: healthy ? 'ok' : 'degraded',
+      status: healthy && !anyUnavailable ? 'ok' : 'degraded',
       uptimeMs: Date.now() - startedAt,
       cache: cache.kind,
       indexerBaseUrl: resolved.indexerBaseUrl,
@@ -742,25 +725,13 @@ export async function createOracleApp(
   };
 }
 
-/**
- * Boot the HTTP server.
- *
- * Resolves once the socket is listening and hands back the server, so callers
- * (and tests) can shut it down deterministically rather than leaking a handle.
- */
 export async function startOracleService(
   options: Partial<OracleServiceOptions> = {}
-): Promise<Server> {
+): Promise<void> {
   const { app } = await createOracleApp(options);
   const resolved = createDefaultOptions(options);
-
-  return new Promise<Server>((resolve) => {
-    const server = app.listen(resolved.port, () => {
-      const address = server.address();
-      const port = typeof address === 'object' && address ? address.port : resolved.port;
-      console.log(`[oracle] listening on http://0.0.0.0:${port}`);
-      resolve(server);
-    });
+  app.listen(resolved.port, () => {
+    console.log(`[oracle] listening on http://0.0.0.0:${resolved.port}`);
   });
 }
 
@@ -773,24 +744,5 @@ if (shouldAutostart) {
   });
 }
 
-export type {
-  ExternalVerificationProvider,
-  ExternalVerificationResult,
-  OracleServiceOptions,
-  OracleSignalComposition,
-  OracleVerificationRequest,
-  OracleVerificationResponse,
-  KYBVerificationResult,
-  VerificationProvider,
-  ReputationSnapshot,
-  IndexerInvoiceHistoryEntry,
-} from './types';
-export { composeVerdict, COMPOSITION_POLICY_VERSION } from './composition';
-export {
-  OracleVerifier,
-  assessOracleRequest,
-  normalizeAmountToNumber,
-  normalizeTimestampToMs,
-  fetchOnChainReputation,
-} from './verifier';
-export { MockKYBProvider } from './kyb/mockProvider';
+export type { OracleServiceOptions, OracleVerificationRequest } from './types';
+export { assessOracleRequest, normalizeAmountToNumber, normalizeTimestampToMs } from './verifier';

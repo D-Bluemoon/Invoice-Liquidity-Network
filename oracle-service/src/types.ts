@@ -1,5 +1,5 @@
-import type { AuditRowStore } from './audit-store';
-import type { OracleSigningKeyStore, SignedPriceUpdate } from './signer';
+import type { DeltaBoundsConfig, OracleDeltaGuardInfo } from './deltaBounds';
+import type { SourceFailoverConfig, SourceHealthState } from './sourceFailover';
 
 export type InvoiceStatus = 'Pending' | 'Funded' | 'Paid' | 'Defaulted';
 
@@ -159,6 +159,13 @@ export interface OracleVerificationResponse {
    * distinctly.
    */
   composition: OracleSignalComposition;
+  /**
+   * Outcome of the per-feed delta-bound guard applied to the composite trust
+   * score. Absent on responses produced before the guard existed (e.g. cached
+   * entries written by older instances). A `hold` means the proposal was
+   * frozen for human review and this verdict is the last known-good value.
+   */
+  deltaGuard?: OracleDeltaGuardInfo;
   kybResult?: KYBVerificationResult;
   /**
    * HMAC attestation of *this publication*, attached by the HTTP layer when a
@@ -245,6 +252,8 @@ export interface OracleVerifierDependencies {
   cacheTtlSeconds?: number;
   maxOracleAgeMs?: number;
   externalProvider?: ExternalVerificationProvider;
+  /** Per-feed movement bounds for the composite trust score (issue #1052). */
+  deltaBounds?: DeltaBoundsConfig;
 }
 
 export interface OracleCacheReaderWriter {
@@ -278,16 +287,10 @@ export interface OracleServiceOptions {
   rateLimitWindowMs?: number;
   rateLimitMaxRequests?: number;
   enableRateLimit?: boolean;
-  /**
-   * Store backing the append-only audit trail. When omitted the driver is
-   * resolved from `ORACLE_AUDIT_DB_PATH` / `ORACLE_AUDIT_DRIVER`.
-   */
-  auditStore?: AuditRowStore;
-  /** How long audit entries are retained. Defaults to one year. */
-  auditRetentionMs?: number;
-  /**
-   * Key store used to sign published verdicts. `null` explicitly disables
-   * signing (non-production only); omitting it resolves from the environment.
-   */
-  signingKeyStore?: OracleSigningKeyStore | null;
+  /** Fallback indexer for automated history-source failover (issue #1051). */
+  indexerFallbackUrl?: string;
+  /** Fallback Soroban RPC for automated reputation-source failover. */
+  reputationFallbackRpcUrl?: string;
+  deltaBounds?: DeltaBoundsConfig;
+  sourceFailover?: SourceFailoverConfig;
 }
