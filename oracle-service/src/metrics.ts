@@ -1,5 +1,35 @@
 import client, { type Registry } from 'prom-client';
 
+/**
+ * Latency SLOs per oracle pipeline stage, in milliseconds (issue #1054).
+ *
+ * - fetch: source fetch (indexer history + on-chain reputation, in parallel).
+ * - aggregate: trust-score computation and fraud-signal detection.
+ * - publish: cache write plus response serialization.
+ */
+export const FETCH_SLO_MS = 500;
+export const AGGREGATE_SLO_MS = 300;
+export const PUBLISH_SLO_MS = 100;
+
+/**
+ * Burn-rate alert threshold (issue #1054): the ratio of SLO-violating stage
+ * executions to total executions over the alert window that pages the
+ * on-call. A burn rate above this means the stage is consuming its error
+ * budget fast enough to breach the SLO within the window.
+ */
+export const SLO_BURN_RATE_ALERT_THRESHOLD = 0.01;
+
+/**
+ * sloBurnRate returns violations / total (0 when nothing has executed yet).
+ * Callers compare the result against SLO_BURN_RATE_ALERT_THRESHOLD.
+ */
+export function sloBurnRate(violations: number, total: number): number {
+  if (!Number.isFinite(violations) || !Number.isFinite(total) || total <= 0) {
+    return 0;
+  }
+  return Math.max(0, violations) / total;
+}
+
 export interface OracleMetrics {
   registry: Registry;
   verificationTotal: client.Counter<string>;
@@ -21,6 +51,16 @@ export interface OracleMetrics {
   sloErrorBudgetBurn: client.Gauge<string>;
   /** Latency SLO violations */
   latencySloViolationsTotal: client.Counter<string>;
+  /** Composite-score updates rejected for exceeding the single-bound delta. */
+  deltaBoundViolationsTotal: client.Counter<string>;
+  /** Held delta-bound updates currently awaiting human review. */
+  deltaHoldsActive: client.Gauge<string>;
+  /** Over-bound updates published on the strength of a source quorum. */
+  deltaQuorumConfirmationsTotal: client.Counter<string>;
+  /** Health state per verification source (0 healthy, 1 degraded, 2 unavailable). */
+  sourceHealthState: client.Gauge<string>;
+  /** Source health transitions away from healthy — the failover trigger. */
+  failoverEventsTotal: client.Counter<string>;
   /** Record one verdict against the outcome, fraud and ratio metrics. */
   recordVerificationOutcome(result: VerificationOutcomeSample): void;
 }
@@ -125,6 +165,40 @@ export function createOracleMetrics(): OracleMetrics {
     registers: [registry],
   });
 
+  const deltaBoundViolationsTotal = new client.Counter({
+    name: 'oracle_delta_bound_violations_total',
+    help: 'Updates held for review after exceeding the max single-update delta bound',
+    labelNames: ['feed'] as const,
+    registers: [registry],
+  });
+
+  const deltaHoldsActive = new client.Gauge({
+    name: 'oracle_delta_holds_active',
+    help: 'Delta-bound updates currently held pending human review',
+    registers: [registry],
+  });
+
+  const deltaQuorumConfirmationsTotal = new client.Counter({
+    name: 'oracle_delta_quorum_confirmations_total',
+    help: 'Over-bound updates published because an independent source quorum confirmed them',
+    labelNames: ['feed'] as const,
+    registers: [registry],
+  });
+
+  const sourceHealthState = new client.Gauge({
+    name: 'oracle_source_health_state',
+    help: 'Verification source health: 0 healthy, 1 degraded, 2 unavailable',
+    labelNames: ['source'] as const,
+    registers: [registry],
+  });
+
+  const failoverEventsTotal = new client.Counter({
+    name: 'oracle_failover_events_total',
+    help: 'Source health transitions out of the healthy state',
+    labelNames: ['source'] as const,
+    registers: [registry],
+  });
+
   // Bounded ring of recent verdicts backing the ratio gauge.
   const recentFlags: boolean[] = [];
 
@@ -183,6 +257,11 @@ export function createOracleMetrics(): OracleMetrics {
     costUsdTotal,
     sloErrorBudgetBurn,
     latencySloViolationsTotal,
+    deltaBoundViolationsTotal,
+    deltaHoldsActive,
+    deltaQuorumConfirmationsTotal,
+    sourceHealthState,
+    failoverEventsTotal,
     recordVerificationOutcome: wrappedRecordVerificationOutcome,
   };
 }
