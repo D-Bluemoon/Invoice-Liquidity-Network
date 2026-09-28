@@ -216,13 +216,16 @@ export interface OracleServiceHealth {
   indexerBaseUrl: string;
   reputationConfigured: boolean;
   lastVerificationAt?: string | null;
-  /**
-   * Whether published verdicts are being signed (#1053) and whether the audit
-   * trail is durable (#1055). Both are surfaced rather than assumed, because a
-   * deployment that quietly loses either still returns 200s.
-   */
-  signing: 'enabled' | 'disabled';
-  audit: 'sqlite' | 'memory';
+  /** Issue #1057: true once the service has served a degraded response. */
+  degradedMode: boolean;
+  degradedResponses?: number;
+  lastSuccessfulVerificationAt?: string | null;
+  /** Issue #1054: per-stage SLO violation totals served by this instance. */
+  sloViolations?: {
+    fetch: number;
+    aggregate: number;
+    publish: number;
+  };
 }
 
 export interface OracleServiceMetricsSnapshot {
