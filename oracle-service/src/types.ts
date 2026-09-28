@@ -205,11 +205,16 @@ export interface OracleServiceHealth {
   indexerBaseUrl: string;
   reputationConfigured: boolean;
   lastVerificationAt?: string | null;
-  /**
-   * Live failover state per configured source. Empty when no fallbacks are
-   * configured — the endpoint payload stays otherwise identical to today.
-   */
-  sources?: Record<string, SourceHealthState>;
+  /** Issue #1057: true once the service has served a degraded response. */
+  degradedMode: boolean;
+  degradedResponses?: number;
+  lastSuccessfulVerificationAt?: string | null;
+  /** Issue #1054: per-stage SLO violation totals served by this instance. */
+  sloViolations?: {
+    fetch: number;
+    aggregate: number;
+    publish: number;
+  };
 }
 
 export interface OracleServiceMetricsSnapshot {
