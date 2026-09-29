@@ -48,7 +48,13 @@
     "validate:meta-nav": "node scripts/check-meta-nav.mjs",
     "check:shared-types": "node scripts/check-no-duplicate-types.mjs",
     "drift:check": "node scripts/check-monorepo-map-drift.mjs",
-    "test:drift": "node --test scripts/__tests__/check-monorepo-map-drift.test.mjs"
+    "test:drift": "node --test scripts/__tests__/check-monorepo-map-drift.test.mjs",
+    "alert-runbook:check": "node scripts/check-alert-runbook-links.mjs",
+    "test:alert-runbook": "node --test scripts/__tests__/check-alert-runbook-links.test.mjs",
+    "test:runtime-budgets": "node scripts/check-test-runtime-budgets.mjs",
+    "test:test-runtime-budgets": "node --test scripts/__tests__/check-test-runtime-budgets.test.mjs",
+    "sdk:compat-matrix": "node scripts/check-sdk-compat-matrix.mjs",
+    "test:sdk-compat-versions": "node --test scripts/__tests__/sdk-compat-versions.test.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
