@@ -28,6 +28,7 @@ Options:
   --concurrency <count>                    Number of concurrent workers (default: 5)
   --indexer-url <url>                      URL of the Indexer service (default: http://localhost:3001)
   --notifications-url <url>                URL of the Notifications service (default: http://localhost:4001)
+  --oracle-url <url>                       URL of the Oracle service (default: http://localhost:3010)
   --report <filepath>                      Markdown report destination (default: load-test-report.md)
   --json <filepath>                        JSON raw log destination (default: load-test-results.json)
 
@@ -51,6 +52,7 @@ async function main(): Promise<void> {
         concurrency: { type: 'string', default: '5' },
         'indexer-url': { type: 'string', default: 'http://localhost:3001' },
         'notifications-url': { type: 'string', default: 'http://localhost:4001' },
+        'oracle-url': { type: 'string', default: 'http://localhost:3010' },
         report: { type: 'string', default: 'load-test-report.md' },
         json: { type: 'string', default: 'load-test-results.json' },
         'p95-threshold': { type: 'string', default: '500' },
@@ -78,15 +80,16 @@ async function main(): Promise<void> {
     concurrency: parseInt(args.values.concurrency || '5', 10),
     indexerUrl: args.values['indexer-url'] || 'http://localhost:3001',
     notificationsUrl: args.values['notifications-url'] || 'http://localhost:4001',
+    oracleUrl: args.values['oracle-url'] || 'http://localhost:3010',
     p95Threshold: parseFloat(args.values['p95-threshold'] || '500'),
     errorThreshold: parseFloat(args.values['error-threshold'] || '2'),
     avgThreshold: parseFloat(args.values['avg-threshold'] || '200'),
     rpsThreshold: parseFloat(args.values['rps-threshold'] || '10'),
   };
 
-  if (!['indexer', 'notifications', 'both'].includes(config.service)) {
+  if (!['indexer', 'notifications', 'oracle', 'both'].includes(config.service)) {
     console.error(
-      `${colors.red}Invalid service value: ${config.service}. Must be "indexer", "notifications", or "both".${colors.reset}`
+      `${colors.red}Invalid service value: ${config.service}. Must be "indexer", "notifications", "oracle", or "both".${colors.reset}`
     );
     process.exit(1);
   }
@@ -112,6 +115,9 @@ async function main(): Promise<void> {
   }
   if (config.service === 'notifications' || config.service === 'both') {
     console.log(`${colors.bright}Notifications URL:${colors.reset} ${config.notificationsUrl}`);
+  }
+  if (config.service === 'oracle' || config.service === 'both') {
+    console.log(`${colors.bright}Oracle URL:${colors.reset}      ${config.oracleUrl}`);
   }
   console.log(
     `${colors.bright}Thresholds:${colors.reset}       Avg: ${config.avgThreshold}ms | p95: ${config.p95Threshold}ms | Error: ${config.errorThreshold}% | Min RPS: ${config.rpsThreshold}\n`
