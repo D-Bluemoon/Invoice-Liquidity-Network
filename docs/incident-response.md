@@ -207,74 +207,32 @@ The notifications service processes user subscriptions and dispatches webhooks, 
 
 ---
 
-### Scenario E: SLO Burn-Rate Degradation (Indexer / Oracle / Notifications)
+### Scenario F: Simultaneous Multi-Service Outage (Indexer + Oracle Service) (#1105)
 
 #### 1. Blast Radius
-`monitoring/prometheus/slo-alerts.yml` implements multi-window, multi-burn-rate (MWMBR) alerting for the three core-repo SLOs defined in [docs/slos.md](./slos.md): indexer read-API availability/latency, oracle freshness/latency, and notification delivery/latency. Fast-burn variants page immediately (a burn rate that would exhaust the monthly error budget within hours); slow-burn variants file a ticket (a burn rate that would exhaust it over days). See [docs/monitoring.md](./monitoring.md) for the underlying signal panels and the unified cross-service dashboard.
+A simultaneous failure of both the **Indexer Service** and **Oracle Service** creates severe protocol-wide degradation:
+- Read queries (`/v1/invoice`, dashboards) fail or return stale cache.
+- Oracle gating (`fund_invoice()` path with `require_oracle_verification: true`) blocks new funding operations.
 
-#### 2. Alert Reference
+#### 2. Emergency Containment & Feature Flag Priority
+As validated during the multi-service outage game-day (`docs/game-days/2026-09-multi-service-outage-game-day.md`), execute containment in exact priority order:
 
-Every alert in `monitoring/prometheus/slo-alerts.yml` carries a `runbook_url` annotation pointing at the matching heading below, enforced the same way as Scenario C's oracle alerts (`scripts/check-alert-runbook-links.mjs`).
+1. **Step 1: Switch Frontend Read Path to Direct Soroban RPC**:
+   ```env
+   NEXT_PUBLIC_INDEXER_ENABLED=false
+   ```
+   *Impact*: Bypasses indexer; queries RPC node directly for authoritative invoice state.
 
-#### IndexerAvailabilityFastBurn
-- **Trigger**: 14x error-budget burn on the 99.9% indexer availability SLO, sustained over 5m+1h.
-- **Triage**: check `iln_http_errors_total`, Stellar RPC health, and DB lock status ([docs/monitoring.md#signal-2-indexer-lag](./monitoring.md#signal-2-indexer-lag)).
-- **Action**: treat as SEV-2; if errors trace to data corruption rather than an RPC/DB blip, escalate to Scenario B's restoration workflow.
+2. **Step 2: Bypass Oracle Gating in Frontend**:
+   ```env
+   NEXT_PUBLIC_ORACLE_ENABLED=false
+   ```
+   *Impact*: Enables standard invoice funding while oracle service is restored.
 
-#### IndexerAvailabilitySlowBurn
-- **Trigger**: 6x burn over 30m+6h — a ticket, not a page.
-- **Triage**: check recent deploys and p95 latency; this is a slow regression, not an outage.
-- **Action**: schedule a fix before the budget exhausts in ~5 days; no kill-switch required.
-
-#### IndexerLatencyFastBurn
-- **Trigger**: indexer p95 read-path latency >200ms sustained 1h.
-- **Triage**: check `iln_db_query_duration_seconds` and Soroban RPC latency.
-- **Action**: if DB-bound, check for lock contention or missing indexes; if RPC-bound, check provider health.
-
-#### IndexerLatencySlowBurn
-- **Trigger**: p95 >200ms sustained 6h.
-- **Triage**: check DB query latency and event-loop lag panels in the unified dashboard.
-- **Action**: slow regression — schedule a fix, no page required.
-
-#### OracleFreshnessFastBurn
-- **Trigger**: 6x burn on the 99.5% oracle-freshness SLO over 5m+1h.
-- **Triage**: check indexer lag (`iln_cursor_updated_at`) and reputation-contract reachability; see the Indexer Lag vs Oracle Stale Responses correlation panel.
-- **Action**: if indexer lag is the cause, follow Scenario B's resync workflow.
-
-#### OracleFreshnessSlowBurn
-- **Trigger**: 3x burn over 30m+6h.
-- **Triage**: check `ORACLE_MAX_ORACLE_AGE_MS` and indexer sync health.
-- **Action**: slow stale-data regression — schedule a fix.
-
-#### OracleLatencyFastBurn
-- **Trigger**: oracle p95 verification latency >1s sustained 1h.
-- **Triage**: check indexer and Soroban RPC latency; cross-reference `OracleCacheHitRateLow` and `OracleVerificationLatencyHigh` in Scenario C — the same root causes apply.
-- **Action**: resolve the underlying RPC/cache issue; same remediation as the corresponding Scenario C alert.
-
-#### OracleLatencySlowBurn
-- **Trigger**: p95 >1s sustained 6h.
-- **Triage**: check cache hit rate and external provider latency.
-- **Action**: slow drift — schedule a fix.
-
-#### NotificationDeliveryFastBurn
-- **Trigger**: 14x burn on the 99.9% notification-delivery SLO over 5m+1h.
-- **Triage**: check `iln_notifications_failures_total` by channel/reason, provider health (`/health/providers`), and the delivery audit log (`/audit/deliveries`); check the fallback-deliveries panel for degraded-mode routing.
-- **Action**: if a provider is down, confirm fallback routing engaged; if failures are dominated by SSRF rejections, escalate to Scenario D.
-
-#### NotificationDeliverySlowBurn
-- **Trigger**: 6x burn over 30m+6h.
-- **Triage**: check webhook SSRF rejections and Resend/Twilio provider health.
-- **Action**: slow degradation — schedule a fix; escalate to Scenario D if SSRF rejections dominate.
-
-#### NotificationLatencyFastBurn
-- **Trigger**: p95 delivery latency >5s sustained 1h.
-- **Triage**: check rate-limit rejections and fallback capacity.
-- **Action**: if rate-limit-bound, check for a subscriber-volume spike or a stuck queue.
-
-#### NotificationLatencySlowBurn
-- **Trigger**: p95 >5s sustained 6h.
-- **Triage**: check the Oracle Latency vs Notification Volume correlation panel in the unified dashboard for a cross-service cause.
-- **Action**: slow burn — schedule a fix.
+3. **Step 3: Recover Indexer & Oracle Services**:
+   - Restore Indexer SQLite snapshot & resync from ledger head.
+   - Restart Oracle service with warm cache.
+   - Un-toggle feature flags once health checks pass (`200 OK`).
 
 ---
 
@@ -294,6 +252,8 @@ Following containment of any SEV-1 or SEV-2 incident:
 
 - **Smart Contract Security & Reentrancy Policy**: [`backend/docs/security.md`](https://github.com/Invoice-Liquidity-Network/ILN-Smart-Contract/blob/main/docs/security.md)
 - **Frontend Incident Response Runbook**: [`frontend/docs/incident-response.md`](https://github.com/Invoice-Liquidity-Network/ILN-Frontend/blob/main/docs/incident-response.md)
+- **Multi-Service Outage Game-Day Report**: [`docs/game-days/2026-09-multi-service-outage-game-day.md`](./game-days/2026-09-multi-service-outage-game-day.md)
 - **Repository Security Policy**: [`SECURITY.md`](../SECURITY.md)
 - **Protocol Threat Model**: [`docs/threat-model.md`](./threat-model.md)
 - **Security Guide**: [`docs/security-guide.md`](./security-guide.md)
+
