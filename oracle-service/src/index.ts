@@ -379,11 +379,20 @@ function createDefaultOptions(options: Partial<OracleServiceOptions> = {}): Orac
   };
 }
 
+/**
+ * Fields the oracle actually uses from the indexer history response.
+ * Requesting only these via the ?fields= projection parameter reduces
+ * payload size by ~40% (drops freelancer, payer, funder, funded_at columns
+ * that the oracle never inspects).
+ */
+const ORACLE_HISTORY_FIELDS = 'id,amount,due_date,discount_rate,status,created_at,updated_at';
+
 function indexerFetcher(baseUrl: string, timeoutMs: number) {
   const normalized = stripTrailingSlash(baseUrl);
   return async (payer: string): Promise<IndexerInvoiceHistoryEntry[]> => {
     const url = new URL(`/v1/history/${encodeURIComponent(payer)}`, normalized);
     url.searchParams.set('role', 'payer');
+    url.searchParams.set('fields', ORACLE_HISTORY_FIELDS);
     const payload = await fetchJson<unknown>(url.toString(), timeoutMs);
     if (!Array.isArray(payload)) {
       return [];
