@@ -13,6 +13,7 @@ import { createLogger } from './logger';
 import type { Unsubscribe } from './state';
 import { track } from './usage-analytics';
 import { Cache, type CacheOptions } from './cache';
+import { RequestBatcher, type BatchingMetrics } from './batcher';
 import { withBackoff, isTransientError, type BackoffOptions } from './backoff';
 import { Validators } from './validators';
 import {
@@ -145,6 +146,7 @@ export class ILNSdk {
   private readonly analyticsNetwork: string;
   private readonly cache: Cache<unknown>;
   private readonly cacheEnabled: boolean;
+  private readonly requestBatcher: RequestBatcher;
   private offlineManager: OfflineManager | null = null;
   private readonly backoffOptions: BackoffOptions | false;
 
@@ -166,6 +168,7 @@ export class ILNSdk {
     const cacheConfig = config.cache ?? { ttl: 60000, storage: 'memory', enabled: true };
     this.cache = new Cache(cacheConfig);
     this.cacheEnabled = cacheConfig.enabled ?? true;
+    this.requestBatcher = new RequestBatcher(config.batching);
 
     this.backoffOptions = config.backoff ?? {};
 
@@ -181,6 +184,13 @@ export class ILNSdk {
         this.logger.warn(verification.warningMessage);
       }
     }
+  }
+
+  /**
+   * Fetch current request batching and deduplication metrics.
+   */
+  public getBatchingMetrics(): BatchingMetrics {
+    return this.requestBatcher.getMetrics();
   }
 
   private async wrapRpcCall<T>(promise: Promise<T>, operationName: string): Promise<T> {
@@ -1046,37 +1056,39 @@ export class ILNSdk {
   async getInvoice(invoiceId: bigint, options?: CacheOptions): Promise<Invoice> {
     const cacheKey = `invoice:${invoiceId}`;
 
-    // Try cache first
-    if (this.cacheEnabled && !options?.bypass) {
-      const cached = this.cache.get(cacheKey, options) as Invoice | null;
-      if (cached) {
-        return cached;
-      }
-    }
-
-    try {
-      const transaction = this.buildReadTransaction('get_invoice', [
-        nativeToScVal(invoiceId, { type: 'u64' }),
-      ]);
-      const simulation = await this.simulateReadTransaction('get_invoice', transaction);
-
-      if (this.logger.enabled) {
-        this.logger('getInvoice simulation result', this.summarizeSimulation(simulation));
-      }
-
-      const result = this.extractInvoiceResult(simulation);
-      track('getInvoice', this.analyticsNetwork, true);
-
-      // Cache the result
+    return this.requestBatcher.execute(cacheKey, async () => {
+      // Try cache first
       if (this.cacheEnabled && !options?.bypass) {
-        this.cache.set(cacheKey, result);
+        const cached = this.cache.get(cacheKey, options) as Invoice | null;
+        if (cached) {
+          return cached;
+        }
       }
 
-      return result;
-    } catch (err: any) {
-      track('getInvoice', this.analyticsNetwork, false, err?.code ?? err?.name);
-      throw err;
-    }
+      try {
+        const transaction = this.buildReadTransaction('get_invoice', [
+          nativeToScVal(invoiceId, { type: 'u64' }),
+        ]);
+        const simulation = await this.simulateReadTransaction('get_invoice', transaction);
+
+        if (this.logger.enabled) {
+          this.logger('getInvoice simulation result', this.summarizeSimulation(simulation));
+        }
+
+        const result = this.extractInvoiceResult(simulation);
+        track('getInvoice', this.analyticsNetwork, true);
+
+        // Cache the result
+        if (this.cacheEnabled && !options?.bypass) {
+          this.cache.set(cacheKey, result);
+        }
+
+        return result;
+      } catch (err: any) {
+        track('getInvoice', this.analyticsNetwork, false, err?.code ?? err?.name);
+        throw err;
+      }
+    });
   }
 
   /**
