@@ -59,6 +59,12 @@
     "canary:rollout": "node scripts/canary/rollout.mjs",
     "canary:drill": "node scripts/canary/rollout-drill.mjs",
     "test:canary": "node --test scripts/__tests__/canary-rollout-decision.test.mjs scripts/__tests__/canary-prometheus-adapter.test.mjs scripts/__tests__/canary-rollout.test.mjs scripts/__tests__/canary-register-target.test.mjs"
+    "alert-runbook:check": "node scripts/check-alert-runbook-links.mjs",
+    "test:alert-runbook": "node --test scripts/__tests__/check-alert-runbook-links.test.mjs",
+    "test:runtime-budgets": "node scripts/check-test-runtime-budgets.mjs",
+    "test:test-runtime-budgets": "node --test scripts/__tests__/check-test-runtime-budgets.test.mjs",
+    "sdk:compat-matrix": "node scripts/check-sdk-compat-matrix.mjs",
+    "test:sdk-compat-versions": "node --test scripts/__tests__/sdk-compat-versions.test.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",

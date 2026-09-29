@@ -100,7 +100,17 @@ jobs:
 
       - name: Run cargo test
         working-directory: ./backend
-        run: cargo test --target x86_64-unknown-linux-gnu
+        run: |
+          START=$(date +%s)
+          cargo test --target x86_64-unknown-linux-gnu
+          END=$(date +%s)
+          DURATION=$((END - START))
+          BUDGET=$(jq -r '.budgets[] | select(.package=="backend") | .budgetSeconds' ../test-runtime-budgets.json)
+          echo "backend test runtime: ${DURATION}s (budget: ${BUDGET}s)"
+          if [ "$DURATION" -gt "$BUDGET" ]; then
+            echo "::error::backend test suite took ${DURATION}s, exceeding its ${BUDGET}s runtime budget (test-runtime-budgets.json). See docs/test-runtime-budgets.md."
+            exit 1
+          fi
 
       - name: Comment PR on failure
         if: failure() && github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
@@ -766,7 +776,7 @@ jobs:
           key: ${{ runner.os }}-turbo-test-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-test-
       - name: Test
-        run: pnpm exec turbo run test --cache-dir=.turbo
+        run: pnpm exec turbo run test --cache-dir=.turbo --summarize
 
       - name: Root node --test suites
         run: |
@@ -778,6 +788,18 @@ jobs:
           npm run test:release-scripts
           npm run test:canary
           npm run canary:drill
+
+      - name: Root scripts/__tests__ (vitest)
+        run: |
+          START=$(date +%s.%N)
+          pnpm exec vitest run scripts/__tests__ --exclude "**/*.test.mjs" --exclude "**/*.test.js" --exclude "**/check-compatibility.test.ts"
+          END=$(date +%s.%N)
+          echo "ROOT_SCRIPTS_TEST_DURATION_SECONDS=$(echo "$END - $START" | bc)" >> "$GITHUB_ENV"
+
+      - name: Enforce test-runtime budgets
+        run: |
+          SUMMARY=$(ls -t .turbo/runs/*.json | head -1)
+          node scripts/check-test-runtime-budgets.mjs --turbo-summary="$SUMMARY" --external "root-scripts=${ROOT_SCRIPTS_TEST_DURATION_SECONDS}"
 
   core-build:
     name: Core · build
