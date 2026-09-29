@@ -134,6 +134,48 @@ export function createApp(): express.Application {
     next();
   };
 
+  // ── CDN / edge-caching helpers ─────────────────────────────────────────────
+  //
+  // Each endpoint declares a staleness tolerance via Cache-Control. A CDN
+  // (Cloudflare, Fastly, CloudFront) honours these headers to serve stale-
+  // while-revalidate responses at the edge, reducing origin load and global
+  // read latency.
+  //
+  // Staleness classes (informed by docs/indexer-data-model.md):
+  //
+  //   immutable    — terminal invoice state, never changes
+  //   short-lived  — aggregated stats, tolerate 10-30 s staleness
+  //   dynamic      — per-request data, no edge caching (private)
+  //   health       — operational, no caching
+
+  /** Set CDN-friendly Cache-Control headers. */
+  const cacheControl = (
+    res: Response,
+    profile: 'health' | 'dynamic' | 'short' | 'medium' | 'long'
+  ) => {
+    switch (profile) {
+      case 'health':
+        res.setHeader('Cache-Control', 'no-store');
+        break;
+      case 'dynamic':
+        // Private — browsers may cache briefly, CDN must not
+        res.setHeader('Cache-Control', 'private, no-cache');
+        break;
+      case 'short':
+        // 10s CDN, 30s stale-while-revalidate for stats endpoints
+        res.setHeader('Cache-Control', 'public, max-age=10, s-maxage=10, stale-while-revalidate=30');
+        break;
+      case 'medium':
+        // 30s CDN, 60s stale-while-revalidate for list/history endpoints
+        res.setHeader('Cache-Control', 'public, max-age=30, s-maxage=30, stale-while-revalidate=60');
+        break;
+      case 'long':
+        // 5min CDN for rarely-changing data (top LPs over "all" period)
+        res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=600');
+        break;
+    }
+  };
+
   // ── Shared route handlers ──────────────────────────────────────────────────
   const router = Router();
 
@@ -150,6 +192,7 @@ export function createApp(): express.Application {
     const uptime = Date.now() - startTime;
     const status = dbStatus === 'ok' ? 'ok' : 'degraded';
 
+    cacheControl(res, 'health');
     res.json({
       status,
       db: dbStatus,
@@ -181,6 +224,7 @@ export function createApp(): express.Application {
 
     const cached = await cacheGet(cacheKey);
     if (cached) {
+      cacheControl(res, 'medium');
       res.json(JSON.parse(cached));
       return;
     }
@@ -198,10 +242,12 @@ export function createApp(): express.Application {
 
     const result = { invoices, hasMore, nextCursor };
     await cacheSet(cacheKey, JSON.stringify(result));
+    cacheControl(res, 'medium');
     res.json(result);
   });
 
   router.get('/stats', (_req: Request, res: Response) => {
+    cacheControl(res, 'short');
     res.json(getProtocolStats());
   });
 
@@ -215,14 +261,18 @@ export function createApp(): express.Application {
       return;
     }
 
+    // "all" period changes rarely; week/month are more dynamic
+    cacheControl(res, period === 'all' ? 'long' : 'short');
     res.json(getTopLPs(limit, period));
   });
 
   router.get('/lps/:address/stats', (req: Request, res: Response) => {
+    cacheControl(res, 'short');
     res.json(getLPStats(req.params.address));
   });
 
   router.get('/freelancers/:address/stats', (req: Request, res: Response) => {
+    cacheControl(res, 'short');
     res.json(getFreelancerStats(req.params.address));
   });
 
@@ -236,7 +286,15 @@ export function createApp(): express.Application {
       return;
     }
 
-    res.json(getInvoiceHistory(req.params.address, role));
+    // Optional field projection: ?fields=id,amount,status,due_date
+    // Reduces payload size when consumers only need a subset of columns.
+    const rawFields = typeof req.query.fields === 'string' ? req.query.fields : undefined;
+    const fields = rawFields
+      ? rawFields.split(',').map((f) => f.trim()).filter(Boolean)
+      : undefined;
+
+    cacheControl(res, 'medium');
+    res.json(getInvoiceHistory(req.params.address, role, fields));
   });
 
   // GET /invoice/:id
@@ -251,6 +309,7 @@ export function createApp(): express.Application {
     const cacheKey = `invoice:${id}`;
     const cached = await cacheGet(cacheKey);
     if (cached) {
+      cacheControl(res, 'medium');
       res.json(JSON.parse(cached));
       return;
     }
@@ -263,11 +322,13 @@ export function createApp(): express.Application {
 
     const result = { invoice };
     await cacheSet(cacheKey, JSON.stringify(result));
+    cacheControl(res, 'medium');
     res.json(result);
   });
 
   // GET /dashboard
   router.get('/dashboard', (_req: Request, res: Response) => {
+    cacheControl(res, 'short');
     res.json(getDashboardMetrics());
   });
 
