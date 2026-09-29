@@ -13,7 +13,7 @@ import { createLogger } from './logger';
 import type { Unsubscribe } from './state';
 import { track } from './usage-analytics';
 import { Cache, type CacheOptions } from './cache';
-import { withBackoff, isTransientError } from './backoff';
+import { withBackoff, isTransientError, type BackoffOptions } from './backoff';
 import { Validators } from './validators';
 import {
   encodeProposalAction,
@@ -84,10 +84,11 @@ import {
 } from './offline';
 import {
   resolveRequestTimeouts,
+  type RequestTimeouts,
   TimeoutError,
   withTimeout,
-  type RequestTimeouts,
 } from './timeouts';
+import { verifyContractId } from './registry';
 
 const READ_ACCOUNT = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF';
 const POLL_ATTEMPTS = 20;
@@ -171,6 +172,14 @@ export class ILNSdk {
     if (config.offline !== undefined) {
       this.offlineManager = new OfflineManager(config.offline);
       this.offlineManager.onSubmit((item) => this.executeQueuedOperation(item));
+    }
+
+    if (config.verifyContractId !== false) {
+      const verification = verifyContractId(this.contractId);
+      if (!verification.isOfficial && verification.warningMessage) {
+        console.warn(verification.warningMessage);
+        this.logger.warn(verification.warningMessage);
+      }
     }
   }
 
@@ -832,6 +841,12 @@ export class ILNSdk {
 
       return invoiceId;
     } catch (err: any) {
+      if (
+        this.offlineManager &&
+        (err instanceof NetworkError || err instanceof TimeoutError || err?.message?.includes('fetch failed'))
+      ) {
+        throw new OfflineQueuedError(this.offlineManager.enqueue('submitInvoice', params));
+      }
       track('submitInvoice', this.analyticsNetwork, false, err?.code ?? err?.name);
       throw err;
     }
@@ -890,6 +905,12 @@ export class ILNSdk {
       // Invalidate cache for this invoice after funding
       this.cache.invalidate(`invoice:${params.invoiceId}`);
     } catch (err: any) {
+      if (
+        this.offlineManager &&
+        (err instanceof NetworkError || err instanceof TimeoutError || err?.message?.includes('fetch failed'))
+      ) {
+        throw new OfflineQueuedError(this.offlineManager.enqueue('fundInvoice', params));
+      }
       track('fundInvoice', this.analyticsNetwork, false, err?.code ?? err?.name);
       throw err;
     }
@@ -938,6 +959,12 @@ export class ILNSdk {
       // Invalidate cache for this invoice after payment
       this.cache.invalidate(`invoice:${params.invoiceId}`);
     } catch (err: any) {
+      if (
+        this.offlineManager &&
+        (err instanceof NetworkError || err instanceof TimeoutError || err?.message?.includes('fetch failed'))
+      ) {
+        throw new OfflineQueuedError(this.offlineManager.enqueue('markPaid', params));
+      }
       track('markPaid', this.analyticsNetwork, false, err?.code ?? err?.name);
       throw err;
     }
@@ -991,6 +1018,12 @@ export class ILNSdk {
       await this.signAndSend(preparedTransaction, params.funder, 'claimDefault');
       track('claimDefault', this.analyticsNetwork, true);
     } catch (err: any) {
+      if (
+        this.offlineManager &&
+        (err instanceof NetworkError || err instanceof TimeoutError || err?.message?.includes('fetch failed'))
+      ) {
+        throw new OfflineQueuedError(this.offlineManager.enqueue('claimDefault', params));
+      }
       track('claimDefault', this.analyticsNetwork, false, err?.code ?? err?.name);
       throw err;
     }
@@ -1511,6 +1544,7 @@ export class ILNSdk {
       if (originalTx.operations.length !== preparedTx.operations.length) {
         throw new SimulationPreparedXdrMismatchError(
           `Prepared transaction has ${preparedTx.operations.length} operations but original had ${originalTx.operations.length}. The RPC node may have modified the transaction.`,
+          'Verify your RPC endpoint integrity and consider using a different node.',
           {
             operationName,
             originalOperationCount: originalTx.operations.length,
@@ -1527,6 +1561,7 @@ export class ILNSdk {
         if (origOp.type !== prepOp.type) {
           throw new SimulationPreparedXdrMismatchError(
             `Operation ${i} type mismatch: original is ${origOp.type} but prepared is ${prepOp.type}. The RPC node may have tampered with the transaction.`,
+            'Verify your RPC endpoint integrity and consider using a different node.',
             {
               operationName,
               operationIndex: i,
@@ -1541,6 +1576,7 @@ export class ILNSdk {
       if (originalTx.networkPassphrase !== preparedTx.networkPassphrase) {
         throw new SimulationPreparedXdrMismatchError(
           'Network passphrase mismatch between original and prepared transaction. The RPC node may be targeting a different network.',
+          'Verify your RPC endpoint integrity and consider using a different node.',
           {
             operationName,
             originalNetworkPassphrase: originalTx.networkPassphrase,
@@ -1555,6 +1591,7 @@ export class ILNSdk {
       // If XDR parsing itself fails, that's a clear sign of tampering
       throw new SimulationPreparedXdrMismatchError(
         `Failed to parse prepared transaction XDR: ${error instanceof Error ? error.message : String(error)}`,
+        'Verify your RPC endpoint integrity and consider using a different node.',
         { operationName, originalXdrLength: originalXdr.length, preparedXdrLength: preparedXdr.length }
       );
     }

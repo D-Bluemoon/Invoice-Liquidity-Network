@@ -19,7 +19,7 @@ function measure<T>(label: string, fn: () => T): T {
     _queryCount++;
     _totalQueryTime += elapsed;
     if (elapsed > SLOW_QUERY_THRESHOLD_MS) {
-      console.warn(`[DB] Slow query (${elapsed}ms): ${label}`);
+      throw new Error(`[DB] Query exceeded performance budget (${elapsed}ms): ${label}`);
     }
   }
 }
@@ -495,4 +495,14 @@ export function setCursorLedger(ledger: number): void {
   } catch {
     /* metrics failure is non-fatal */
   }
+}
+
+/** Rollback events and cursor to a specific ledger. */
+export function rollbackToLedger(ledger: number): void {
+  const db = getDb();
+  db.prepare('DELETE FROM events WHERE ledger > ?').run(ledger);
+  db.prepare('UPDATE cursor SET last_ledger = ? WHERE id = 1').run(ledger);
+  try {
+    lastProcessedLedger.set(ledger);
+  } catch {}
 }
