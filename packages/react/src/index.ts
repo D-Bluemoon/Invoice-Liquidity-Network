@@ -1,10 +1,5 @@
 // Context
-export {
-  ILNProvider,
-  useILNClient,
-  ILNContext,
-  ILNProviderNotFoundError,
-} from './context';
+export { ILNProvider, useILNClient, ILNContext, ILNProviderNotFoundError } from './context';
 export type { ILNProviderProps } from './context';
 
 // Hooks
@@ -33,6 +28,13 @@ export {
   useDepositPremium,
   useSubmitClaim,
   useReviewClaim,
+  useDispute,
+  useDisputeList,
+  useFileDispute,
+  useSubmitDisputeEvidence,
+  useResolveDispute,
+  useAutoResolveDispute,
+  useDisputeAnalytics,
 } from './hooks';
 
 export type {
@@ -47,7 +49,6 @@ export type {
   UseBatchSubmitInvoiceResult,
   BatchInvoiceInput,
   BatchProgress,
-  InvoiceProgress,
   InvoiceProgress,
   AuctionRatePoint,
   AuctionRateState,
@@ -73,6 +74,17 @@ export type {
   UseDepositPremiumResult,
   UseSubmitClaimResult,
   UseReviewClaimResult,
+  UseDisputeResult,
+  UseDisputeListResult,
+  UseFileDisputeResult,
+  UseSubmitDisputeEvidenceResult,
+  UseResolveDisputeResult,
+  UseAutoResolveDisputeResult,
+  UseDisputeAnalyticsResult,
+  FileDisputeParams,
+  SubmitDisputeEvidenceParams,
+  ResolveDisputeParams,
+  AutoResolveDisputeParams,
 } from './hooks';
 
 // Components

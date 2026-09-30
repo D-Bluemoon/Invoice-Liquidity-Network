@@ -168,6 +168,7 @@ railway link
 # Set environment variables
 railway variables set CONTRACT_ID=your_contract_id
 railway variables set RPC_URL=https://soroban-testnet.stellar.org
+railway variables set REDIS_URL=redis://your-redis:6379
 
 # Deploy
 railway up

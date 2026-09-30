@@ -36,9 +36,10 @@ function checkBucket(bucket: Bucket, now: number): RateLimitResult {
   const windowStart = now - bucket.windowMs;
   bucket.timestamps = bucket.timestamps.filter((t) => t > windowStart);
 
-  const resetAt = bucket.timestamps.length > 0
-    ? Math.ceil((bucket.timestamps[0] + bucket.windowMs) / 1000)
-    : Math.ceil((now + bucket.windowMs) / 1000);
+  const resetAt =
+    bucket.timestamps.length > 0
+      ? Math.ceil((bucket.timestamps[0] + bucket.windowMs) / 1000)
+      : Math.ceil((now + bucket.windowMs) / 1000);
 
   if (bucket.timestamps.length >= bucket.limit) {
     return {
@@ -91,6 +92,10 @@ export class RateLimiter {
     const recipientKey = JSON.stringify([channel, normalizedRecipient]);
     if (!this.recipientBuckets.has(recipientKey)) {
       this.recipientBuckets.set(recipientKey, {
+    // Per-recipient check (user + channel combined).
+    const recipientKey = `${userId}:${channel}`;
+    if (!this.channelBuckets.has(recipientKey)) {
+      this.channelBuckets.set(recipientKey, {
         timestamps: [],
         windowMs: this.config.windowMs,
         limit: this.config.perRecipientLimit,
@@ -98,6 +103,9 @@ export class RateLimiter {
     }
     const recipientResult = checkBucket(this.recipientBuckets.get(recipientKey)!, now);
     if (!recipientResult.allowed) {
+    const channelResult = checkBucket(this.channelBuckets.get(recipientKey)!, now);
+    if (!channelResult.allowed) {
+      // Roll back the user-bucket timestamp we just inserted.
       const ub = this.userBuckets.get(userId)!;
       ub.timestamps.pop();
       return recipientResult;

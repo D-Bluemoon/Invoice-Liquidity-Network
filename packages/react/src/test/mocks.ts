@@ -1,5 +1,13 @@
 import { vi } from 'vitest';
-import type { ILNClient, Invoice, Proposal, ReputationScore, LPPortfolio, ContractStats, TokenBalance } from '@invoice-liquidity/sdk';
+import type {
+  ILNClient,
+  Invoice,
+  Proposal,
+  ReputationScore,
+  LPPortfolio,
+  ContractStats,
+  TokenBalance,
+} from '@iln/sdk';
 
 export const mockInvoice: Invoice = {
   id: 42,
@@ -78,7 +86,7 @@ export const mockLPCoverage = {
   claimsApproved: 1,
   claimsRejected: 0,
   totalPayoutReceived: 5_000_000_000n,
-} as unknown as import('@invoice-liquidity/sdk').LPCoverage;
+} as unknown as import('@iln/sdk').LPCoverage;
 
 export const mockInsuranceClaim = {
   id: 1n,
@@ -92,7 +100,7 @@ export const mockInsuranceClaim = {
   reviewer: null,
   rejectionReason: null,
   payoutAmount: null,
-} as unknown as import('@invoice-liquidity/sdk').InsuranceClaim;
+} as unknown as import('@iln/sdk').InsuranceClaim;
 
 export const mockPoolBalance = {
   totalPremiums: 10_000_000_000n,
@@ -103,7 +111,41 @@ export const mockPoolBalance = {
   pendingClaims: 2,
   approvedClaims: 1,
   rejectedClaims: 0,
-} as unknown as import('@invoice-liquidity/sdk').PoolBalance;
+} as unknown as import('@iln/sdk').PoolBalance;
+
+export const mockDisputeRecord = {
+  invoiceId: 101n,
+  disputer: 'GPAYER123',
+  reasonCategory: 'quality',
+  reasonDescription: 'Work deliverable does not match specifications.',
+  evidenceCid: 'ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi',
+  evidence: [
+    {
+      id: 'ev-1',
+      submitter: 'GPAYER123',
+      role: 'payer',
+      evidenceCid: 'ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi',
+      description: 'Initial claim with specs sheet.',
+      submittedAt: 1735776000,
+    },
+  ],
+  filedAt: 1735776000,
+  evidenceDeadline: 1736380800,
+  autoResolveAt: 1736380800,
+  status: 'Pending',
+  resolvedAt: null,
+  resolvedBy: null,
+  resolutionDecision: null,
+  resolutionNotes: null,
+};
+
+export const mockDisputeAnalytics = {
+  totalDisputes: 4,
+  disputeRateByPayer: { GPAYER123: 0.2 },
+  averageResolutionTimeSeconds: 86400,
+  winRateByParty: { payer: 0.5, freelancer: 0.5 },
+  commonDisputeReasons: { quality: 2, timing: 1, amount: 1, other: 0 },
+};
 
 export function createMockILNClient(overrides: Partial<Record<string, unknown>> = {}): ILNClient {
   return {
@@ -121,7 +163,9 @@ export function createMockILNClient(overrides: Partial<Record<string, unknown>> 
     markPaid: vi.fn().mockResolvedValue(undefined),
     createProposal: vi.fn().mockResolvedValue(undefined),
     vote: vi.fn().mockResolvedValue(undefined),
-    connectWallet: vi.fn().mockResolvedValue('GDRMKYQMTNZ3XPRF7K7L3PFBJQI2S2Y2E3KJQF3KHKY3XT3LZXG3G5X2'),
+    connectWallet: vi
+      .fn()
+      .mockResolvedValue('GDRMKYQMTNZ3XPRF7K7L3PFBJQI2S2Y2E3KJQF3KHKY3XT3LZXG3G5X2'),
     getLPCoverage: vi.fn().mockResolvedValue(mockLPCoverage),
     getPoolBalance: vi.fn().mockResolvedValue(mockPoolBalance),
     getClaim: vi.fn().mockResolvedValue(mockInsuranceClaim),
@@ -130,6 +174,13 @@ export function createMockILNClient(overrides: Partial<Record<string, unknown>> 
     depositPremium: vi.fn().mockResolvedValue(undefined),
     submitClaim: vi.fn().mockResolvedValue(2n),
     reviewClaim: vi.fn().mockResolvedValue(undefined),
+    getDispute: vi.fn().mockResolvedValue(mockDisputeRecord),
+    listDisputes: vi.fn().mockResolvedValue([mockDisputeRecord]),
+    disputeInvoice: vi.fn().mockResolvedValue({ txHash: 'tx-hash-dispute' }),
+    submitDisputeEvidence: vi.fn().mockResolvedValue({ txHash: 'tx-hash-evidence' }),
+    resolveDispute: vi.fn().mockResolvedValue({ txHash: 'tx-hash-resolve' }),
+    autoResolveDispute: vi.fn().mockResolvedValue({ txHash: 'tx-hash-auto' }),
+    getDisputeAnalytics: vi.fn().mockResolvedValue(mockDisputeAnalytics),
     ...overrides,
   } as unknown as ILNClient;
 }

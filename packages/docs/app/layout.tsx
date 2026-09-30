@@ -1,19 +1,20 @@
-import { Footer, Layout, Navbar } from 'nextra-theme-docs'
-import { Banner, Head } from 'nextra/components'
-import { getPageMap } from 'nextra/page-map'
-import { VersionBanner } from '../components/VersionBanner'
-import { CONTRACT_VERSION } from '../lib/docs-version'
-import 'nextra-theme-docs/style.css'
-import './globals.css'
+import { Footer, Layout, Navbar } from 'nextra-theme-docs';
+import { Banner, Head } from 'nextra/components';
+import { getPageMap } from 'nextra/page-map';
+import { VersionBanner } from '../components/VersionBanner';
+import { AlgoliaSearch } from '../components/AlgoliaSearch';
+import { CONTRACT_VERSION } from '../lib/docs-version';
+import 'nextra-theme-docs/style.css';
+import './globals.css';
 
 export const metadata = {
   title: {
     template: '%s | ILN Docs',
-    default: 'Invoice Liquidity Network Documentation'
+    default: 'Invoice Liquidity Network Documentation',
   },
   description: 'Documentation for the Invoice Liquidity Network protocol built on Stellar',
-  metadataBase: new URL('https://docs.iln.finance')
-}
+  metadataBase: new URL('https://docs.iln.finance'),
+};
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const navbar = (
@@ -25,8 +26,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </div>
       }
       projectLink="https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network"
-    />
-  )
+    >
+      <AlgoliaSearch />
+    </Navbar>
+  );
 
   return (
     <html lang="en" dir="ltr" suppressHydrationWarning>
@@ -52,5 +55,5 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </Layout>
       </body>
     </html>
-  )
+  );
 }

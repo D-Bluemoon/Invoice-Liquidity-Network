@@ -17,9 +17,9 @@ const config: DocsThemeConfig = {
     key: `iln-docs-version-${DOCS_CONTRACT_VERSION}`,
     text: (
       <a href="/versioning">
-        These docs track the latest release on Stellar testnet — contract v
-        {DOCS_CONTRACT_VERSION} ({DOCS_CONTRACT_ID.slice(0, 6)}…{DOCS_CONTRACT_ID.slice(-6)}) and
-        SDK v{DOCS_SDK_VERSION}. Check your versions →
+        These docs track the latest release on Stellar testnet — contract v{DOCS_CONTRACT_VERSION} (
+        {DOCS_CONTRACT_ID.slice(0, 6)}…{DOCS_CONTRACT_ID.slice(-6)}) and SDK v{DOCS_SDK_VERSION}.
+        Check your versions →
       </a>
     ),
   },
@@ -34,7 +34,8 @@ const config: DocsThemeConfig = {
   chat: {
     link: 'https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network/discussions',
   },
-  docsRepositoryBase: 'https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network/blob/main/docs',
+  docsRepositoryBase:
+    'https://github.com/Invoice-Liquidity-Network/Invoice-Liquidity-Network/blob/main/docs',
   footer: {
     text: '© 2024 Invoice Liquidity Network. MIT License.',
   },
@@ -51,7 +52,10 @@ const config: DocsThemeConfig = {
     <>
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <meta property="og:title" content="Invoice Liquidity Network Docs" />
-      <meta property="og:description" content="Turn unpaid invoices into instant liquidity on-chain, on Stellar." />
+      <meta
+        property="og:description"
+        content="Turn unpaid invoices into instant liquidity on-chain, on Stellar."
+      />
     </>
   ),
   useNextSeoProps() {
