@@ -1,9 +1,11 @@
 [build]
 builder = "nixpacks"
-buildCommand = "npm ci && npm run build"
+buildCommand = "corepack pnpm install --frozen-lockfile --filter iln-indexer... && corepack pnpm --filter iln-indexer build"
 
 [deploy]
-startCommand = "npm start"
-healthcheckPath = "/health"
+startCommand = "corepack pnpm --filter iln-indexer start"
+numReplicas = 1
+healthcheckPath = "/v1/health"
+healthcheckTimeout = 120
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3

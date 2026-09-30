@@ -113,13 +113,20 @@ export function createApp(): express.Application {
   // GET /health
   router.get("/health", (_req: Request, res: Response) => {
     let dbStatus: "ok" | "error" = "ok";
+    let updatedAt: number | null = null;
     try {
-      res.setHeader("Content-Type", registry.contentType);
-      const body = await registry.metrics();
-      res.send(body);
-    } catch (err) {
-      res.status(500).send("Error collecting metrics");
+      getDb().prepare("SELECT 1").get();
+      updatedAt = getCursorUpdatedAt();
+    } catch {
+      dbStatus = "error";
     }
+
+    res.status(dbStatus === "ok" ? 200 : 503).json({
+      status: dbStatus,
+      db: dbStatus,
+      lastSync: updatedAt === null ? null : new Date(updatedAt).toISOString(),
+      uptime: Date.now() - startTime,
+    });
   });
 
   // GET /dashboard

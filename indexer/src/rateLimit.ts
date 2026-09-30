@@ -25,6 +25,7 @@ export function createApiRateLimiter(): RateLimitRequestHandler {
     standardHeaders: "draft-6",
     legacyHeaders: false,
     skip: (req: Request) => {
+      if (req.path === "/health" || req.path === "/v1/health") return true;
       const ip = req.ip ?? "";
       // Normalize ::ffff:x.x.x.x (IPv4-mapped IPv6) and ::1 to their IPv4 equivalents
       const normalized = ip.startsWith("::ffff:") ? ip.slice(7) : ip === "::1" ? "127.0.0.1" : ip;

@@ -149,7 +149,11 @@ docker-compose up -d
 
 ### Option 4: Railway
 
-The project includes `railway.toml` for Railway deployment:
+The project includes [`indexer/railway.toml`](../../indexer/railway.toml) and
+[`indexer/Procfile`](../../indexer/Procfile) for Railway deployment. The TOML
+file is authoritative for Railway. It installs the filtered indexer workspace
+from the root `pnpm-lock.yaml`, builds it, and starts its `start` script. The
+Procfile's `web` process runs the same built entry point directly.
 
 ```bash
 # Install Railway CLI
@@ -168,6 +172,40 @@ railway variables set RPC_URL=https://soroban-testnet.stellar.org
 # Deploy
 railway up
 ```
+
+#### Production settings
+
+The Railway configuration intentionally runs **one replica**. The indexer
+stores its cursor and event state in SQLite, which has a single-writer
+constraint; adding replicas can create competing pollers and database locking.
+The service should use a Railway persistent volume mounted at `/data`, with
+`DB_PATH=/data/indexer.db`, so deploys and restarts do not replace the database.
+Keep automated backups enabled and store a copy outside the service volume.
+Configure a cloud backup provider/bucket for off-volume copies; local backups
+on the ephemeral application filesystem are not a production backup.
+
+Railway's Config as Code documentation currently marks TOML configuration as
+deprecated, with existing support scheduled to end on December 1, 2026. Keep
+this file working for the current deployment, but plan migration to Railway's
+supported infrastructure-as-code workflow before that date.
+
+Railway probes `/v1/health` and waits up to 120 seconds for startup. The
+versioned endpoint checks SQLite and returns `200` only when the database query
+succeeds; it returns `503` on a database failure. Both `/health` and
+`/v1/health` bypass public API rate limiting so the probe cannot be throttled.
+`on_failure` restarts the process, with three retries to avoid an endless
+restart storm.
+
+Railway CPU and memory are selected in the service's resource settings, not in
+`railway.toml`; do not assume a TOML resource limit is being enforced. The
+numeric load-test results from Issues #48 and #60 are not present in this
+checkout, so no fixed CPU/RAM size can honestly be claimed as validated from
+those findings. Before production, use those reports (or rerun the
+indexer-specific load test), choose resources that keep measured peak CPU and
+resident memory below the service plan limits with operational headroom, and
+repeat the test against the selected Railway plan. Revisit the single-replica
+decision only after replacing SQLite with a shared, multi-writer-safe storage
+design.
 
 ## Environment Variables
 
